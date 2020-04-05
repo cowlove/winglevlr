@@ -6,10 +6,10 @@ BOARD=heltec_wifi_kit_32
 
 
 CHIP=esp32
-OTA_ADDR=192.168.0.101
+OTA_ADDR=192.168.43.222
 IGNORE_STATE=1
 
-include ${HOME}/src/makeEspArduino/makeEspArduino.mk
+include ${HOME}/Arduino/makeEspArduino/makeEspArduino.mk
 
 print-%  : ; @echo $* = $($*)
 
