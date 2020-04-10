@@ -74,40 +74,33 @@ WiFiUDP udpNMEA;
 WiFiUDP udpG90;
 WiFiUDP udpMAV;
 
-
+/*
 #ifdef ARDUINO_HELTEC_WIFI_KIT_32
 #define U8G2
 #define BUTTON_PIN 17
 #define LED_PIN 2
 #include <U8g2lib.h>
 #include <U8x8lib.h>
-U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ 15, /* data=*/ 4, /* reset=*/ 16);
-RotaryEncoder re(5,18,23);
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0,  15,  4,  16); // clock, data,reset 
+RotaryEncoder re(27,33);
 DigitalButton button(17);
 DigitalButton button2(0);
+DigitalButton button4(21);
+
 #define SCREEN u8g2
 #endif
-
+*/
 
 #define TTGO
 #ifdef TTGO
 #include <MPU9250_asukiaaa.h>
-#include <Adafruit_GFX.h>               // Core graphics library
-#include <Adafruit_ST7735.h>            // Hardware-specific library
 #include <Kalman.h> 					// Source: https://github.com/TKJElectronics/KalmanFilter
 #define LED_PIN 22
-RotaryEncoder re(5,18,23);
+RotaryEncoder re(27,33);
 DigitalButton button(34);
 DigitalButton button2(35);
 DigitalButton button3(39);
-#define TFT_CS 16
-#define TFT_RST 9  
-#define TFT_DC 17
-#define TFT_SCLK 5   
-#define TFT_MOSI 23  
-#define ST7735
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
-#define SCREEN tft
+DigitalButton button4(21);
 #endif // TTGO 
 
 static IPAddress mavRemoteIp;
@@ -118,6 +111,7 @@ EggTimer screenTimer(100), blinkTimer(1000), udpDebugTimer(1000), mavTimer(300);
 LongShortFilter butFilt(1500,600);
 LongShortFilter butFilt2(1500,600);
 LongShortFilter butFilt3(1500,600);
+LongShortFilter butFilt4(1500,600);
 void buttonISR() { 
 	button.check();
 	button2.check();
@@ -125,77 +119,34 @@ void buttonISR() {
 	butFilt.check(button.duration());
 	butFilt2.check(button2.duration());
 	butFilt3.check(button3.duration());
+	butFilt4.check(button4.duration());
 }
 
 
-void screenMsg(const char *msg) {
-#ifdef U8G2
-	u8g2.clearBuffer();					// clear the internal memory
-	u8g2.setFont(u8g2_font_courB08_tr);	// choose a suitable font
-	u8g2.setCursor(0,10);				// set write position
-	u8g2.println(msg);
-	u8g2.sendBuffer();
-#endif
-#ifdef ST7735
-	tft.setCursor(0,10);				// set write position
-	tft.println(msg);
-#endif
-}
-	
-static int screenY = 0;
-void screenClear() { 
-	screenY = 10;
-#ifdef U8G2
-	u8g2.clearBuffer();					// clear the internal memory
-	u8g2.setFont(u8g2_font_courB08_tr);	// choose a suitable font
-#endif
-#ifdef ST7735
-	tft.fillScreen(ST7735_BLACK);                            // CLEAR
-#endif
+namespace Display {
+	JDisplay jd;
+	int y = 0;
+	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s");
+	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d");
+	JDisplayItem<int>    hdg(&jd,70,y,    " HDG:", "%03d");
+	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d");
+	JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d");
+	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d");
+	JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d");
+	JDisplayItem<int>    udp(&jd,10,y+=10," UDP:", "%03d");
+	JDisplayItem<int>    ser(&jd,70,y,    " SER:", "%03d");
+	JDisplayItem<int>    mav(&jd,10,y+=10," MAV:", "%03d");
+	JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f");
+
+	JDisplayItem<const char *>  log(&jd,10,y+=20," LOG:", "%s");
 }
 
-void screenInit(const char *msg) { 
-#ifdef U8G2
-	u8g2.begin();
-	screenMsg(msg);
-#endif
-#ifdef ST7735
-	pinMode(27,INPUT);//Backlight:27
-	digitalWrite(27,HIGH);//New version added to backlight control
-	tft.initR(INITR_18GREENTAB);                             // 1.44 v2.1
-	tft.fillScreen(ST7735_BLACK);                            // CLEAR
-	tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);           // GREEN
-	tft.setRotation(1);                                      // 
-	screenY = 10;
-	screenMsg("OK");
-#endif
-}	
-
-void screenNextLine() {
-	screenY += 10;
-#ifdef U8G2
-	u8g2.setCursor(0,screenY);				// set write position
-#endif
-#ifdef ST7735
-	tft.setCursor(5, screenY);
-#endif
-}
-	
-#define SCREENLINE screenNextLine(),SCREEN
-
-void screenSend() { 
-#ifdef U8G2
-	u8g2.sendBuffer();
-	#endif
-#ifdef ST7735
-#endif
-}	
 WatchDogTimer wdt(10000);
 
 MPU9250_DMP imu;
 #define IMU_INT_PIN 4
 
-void imuPrint(); 
+void imuLog(); 
 void imuInit() { 
   if (imu.begin() != INV_SUCCESS)
   {
@@ -211,38 +162,45 @@ void imuInit() {
   pinMode(IMU_INT_PIN, INPUT_PULLUP);
   
   imu.setSampleRate(1000);
+  imu.setGyroFSR(250/*deg per sec*/);
+  imu.setAccelFSR(4/*G*/);
   imu.dmpSetInterruptMode(DMP_INT_CONTINUOUS);
   imu.setIntLevel(INT_ACTIVE_LOW);
   imu.enableInterrupt(1);
   imu.setIntLatched(INT_50US_PULSE);
   imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | // Enable 6-axis quat
                DMP_FEATURE_GYRO_CAL, // Use gyro calibration
-              50); // Set DMP FIFO rate to 10 Hz
+              100); // Set DMP FIFO rate to 10 Hz
   
-  attachInterrupt(digitalPinToInterrupt(button.pin), imuPrint, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(button.pin), imuPrint, FALLING);
 }
 
+
 struct LogItem { 
-	float sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4;
+	float sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed;
 	String toString() { 
-		char buf[1024];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f", 
-		sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4);
+		static char buf[2048];
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f", 
+		sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed);
 		return String(buf);	
 	 }
+	 LogItem fromString(const char *s) { 
+		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		&sec, &hdg, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
+		return *this;
+	}
+		 
 };
 
-SDCardBufferedLog<LogItem>  logFile("log1.txt", 200, 100, 1000);
-msdFile logFileF;
-
-void printIMUData(void);
+SDCardBufferedLog<LogItem>  *logFile = NULL;
 int imuInt = 0;
-float imuHdg, imuAlt;
-void imuPrint() 
+float imuHdg, imuAlt, imuSpeed;
+
+void imuLog() 
 {
   imuInt++;
   // Check for new data in the FIFO
-  while ( imu.fifoAvailable() )
+  if ( imu.fifoAvailable() )
   {
     // Use dmpUpdateFifo to update the ax, gx, mx, etc. values
     if ( imu.dmpUpdateFifo() == INV_SUCCESS)
@@ -274,69 +232,99 @@ void imuPrint()
       x.p = imu.pitch;
       x.r = imu.roll;
       x.y = imu.yaw;
+      x.gspeed = imuSpeed;
       //Serial.println(x.toString());
-      //logFile.add(&x, 0/*timeout*/);
-      logFileF.println(x.toString());
+      if (logFile != NULL)
+		logFile->add(&x, 0/*timeout*/);
     }
   }
 }
 
-uint64_t lastTime = 0;
-void printIMUData(void)
-{  
-  // After calling dmpUpdateFifo() the ax, gx, mx, etc. values
-  // are all updated.
-  // Quaternion values are, by default, stored in Q30 long
-  // format. calcQuat turns them into a float between -1 and 1
-  float q0 = imu.calcQuat(imu.qw);
-  float q1 = imu.calcQuat(imu.qx);
-  float q2 = imu.calcQuat(imu.qy);
-  float q3 = imu.calcQuat(imu.qz);
-  uint64_t now = imu.time;
-  //Serial.printf("Q: %+05.4f %+05.4f %+05.4f %+05.4f   ", q0, q1, q2, q3);
-  Serial.printf("%+06.2f %+06.2f %+06.2f ", imu.pitch, imu.roll, imu.yaw);
-  Serial.printf("ms: %.3f ms\n", (now - lastTime) / 1000.0);
-  lastTime = now;
+void printDirectory(msdFile dir, int numTabs) {
+  while(true) {
+     msdFile entry =  dir.openNextFile();
+     if (! entry) {
+       break;
+     }
+     for (uint8_t i=0; i<numTabs; i++) {
+       Serial.print('\t');   // we'll have a nice indentation
+     }
+     // Print the name
+     Serial.print(entry.name());
+     /* Recurse for directories, otherwise print the file size */
+     if (entry.isDirectory()) {
+       Serial.println("/");
+       printDirectory(entry, numTabs+1);
+     } else {
+       /* files have sizes, directories do not */
+       Serial.print("\t\t");
+       Serial.println(entry.size());
+     }
+     entry.close();
+	}
 }
 
-//HardwareSerial SerialMav;
+void printSD() { 
+	msdFile root = SD.open("/");
+	if (root) {
+		printDirectory(root, 0);
+		root.close();
+	}
+}
+
 
 #define SerialMav Serial1 
 
-
 void setup() {
-	screenInit("");
+#ifdef U8G2
+	pinMode(26, INPUT);
+	pinMode(32, OUTPUT);
+	SerialMav.begin(57600, SERIAL_8N1, 32, 26);
+	SerialMav.setTimeout(1);
+	Serial.begin(57600, SERIAL_8N1);
+	Serial.setTimeout(1);
+#endif
+
+#ifdef TTGO
+	pinMode(32, INPUT);
+	pinMode(26, OUTPUT);
+	SerialMav.begin(57600, SERIAL_8N1, 32, 26);
+	SerialMav.setTimeout(1);
+	Serial.begin(57600, SERIAL_8N1);
+	Serial.setTimeout(1);
+#endif
+
+	Display::jd.begin();
 	//wdt.begin();  // doesn't work yet
 
-	//re.begin([]{re.ISR();});
-
-	attachInterrupt(digitalPinToInterrupt(button.pin), buttonISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(button2.pin), buttonISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(button3.pin), buttonISR, CHANGE);
-
-	mavRemoteIp.fromString("192.168.43.166");
 	pinMode(LED_PIN, OUTPUT);
-	//pinMode(17, INPUT_PULLUP);
 	pinMode(button.pin, INPUT_PULLUP);
 	pinMode(button2.pin, INPUT_PULLUP);
 	pinMode(button3.pin, INPUT_PULLUP);
+	pinMode(button4.pin, INPUT_PULLUP);
 
-	SCREENLINE.println("Initializing IMU...");
-	imuInit();
+	re.begin([]{re.ISR();});
+	attachInterrupt(digitalPinToInterrupt(button.pin), buttonISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(button2.pin), buttonISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(button3.pin), buttonISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(button4.pin), buttonISR, CHANGE);
 
-	SCREENLINE.println("Opening SD card...");
-	open_TTGOTS_SD();
 
-	SCREENLINE.println("Initializing logfile...");
-	//logFile.begin();
+	//SCREENLINE.println("Initializing IMU...");
+	imuInit();	
 	
-	SCREENLINE.println("Connecting to WiFi...");
-	if (true) { 
+	if (digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
+		//SCREENLINE.println("Opening SD card...");
+		open_TTGOTS_SD();
+		printSD();
+
+		//SCREENLINE.println("Connecting to WiFi...");
 		//WiFi.mode(WIFI_STA);
 		//WiFi.setSleep(false);
 		//WiFi.begin("ChloeNet", "niftyprairie7");
 		wifi.addAP("Ping-582B", "");
 		wifi.addAP("ChloeNet", "niftyprairie7");
+		wifi.addAP("Team America", "51a52b5354");
 
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED && digitalRead(button.pin) != 0) {
@@ -345,42 +333,21 @@ void setup() {
 			if (millis() - startms > 11000)
 				break;
 		}
+		
 		udpSL30.begin(7891);
 		udpG90.begin(4000);
 		udpMAV.begin(MAVLINK_PORT);
 		udpNMEA.begin(7892);
 	}
 	
-	SCREENLINE.println("WiFi connected");
+	//SCREENLINE.println("WiFi connected");
 	mavlink_open();
 
-#ifdef U8G2
-	pinMode(22, INPUT);
-	pinMode(19, OUTPUT);
-	SerialMav.begin(57600, SERIAL_8N1, 22, 19);
-	SerialMav.setTimeout(1);
-	Serial.begin(57600, SERIAL_8N1);
-	Serial.setTimeout(1);
-#endif
-
-#ifdef TTGO
-	pinMode(21, INPUT);
-	pinMode(22, OUTPUT);
-	SerialMav.begin(57600, SERIAL_8N1, 21, 22);
-	SerialMav.setTimeout(1);
-	Serial.begin(57600, SERIAL_8N1);
-	Serial.setTimeout(1);
-#endif
-
-	SCREENLINE.println("Init complete");
-	screenClear();
+	mavRemoteIp.fromString("192.168.43.166");
 }
 
 
-
-
 void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float hdop, float vdop) {
-	
 	uint64_t time_usec = 0;
 	uint8_t gps_id = 12;
 	uint16_t ignore_flags = 0; 
@@ -412,14 +379,9 @@ void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float 
 
 
 void loop() {
-	//wifi.run(1);
-	//ArduinoOTA.handle();
-	//wdt.feed();
-	delay(1);
-	
 	mavlink_message_t msg;
 	uint16_t len;
-	static int count = 0;
+	static int ledOn = 0;
 	static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 	static int buildNumber = 12;
 	static int mavBytesIn = 0;
@@ -434,25 +396,29 @@ void loop() {
 	static int gpsUseGDL90 = 1;
 	static int obs = 0;
 	static int navDTK = 0;
-	static bool phSafetySwitch = false; //debug start off logging
-	static SDCardBufferedLog<LogItem> *logFile = NULL;
+	static bool phSafetySwitch = true;
 	static bool screenEnabled = true;
+	static uint64_t lastLoop = micros();
 	
-	Serial.printf("imu int count %d\n", imuInt);
+	delayMicroseconds(100);
+	//Serial.printf("%d\n", (int)(micros() - lastLoop));
+	//lastLoop = micros();
 	
-	
-	if (phSafetySwitch == true) 
-		imuPrint();
+	if (phSafetySwitch == false) {
+		imuLog();
+	}
 
 	buttonISR();
 	if (butFilt.newEvent()) {
+		/*
 		if (butFilt.wasLong == true) { // long press, hold current track
 			re.value = lastHdg;
 			apMode = 3;
 		}
 		if (butFilt.wasLong == false) { // short press, set new mode
 			apMode = butFilt.wasCount;
-		}
+		}*/
+		phSafetySwitch = !phSafetySwitch;
 		mavTimer.alarmNow();
 	}
 	
@@ -466,60 +432,50 @@ void loop() {
 				mavlink_send(buf, len);
 			}	
 		} else { 
-			apMode = butFilt2.wasCount;
+			apMode = apMode == 4 ? 1 : 4;
 		}
 		mavTimer.alarmNow();
 	}
 	if (butFilt3.newEvent()) { 
-		screenEnabled = !screenEnabled;
-		if (screenEnabled == false) 
-			screenClear();
+		Display::jd.begin();
+		Display::jd.forceUpdate();
+	}
+	if (butFilt4.newEvent()) { 
+		mavHeartbeats++; // just checking button4 
 	}
 	
-	
-	if (phSafetySwitch == false && logFileF) { 
-		logFileF.flush();
-		logFileF.close();
-	} 
-	if (phSafetySwitch == true && !logFileF) {
-		char fname[128];
-		for(int n = 0; n < 999; n++) {
-			sprintf(fname, "LOGFILE.%03d", n);
-			msdFile f = SD.open(fname, F_READ);
-			if (!f) {
-				break;
-			}
-			f.close();
-		}
-		logFileF = SD.open(fname, (F_READ | F_WRITE | F_CREAT));
-	}
-		
-	/*
 	if (phSafetySwitch == false && logFile == NULL) {
-		logFile = new SDCardBufferedLog<LogItem>("log.txt", 200, 100, 1000);
-		logFile->begin();
+		logFile = new SDCardBufferedLog<LogItem>("NEWL%03d.TXT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+		//Serial.printf("Opened log file %s\n", logFile->currentFile.c_str());
 	} 
-	if (phSafetySwitch == true && logFile != NULL) { 
-		logFile->exit();
+	if (phSafetySwitch == true && logFile != NULL) {
 		delete logFile;
-	}*/
+		logFile = NULL;
+		//printSD();
+	}
 	
-	
-	if (screenEnabled && screenTimer.tick()) { 
-		screenY = 10;
-		String s = WiFi.localIP().toString();
-		SCREENLINE.printf("WIFI: %s", s.c_str());
-		SCREENLINE.printf(" DTK: %03d   HDG: %03d", (int)desiredTrk, (int)lastHdg);
-		SCREENLINE.printf("NAVT: %03d   OBS: %03d", navDTK, obs);
-		SCREENLINE.printf("KNOB: %03d  MODE: %d%d%d", re.value, apMode, gpsUseGDL90, (int)phSafetySwitch);
-		SCREENLINE.printf(" UDP: %03d   SER: %03d", udpBytes % 1000, serBytes % 1000);
-		SCREENLINE.printf(" MAV: %03d  ROLL:%+05.1f",  mavHeartbeats % 1000, roll);
-		screenSend();
+	if (screenEnabled && screenTimer.tick()) {
+		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
+		Display::mode.color.vf = ST7735_BLACK;
+		Display::roll.color.vf = ST7735_RED;
+
+		Display::ip = WiFi.localIP().toString().c_str();
+		Display::dtk = (int)desiredTrk;
+		Display::hdg = (int)lastHdg;
+		Display::navt = navDTK;
+		Display::obs = obs;
+		Display::knob = re.value;
+		Display::mode = apMode * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch;
+		Display::udp = udpBytes % 1000;
+		Display::ser = serBytes % 1000;
+		Display::mav = mavHeartbeats % 1000;
+		Display::roll = roll;
+		Display::log = (logFile != NULL) ? logFile->currentFile.c_str() : "none       ";
 	}
 	
 	if (blinkTimer.tick()) 
-		count++;
-	digitalWrite(LED_PIN, (count & 0x1) ^ (gpsFixes & 0x1) ^ (serBytes & 0x1));
+		ledOn ^= 1;
+	digitalWrite(LED_PIN, (ledOn & 0x1) ^ (gpsFixes & 0x1) ^ (serBytes & 0x1));
 	
 	yield();
 	
@@ -604,7 +560,7 @@ void loop() {
 		len = mavlink_msg_to_send_buffer(buf, &msg);
 		mavlink_send(buf, len);
 
-		mavlink_msg_set_mode_pack(1, 2, &msg, 0, MAV_MODE_FLAG_DECODE_POSITION_SAFETY, (int)(!phSafetySwitch));
+		mavlink_msg_set_mode_pack(1, 2, &msg, 0, MAV_MODE_FLAG_DECODE_POSITION_SAFETY, (int)(phSafetySwitch));
 		len = mavlink_msg_to_send_buffer(buf, &msg);
 		mavlink_send(buf, len);
 	 
@@ -655,10 +611,10 @@ void loop() {
 				GDL90Parser::State s = gdl90.getState();
 				if (gpsUseGDL90 && s.valid && s.updated) { 
 					gpsFixes++;
-					int alt = s.palt * 25 - 1000;
-					mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.palt * 25 - 1000, 1.23, 2.34);
-					imuAlt = alt;
+					mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
+					imuAlt = s.alt;
 					imuHdg = s.track;
+					imuSpeed = s.hvel;
 				}
 			}
 		}

@@ -1,7 +1,7 @@
 
 
 #BOARD=esp32doit-devkit-v1
-BOARD=heltec_wifi_kit_32
+#BOARD=heltec_wifi_kit_32
 #BOARD=nodemcu-32s
 
 
@@ -14,7 +14,10 @@ include ${HOME}/Arduino/makeEspArduino/makeEspArduino.mk
 print-%  : ; @echo $* = $($*)
 
 fixtty:
-	stty -F ${UPLOAD_PORT} -hupcl -crtscts -echo raw 19200
+	stty -F ${UPLOAD_PORT} -hupcl -crtscts -echo raw 57600 
+
+cat:	fixtty
+	cat ${UPLOAD_PORT}
 
 setap1:
 	wget 'http://192.168.4.1/wifisave?s=ChloeNet&p=niftyprairie7'
