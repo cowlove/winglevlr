@@ -34,11 +34,9 @@ GDL90Parser::State state;
 RollAHRS ahrs;
 PidControl pid(30);
 
+#define MAVLINK_PORT 14450
 void mavlink_open();
 void mavlink_send(const uint8_t *, int);
-int mavlink_read(uint8_t *, int);
-
-#define MAVLINK_PORT 14450
 
 static void IRAM_ATTR resetModule() {
    //esp_restart();
@@ -65,25 +63,6 @@ WiFiUDP udpNMEA;
 WiFiUDP udpG90;
 WiFiUDP udpMAV;
 
-/*
-#ifdef ARDUINO_HELTEC_WIFI_KIT_32
-#define U8G2
-#define BUTTON_PIN 17
-#define LED_PIN 2
-#include <U8g2lib.h>
-#include <U8x8lib.h>
-U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0,  15,  4,  16); // clock, data,reset 
-RotaryEncoder re(27,33);
-DigitalButton button(17);
-DigitalButton button2(0);
-DigitalButton button4(21);
-
-#define SCREEN u8g2
-#endif
-*/
-
-#define TTGO
-#ifdef TTGO
 #include <MPU9250_asukiaaa.h>
 #include <Kalman.h> 					// Source: https://github.com/TKJElectronics/KalmanFilter
 #define LED_PIN 22
@@ -92,7 +71,6 @@ DigitalButton button(34);
 DigitalButton button2(35);
 DigitalButton button3(39);
 DigitalButton button4(21);
-#endif // TTGO 
 
 static IPAddress mavRemoteIp;
 #define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
@@ -165,52 +143,57 @@ void imuInit() {
   //attachInterrupt(digitalPinToInterrupt(button.pin), imuPrint, FALLING);
 }
 
-SDCardBufferedLog<LogItem>  *logFile = NULL;
-int imuInt = 0;
-float imuHdg, imuAlt, imuSpeed;
+static AhrsInput ahrsInput;
+void imuRead() { 
+	if ( imu.fifoAvailable() ) {
+		if ( imu.dmpUpdateFifo() == INV_SUCCESS) {
+			imu.computeEulerAngles();
+			imu.updateAccel();
+			imu.updateGyro();
+			imu.updateCompass();
 
-void imuLog() 
-{
-  imuInt++;
-  // Check for new data in the FIFO
-  if ( imu.fifoAvailable() )
-  {
-    // Use dmpUpdateFifo to update the ax, gx, mx, etc. values
-    if ( imu.dmpUpdateFifo() == INV_SUCCESS)
-    {
-      // computeEulerAngles can be used -- after updating the
-      // quaternion values -- to estimate roll, pitch, and yaw
-      imu.computeEulerAngles();
-      imu.updateAccel();
-      imu.updateGyro();
-      imu.updateCompass();
-      
-      LogItem x;
-      x.sec = millis() / 1000.0;
-      x.hdg = imuHdg;
-      x.alt = imuAlt;
-      x.ax = imu.calcAccel(imu.ax);
-      x.ay = imu.calcAccel(imu.ay);
-      x.az = imu.calcAccel(imu.az);
-      x.gx = imu.calcGyro(imu.gx);
-      x.gy = imu.calcGyro(imu.gy);
-      x.gz = imu.calcGyro(imu.gz);
-      x.mx = imu.calcMag(imu.mx);
-      x.my = imu.calcMag(imu.my);
-      x.mz = imu.calcMag(imu.mz);
-      x.q1 = imu.calcQuat(imu.qw);
-      x.q2 = imu.calcQuat(imu.qx);
-      x.q3 = imu.calcQuat(imu.qy);
-      x.q4 = imu.calcQuat(imu.qz);
-      x.p = imu.pitch;
-      x.r = imu.roll;
-      x.y = imu.yaw;
-      x.gspeed = imuSpeed;
-      //Serial.println(x.toString());
-      if (logFile != NULL)
-		logFile->add(&x, 0/*timeout*/);
-    }
-  }
+			AhrsInput &x = ahrsInput;
+			x.sec = millis() / 1000.0;
+			x.ax = imu.calcAccel(imu.ax);
+			x.ay = imu.calcAccel(imu.ay);
+			x.az = imu.calcAccel(imu.az);
+			x.gx = imu.calcGyro(imu.gx);
+			x.gy = imu.calcGyro(imu.gy);
+			x.gz = imu.calcGyro(imu.gz);
+			x.mx = imu.calcMag(imu.mx);
+			x.my = imu.calcMag(imu.my);
+			x.mz = imu.calcMag(imu.mz);
+			x.q1 = imu.calcQuat(imu.qw);
+			x.q2 = imu.calcQuat(imu.qx);
+			x.q3 = imu.calcQuat(imu.qy);
+			x.q4 = imu.calcQuat(imu.qz);
+			x.p = imu.pitch;
+			x.r = imu.roll;
+			x.y = imu.yaw;
+			// remaining items set (alt, hdg, speed) set by main loop
+		}
+	}
+}
+
+struct LogItem {
+	short pwmOutput, servoTrim;
+	float pidP, pidI, pidD, pidG;
+	AhrsInput ai;
+	String toString() { return ai.toString(); } 
+	LogItem fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+};
+
+LogItem logItem;
+SDCardBufferedLog<LogItem>  *logFile = NULL;
+
+void sdLog()  {
+	logItem.ai = ahrsInput;
+	//Serial.println(x.toString());
+	if (logFile != NULL)
+		logFile->add(&logItem, 0/*timeout*/);
 }
 
 void printMag() {
@@ -250,14 +233,11 @@ void printSD() {
 	}
 }
 
-
-#define SerialMav Serial1 
-
 void setup() {
 	pinMode(32, INPUT);
 	pinMode(26, OUTPUT);
-	SerialMav.begin(57600, SERIAL_8N1, 32, 26);
-	SerialMav.setTimeout(1);
+	Serial1.begin(57600, SERIAL_8N1, 32, 26);
+	Serial1.setTimeout(1);
 	Serial.begin(57600, SERIAL_8N1);
 	Serial.setTimeout(1);
 
@@ -279,7 +259,7 @@ void setup() {
 	//SCREENLINE.println("Initializing IMU...");
 	imuInit();	
 	
-	if (digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
+	if (false && digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
 		//SCREENLINE.println("Opening SD card...");
 		open_TTGOTS_SD();
 		printSD();
@@ -311,12 +291,12 @@ void setup() {
 	mavRemoteIp.fromString("192.168.43.166");
 
 	pid.setGains(7.52, 0, 0.105);
-
+	pid.finalGain = 16.8;
+	
 	pinMode(0, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
 	ledcAttachPin(0, 1);   // GPIO 0 assigned to channel 1
 }
-
 
 void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float hdop, float vdop) {
 	uint64_t time_usec = 0;
@@ -347,11 +327,10 @@ void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float 
 	mavlink_send(mavbuf, len);
 }	
 
-
-
 void loop() {
 	mavlink_message_t msg;
 	uint16_t len;
+	static float mavRoll = 0;
 	static int ledOn = 0;
 	static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 	static int buildNumber = 12;
@@ -363,21 +342,23 @@ void loop() {
 	static int mavHeartbeats;
 	static int desiredTrk = 180;
 	static int apMode = 1;
-	static float roll = 0;
 	static int gpsUseGDL90 = 1;
 	static int obs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
 	static bool screenEnabled = true;
 	static uint64_t lastLoop = micros();
+	static int armServo = 0;
+	static int servoTrim = 1500;
 	
-	printMag();
 	delayMicroseconds(100);
+	
 	//Serial.printf("%d\n", (int)(micros() - lastLoop));
 	//lastLoop = micros();
+	//printMag();
 	
 	if (phSafetySwitch == false) {
-		imuLog();
+		sdLog();
 	}
 
 	buttonISR();
@@ -393,7 +374,6 @@ void loop() {
 		phSafetySwitch = !phSafetySwitch;
 		mavTimer.alarmNow();
 	}
-	
 	if (butFilt2.newEvent()) { 
 		if (butFilt2.wasLong) {
 			if (butFilt2.wasCount == 1) 
@@ -412,12 +392,14 @@ void loop() {
 		Display::jd.begin();
 		Display::jd.forceUpdate();
 	}
-	if (butFilt4.newEvent()) { 
-		mavHeartbeats++; // just checking button4 
+	if (butFilt4.newEvent()) {
+		armServo = !armServo;
+		if (armServo)
+			pid.reset();
 	}
 	
 	if (phSafetySwitch == false && logFile == NULL) {
-		logFile = new SDCardBufferedLog<LogItem>("NEWL%03d.TXT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+		logFile = new SDCardBufferedLog<LogItem>("AHRSA%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
 		//Serial.printf("Opened log file %s\n", logFile->currentFile.c_str());
 	} 
 	if (phSafetySwitch == true && logFile != NULL) {
@@ -426,9 +408,25 @@ void loop() {
 		//printSD();
 	}
 
-	int pwmOutput = re.value * 5800 / 360 + 1500;
+	
+	imuRead();
+	int pwmOutput;
+	float roll = ahrs.add(ahrsInput);
+	pid.add(roll, millis()/1000.0);
+	if (armServo) {  
+		int servoOutput = min(2500.0,(max(500.0, 1500 + 134 + pid.corr)));
+		pwmOutput = servoOutput * 4915 / 1500;
+	} else {
+		pwmOutput = 0;
+	}
 	ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
-
+	
+	logItem.pidP = pid.err.p;
+	logItem.pidI = pid.err.i;
+	logItem.pidD = pid.err.d;
+	logItem.pidG = pid.finalGain;
+	logItem.pwmOutput = pwmOutput;
+	logItem.servoTrim = servoTrim;
 	
 	if (screenEnabled && screenTimer.tick()) {
 		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
@@ -441,22 +439,20 @@ void loop() {
 		Display::navt = navDTK;
 		Display::obs = obs;
 		Display::knob = re.value;
-		Display::mode = apMode * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch;
+		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch;
 		Display::udp = udpBytes % 1000;
 		Display::ser = serBytes % 1000;
 		Display::mav = mavHeartbeats % 1000;
 		Display::roll = roll;
-		Display::log = (logFile != NULL) ? logFile->currentFile.c_str() : "none       ";
+		Display::log = (logFile != NULL) ? logFile->currentFile.c_str() : "none        ";
 	}
 	
 	if (blinkTimer.tick()) 
 		ledOn ^= 1;
 	digitalWrite(LED_PIN, (ledOn & 0x1) ^ (gpsFixes & 0x1) ^ (serBytes & 0x1));
 	
-	yield();
-	
-	if (SerialMav.available()) {
-		int l = SerialMav.readBytes(buf, sizeof(buf));
+	if (Serial1.available()) {
+		int l = Serial1.readBytes(buf, sizeof(buf));
 		serBytes += l + random(0,2);
 		if (WiFi.status() == WL_CONNECTED) { 
 			udpMAV.beginPacket(mavRemoteIp ,MAVLINK_PORT); // todo - could send to the last ip we received from instead of bcast addr 
@@ -469,7 +465,7 @@ void loop() {
 				case MAVLINK_MSG_ID_ATTITUDE:
 					mavlink_attitude_t attitude;
 					mavlink_msg_attitude_decode(&mavMsgIn, &attitude);
-					roll = attitude.roll * 180 / 3.1415;
+					mavRoll = attitude.roll * 180 / 3.1415;
 					break;
 				case MAVLINK_MSG_ID_VFR_HUD:
 					mavlink_vfr_hud_t vfr_hud;
@@ -499,7 +495,7 @@ void loop() {
 		int n = udpMAV.read(buf, min(avail,(int)sizeof(buf)));
 		mavBytesIn += n + random(0,2);
 		if (n > 0) {
-			SerialMav.write(buf, n);
+			Serial1.write(buf, n);
 			avail -= n;
 		}
 	}
@@ -508,14 +504,7 @@ void loop() {
 		uint8_t system_type = MAV_TYPE_GENERIC;
 		uint8_t autopilot_type = MAV_AUTOPILOT_INVALID;
 		uint8_t targetSysId = 1;
-		/*
-		int mode_flags = MAV_MODE_FLAG_AUTO_ENABLED | MAV_MODE_FLAG_GUIDED_ENABLED |   MAV_MODE_FLAG_STABILIZE_ENABLED | MAV_MODE_FLAG_MANUAL_INPUT_ENABLED 
-		  |  MAV_MODE_FLAG_SAFETY_ARMED; 
-		mavlink_msg_heartbeat_pack(1, 200, &msg, MAV_TYPE_HELICOPTER, MAV_AUTOPILOT_GENERIC, 
-			0, 0, MAV_STATE_ACTIVE);
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-		mavlink_send(buf, len);
-		*/
+
 		mavlink_msg_sys_status_pack(1, 200, &msg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
 		len = mavlink_msg_to_send_buffer(buf, &msg);
 		mavlink_send(buf, len);
@@ -588,9 +577,9 @@ void loop() {
 				if (gpsUseGDL90 && s.valid && s.updated) { 
 					gpsFixes++;
 					mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
-					imuAlt = s.alt;
-					imuHdg = s.track;
-					imuSpeed = s.hvel;
+					ahrsInput.alt = s.alt;
+					ahrsInput.hdg = s.track;
+					ahrsInput.gspeed = s.hvel;
 				}
 			}
 		}
@@ -617,7 +606,6 @@ void loop() {
 				sscanf(line, "$PMRRV34%d", &obs);
 				index = 0;
 			}
-
 			gps.encode(buf[i]);
 			if (!gpsUseGDL90 && gps.location.isUpdated()) {
 				gpsFixes++;
@@ -632,12 +620,10 @@ void loop() {
 	}
 }
 
-void mavlink_open() {
-}
+void mavlink_open() {}
+void mavlink_send(const uint8_t *buf, int len) { Serial1.write(buf, len); }
 
-void mavlink_send(const uint8_t *buf, int len) { 
-	SerialMav.write(buf, len);
-}
-int mavlink_read(uint8_t *buf, int len) { 
-	return 0;
-}
+
+// TODO:
+// add min/max/avg loop cycle time monitoring
+// 

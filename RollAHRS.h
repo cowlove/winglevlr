@@ -4,7 +4,7 @@
 
 using namespace std;
 
-struct LogItem { 
+struct AhrsInput { 
 	float sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed;
 	String toString() { 
 		static char buf[2048];
@@ -12,7 +12,7 @@ struct LogItem {
 		sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed);
 		return String(buf);	
 	 }
-	 LogItem fromString(const char *s) { 
+	 AhrsInput fromString(const char *s) { 
 		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
 		&sec, &hdg, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
 		return *this;
@@ -40,11 +40,12 @@ public:
 		
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
 	int count = 0;
-	LogItem prev;
+	AhrsInput prev;
 	float lastMagHdg = 0;
 	float compYH =0;
 	
-	float add(LogItem &l) { 
+	float add(const AhrsInput &i) {
+		AhrsInput l(i);
 		float dt = 0;
 		if (fakeTimeMs > 0)
 			l.sec = (count * fakeTimeMs) / 1000.0;	
