@@ -16,33 +16,24 @@
 #include <SparkFunMPU9250-DMP.h>
 #include <RunningLeastSquares.h>
 
-
-
 #include "mavlink.h"
 #include "Wire.h"
 #include <mySD.h>
 #include "jimlib.h"
+#include "RollAHRS.h"
+#include "PidControl.h"
 
 
 WiFiMulti wifi;
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
 
-#define GDL90 1
 GDL90Parser gdl90;
 GDL90Parser::State state;
 
-/* The default UART header for your MCU */ 
-//int sysid = 1;                   ///< ID 20 for this airplane. 1 PX, 255 ground station
-//int compid = 158;                ///< The component sending the message
-//int type = MAV_TYPE_QUADROTOR;   ///< This system is an airplane / fixed wing
+RollAHRS ahrs;
+PidControl pid(30);
 
-/*
-
-uint8_t system_mode = MAV_MODE_PREFLIGHT; ///< Booting up
-uint32_t custom_mode = 0;                 ///< Custom mode, can be defined by user/adopter
-uint8_t system_state = MAV_STATE_STANDBY; ///< System ready for flight
- */
 void mavlink_open();
 void mavlink_send(const uint8_t *, int);
 int mavlink_read(uint8_t *, int);
@@ -112,6 +103,7 @@ LongShortFilter butFilt(1500,600);
 LongShortFilter butFilt2(1500,600);
 LongShortFilter butFilt3(1500,600);
 LongShortFilter butFilt4(1500,600);
+
 void buttonISR() { 
 	button.check();
 	button2.check();
@@ -121,7 +113,6 @@ void buttonISR() {
 	butFilt3.check(button3.duration());
 	butFilt4.check(button4.duration());
 }
-
 
 namespace Display {
 	JDisplay jd;
@@ -137,7 +128,6 @@ namespace Display {
 	JDisplayItem<int>    ser(&jd,70,y,    " SER:", "%03d");
 	JDisplayItem<int>    mav(&jd,10,y+=10," MAV:", "%03d");
 	JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f");
-
 	JDisplayItem<const char *>  log(&jd,10,y+=20," LOG:", "%s");
 }
 
@@ -174,23 +164,6 @@ void imuInit() {
   
   //attachInterrupt(digitalPinToInterrupt(button.pin), imuPrint, FALLING);
 }
-
-
-struct LogItem { 
-	float sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed;
-	String toString() { 
-		static char buf[2048];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f", 
-		sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed);
-		return String(buf);	
-	 }
-	 LogItem fromString(const char *s) { 
-		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &hdg, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
-		return *this;
-	}
-		 
-};
 
 SDCardBufferedLog<LogItem>  *logFile = NULL;
 int imuInt = 0;
@@ -335,8 +308,9 @@ void setup() {
 	
 	//SCREENLINE.println("WiFi connected");
 	mavlink_open();
-
 	mavRemoteIp.fromString("192.168.43.166");
+
+	pid.setGains(7.52, 0, 0.105);
 
 	pinMode(0, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
