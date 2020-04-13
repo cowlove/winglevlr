@@ -28,7 +28,11 @@ class RollAHRS {
 	}
 	float magOffX = (-19.0 + 80) / 2,  // + is to the rear  
 		  magOffY = (-5.0 + 93) / 2, //  + is left
-		  magOffZ = (-80 + 20) / 2; // + is up 
+		  magOffZ = (-80 + 20) / 2; // + is up
+		  
+	float gyrOffX = -3.1592, 
+		  gyrOffY = -0.2906,
+		  gyrOffZ = -1.7086;
 public:
 	float gpsBankAngle, magBankAngle, dipBankAngle, magHdg, rawMagHdg, bankCorrection, bankAngle;
 
@@ -51,9 +55,15 @@ public:
 			l.sec = (count * fakeTimeMs) / 1000.0;	
 		if (count > 0 ) 
 			dt = l.sec - prev.sec;
+		
 		l.mx = -l.mx + magOffX;
 		l.my = -l.my + magOffY;
 		l.mz = -l.mz + magOffZ;
+		
+		l.gx -= gyrOffX;
+		l.gy -= gyrOffY;
+		l.gz -= gyrOffZ;
+		
 		magHdg = atan(l.my/l.mx) * 180 / M_PI;
 		if (l.mx < 0) 
 			magHdg += 180;
@@ -120,3 +130,14 @@ public:
 	}
 };
 
+struct LogItem {
+	short pwmOutput, servoTrim;
+	float pidP, pidI, pidD;
+	float gainP, gainI, gainD, finalGain;
+	AhrsInput ai;
+	String toString() { return ai.toString(); } 
+	LogItem fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+};

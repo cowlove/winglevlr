@@ -33,6 +33,8 @@ GDL90Parser::State state;
 
 RollAHRS ahrs;
 PidControl pid(30);
+static int servoTrim = 1500;
+
 
 #define MAVLINK_PORT 14450
 void mavlink_open();
@@ -66,7 +68,7 @@ WiFiUDP udpMAV;
 #include <MPU9250_asukiaaa.h>
 #include <Kalman.h> 					// Source: https://github.com/TKJElectronics/KalmanFilter
 #define LED_PIN 22
-RotaryEncoder re(27,33);
+//RotaryEncoder re(27,33);
 DigitalButton button(34);
 DigitalButton button2(35);
 DigitalButton button3(39);
@@ -75,7 +77,7 @@ DigitalButton button4(21);
 static IPAddress mavRemoteIp;
 #define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
 static uint8_t buf[BUFFER_LENGTH];
-EggTimer screenTimer(100), blinkTimer(1000), udpDebugTimer(1000), mavTimer(300);
+EggTimer screenTimer(200), blinkTimer(1000), udpDebugTimer(1000), mavTimer(300);
 
 LongShortFilter butFilt(1500,600);
 LongShortFilter butFilt2(1500,600);
@@ -96,17 +98,18 @@ namespace Display {
 	JDisplay jd;
 	int y = 0;
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s");
-	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d");
-	JDisplayItem<int>    hdg(&jd,70,y,    " HDG:", "%03d");
-	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d");
-	JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d");
-	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d");
-	JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d");
-	JDisplayItem<int>    udp(&jd,10,y+=10," UDP:", "%03d");
-	JDisplayItem<int>    ser(&jd,70,y,    " SER:", "%03d");
-	JDisplayItem<int>    mav(&jd,10,y+=10," MAV:", "%03d");
-	JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f");
-	JDisplayItem<const char *>  log(&jd,10,y+=20," LOG:", "%s");
+	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d");  JDisplayItem<int>    hdg(&jd,70,y,    " HDG:", "%03d");
+	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d");  JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d");
+	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d");  JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d");
+	JDisplayItem<int>    udp(&jd,10,y+=10," UDP:", "%03d");  JDisplayItem<int>    ser(&jd,70,y,    " SER:", "%03d");
+	JDisplayItem<int>    mav(&jd,10,y+=10," MAV:", "%03d");  JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f");
+	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s");
+
+    //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d");
+	
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f"); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> srvt(&jd,70,y,    "SRVT:", "%04.0f");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f");JDisplayItem<float> xxxx(&jd,70,y,    "XXXX:", "%05.1f");
 }
 
 WatchDogTimer wdt(10000);
@@ -132,59 +135,50 @@ void imuInit() {
   imu.setSampleRate(1000);
   imu.setGyroFSR(250/*deg per sec*/);
   imu.setAccelFSR(4/*G*/);
-  imu.dmpSetInterruptMode(DMP_INT_CONTINUOUS);
-  imu.setIntLevel(INT_ACTIVE_LOW);
-  imu.enableInterrupt(1);
-  imu.setIntLatched(INT_50US_PULSE);
-  imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | // Enable 6-axis quat
+  //imu.dmpSetInterruptMode(DMP_INT_CONTINUOUS);
+  //imu.setIntLevel(INT_ACTIVE_LOW);
+  //imu.enableInterrupt(1);
+  //imu.setIntLatched(INT_50US_PULSE);
+  /*imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | // Enable 6-axis quat
                DMP_FEATURE_GYRO_CAL, // Use gyro calibration
               100); // Set DMP FIFO rate to 10 Hz
-  
+  */
   //attachInterrupt(digitalPinToInterrupt(button.pin), imuPrint, FALLING);
 }
 
 static AhrsInput ahrsInput;
-void imuRead() { 
-	if ( imu.fifoAvailable() ) {
-		if ( imu.dmpUpdateFifo() == INV_SUCCESS) {
-			imu.computeEulerAngles();
-			imu.updateAccel();
-			imu.updateGyro();
-			imu.updateCompass();
+bool imuRead() { 
+	//if (imu.fifoAvailable() && imu.dmpUpdateFifo() == INV_SUCCESS) {
+	if (1) {
+		//imu.computeEulerAngles();
+		imu.updateAccel();
+		imu.updateGyro();
+		imu.updateCompass();
 
-			AhrsInput &x = ahrsInput;
-			x.sec = millis() / 1000.0;
-			x.ax = imu.calcAccel(imu.ax);
-			x.ay = imu.calcAccel(imu.ay);
-			x.az = imu.calcAccel(imu.az);
-			x.gx = imu.calcGyro(imu.gx);
-			x.gy = imu.calcGyro(imu.gy);
-			x.gz = imu.calcGyro(imu.gz);
-			x.mx = imu.calcMag(imu.mx);
-			x.my = imu.calcMag(imu.my);
-			x.mz = imu.calcMag(imu.mz);
-			x.q1 = imu.calcQuat(imu.qw);
-			x.q2 = imu.calcQuat(imu.qx);
-			x.q3 = imu.calcQuat(imu.qy);
-			x.q4 = imu.calcQuat(imu.qz);
-			x.p = imu.pitch;
-			x.r = imu.roll;
-			x.y = imu.yaw;
-			// remaining items set (alt, hdg, speed) set by main loop
-		}
+		AhrsInput &x = ahrsInput;
+		x.sec = millis() / 1000.0;
+		x.ax = imu.calcAccel(imu.ax);
+		x.ay = imu.calcAccel(imu.ay);
+		x.az = imu.calcAccel(imu.az);
+		x.gx = imu.calcGyro(imu.gx);
+		x.gy = imu.calcGyro(imu.gy);
+		x.gz = imu.calcGyro(imu.gz);
+		x.mx = imu.calcMag(imu.mx);
+		x.my = imu.calcMag(imu.my);
+		x.mz = imu.calcMag(imu.mz);
+		x.q1 = imu.calcQuat(imu.qw);
+		x.q2 = imu.calcQuat(imu.qx);
+		x.q3 = imu.calcQuat(imu.qy);
+		x.q4 = imu.calcQuat(imu.qz);
+		x.p = imu.pitch;
+		x.r = imu.roll;
+		x.y = imu.yaw;
+		// remaining items set (alt, hdg, speed) set by main loop
+		return true;
 	}
+	return false;
 }
 
-struct LogItem {
-	short pwmOutput, servoTrim;
-	float pidP, pidI, pidD, pidG;
-	AhrsInput ai;
-	String toString() { return ai.toString(); } 
-	LogItem fromString(const char *s) { 
-		ai.fromString(s);
-		return *this;
-	}
-};
 
 LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
@@ -198,7 +192,8 @@ void sdLog()  {
 
 void printMag() {
       imu.updateCompass();
-      Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
+      Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcGyro(imu.gx), (float)imu.calcGyro(imu.gy), (float)imu.calcGyro(imu.gz) );
+      //Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
 }
 
 void printDirectory(msdFile dir, int numTabs) {
@@ -233,6 +228,112 @@ void printSD() {
 	}
 }
 
+
+
+class JDisplayEditableItem;
+
+class JDisplayEditor {
+	std::vector<JDisplayEditableItem *> items;
+	bool editing;
+	int selectedItem;
+public:
+	RotaryEncoder re;
+	JDisplayEditor(int p1, int p2) : re(p1, p2) {}
+	void add(JDisplayEditableItem *i) { 
+		items.push_back(i);
+	}
+	void begin() {
+		re.limMin = 0;
+		re.limMax = items.size() - 1;
+		editing = false;
+		re.wrap = false;
+		re.value = 0;
+		selectedItem = 0;
+		//re.begin( [this]()->void{ this->re.ISR(); });
+	}
+	inline void update(); 
+	inline void buttonPress(bool longpress);			
+		
+};
+
+class JDisplayEditableItem { 
+protected:
+	JDisplayItemBase &di; 
+public:
+	float value, newValue, increment;
+	enum { UNSELECTED, SELECTED, EDITING } state;
+	JDisplayEditableItem(JDisplayItemBase &i, float inc) : di(i), increment(inc) {
+	}
+	void update() { 
+		if (state == EDITING) {
+			di.setValue(newValue);
+			di.setInverse(false, true);
+		} else { 
+			di.setValue(value);
+			di.setInverse(state == SELECTED, false);
+		}
+		di.update(false);
+	};
+};
+
+inline void JDisplayEditor::update() { 
+	if (!editing) { 
+		if (selectedItem != re.value) { 
+			selectedItem = re.value;
+			for(int n = 0; n < items.size(); n++) {
+				items[n]->state = (n == selectedItem) ? JDisplayEditableItem::SELECTED : 
+					JDisplayEditableItem::UNSELECTED;
+				items[n]->update();
+			}
+		}
+	} else { 
+		items[selectedItem]->newValue = items[selectedItem]->value + re.value * items[selectedItem]->increment;
+		items[selectedItem]->update();
+	}
+}
+			
+inline void JDisplayEditor::buttonPress(bool longpress) { 
+	if (!editing) { 
+		editing = true;
+		selectedItem = re.value;
+		items[selectedItem]->state = JDisplayEditableItem::EDITING;
+		items[selectedItem]->newValue = items[selectedItem]->value;
+		items[selectedItem]->update();
+		re.limMin = -10000;
+		re.limMax = +10000;
+		re.wrap = false;
+		re.value = 0;
+	} else { 
+		editing = false;
+		if (longpress == false) 
+			items[selectedItem]->value = items[selectedItem]->newValue;
+		items[selectedItem]->state = JDisplayEditableItem::SELECTED;
+		re.limMin = 0;
+		re.limMax = items.size() - 1;
+		re.wrap = false;
+		re.value = selectedItem;
+	}
+	items[selectedItem]->update();
+}
+
+
+class MyEditor : public JDisplayEditor {
+public:
+	JDisplayEditableItem pidp = JDisplayEditableItem(Display::pidp, .01);
+	JDisplayEditableItem pidi = JDisplayEditableItem(Display::pidi, .01);
+	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
+	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
+	JDisplayEditableItem srvt = JDisplayEditableItem(Display::srvt, 1);
+	
+	MyEditor() : JDisplayEditor(33, 27) {
+		add(&pidp);	
+		add(&pidi);	
+		add(&pidd);	
+		add(&pidg);	
+		add(&srvt);
+	}
+} ed;
+
 void setup() {
 	pinMode(32, INPUT);
 	pinMode(26, OUTPUT);
@@ -250,7 +351,6 @@ void setup() {
 	pinMode(button3.pin, INPUT_PULLUP);
 	pinMode(button4.pin, INPUT_PULLUP);
 
-	re.begin([]{re.ISR();});
 	attachInterrupt(digitalPinToInterrupt(button.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button2.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button3.pin), buttonISR, CHANGE);
@@ -259,7 +359,7 @@ void setup() {
 	//SCREENLINE.println("Initializing IMU...");
 	imuInit();	
 	
-	if (false && digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
+	if (digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
 		//SCREENLINE.println("Opening SD card...");
 		open_TTGOTS_SD();
 		printSD();
@@ -290,8 +390,16 @@ void setup() {
 	mavlink_open();
 	mavRemoteIp.fromString("192.168.43.166");
 
-	pid.setGains(7.52, 0, 0.105);
+	pid.setGains(7.52, 0, 0.11);
 	pid.finalGain = 16.8;
+
+	ed.begin();
+	ed.re.begin([ed]()->void{ ed.re.ISR(); });
+	ed.pidp.value = pid.gain.p;
+	ed.pidi.value = pid.gain.i;
+	ed.pidd.value = pid.gain.d;
+	ed.pidg.value = pid.finalGain;
+	ed.srvt.value = servoTrim;
 	
 	pinMode(0, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
@@ -327,6 +435,7 @@ void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float 
 	mavlink_send(mavbuf, len);
 }	
 
+
 void loop() {
 	mavlink_message_t msg;
 	uint16_t len;
@@ -349,17 +458,25 @@ void loop() {
 	static bool screenEnabled = true;
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
-	static int servoTrim = 1500;
-	
-	delayMicroseconds(100);
+	static RollingAverage<int,1000> loopTime;
+	static EggTimer serialReportTimer(500);
+	static bool selEditing = false;
+	static int pwmOutput = 0, servoOutput = 0;
+	static float roll = 0;
+	static String logFilename("none");
+
+	delayMicroseconds(10);
+	uint64_t now = micros();
+	loopTime.add(now - lastLoop);
+	lastLoop = now;
+	if (serialReportTimer.tick()) { 
+		Serial.printf("roll %+05.1f servo %04d Loop time min/avg/max %d/%d/%d\n", roll, servoOutput, loopTime.min(), loopTime.average(), loopTime.max());
+	}
 	
 	//Serial.printf("%d\n", (int)(micros() - lastLoop));
 	//lastLoop = micros();
 	//printMag();
 	
-	if (phSafetySwitch == false) {
-		sdLog();
-	}
 
 	buttonISR();
 	if (butFilt.newEvent()) {
@@ -371,13 +488,12 @@ void loop() {
 		if (butFilt.wasLong == false) { // short press, set new mode
 			apMode = butFilt.wasCount;
 		}*/
-		phSafetySwitch = !phSafetySwitch;
-		mavTimer.alarmNow();
+		screenEnabled = true;
+		Display::jd.begin();
+		Display::jd.forceUpdate();
 	}
 	if (butFilt2.newEvent()) { 
 		if (butFilt2.wasLong) {
-			if (butFilt2.wasCount == 1) 
-				phSafetySwitch = !phSafetySwitch;
 			if (butFilt2.wasCount == 2)  {
 				mavlink_msg_command_long_pack(1, 2, &msg, 0, 0, MAV_CMD_PREFLIGHT_CALIBRATION, 0, 0, 0, 0, 0, 4/*param5*/, 0, 0);
 				len = mavlink_msg_to_send_buffer(buf, &msg);
@@ -388,63 +504,105 @@ void loop() {
 		}
 		mavTimer.alarmNow();
 	}
-	if (butFilt3.newEvent()) { 
-		Display::jd.begin();
-		Display::jd.forceUpdate();
+	if (butFilt3.newEvent()) {
+		phSafetySwitch = !phSafetySwitch;
+		if (phSafetySwitch == false) {
+			screenEnabled = false;
+			Display::jd.clear();
+		} else {
+			screenEnabled = true;
+			Display::jd.begin();
+			Display::jd.forceUpdate();
+		}
+		mavTimer.alarmNow();
 	}
+	
+	// main knob button
 	if (butFilt4.newEvent()) {
-		armServo = !armServo;
-		if (armServo)
-			pid.reset();
+		if (butFilt4.wasCount == 1) { 
+			ed.buttonPress(butFilt4.wasLong);
+		}
+		if (butFilt4.wasLong && butFilt4.wasCount == 2) {
+			armServo = !armServo;
+			if (armServo)
+				pid.reset();
+		}
+		if (butFilt4.wasLong && butFilt4.wasCount == 3) {
+			screenEnabled = !screenEnabled;
+			if (!screenEnabled)
+				Display::jd.clear();
+			else {
+				Display::jd.begin();
+				Display::jd.forceUpdate();
+			}
+		}
 	}
 	
 	if (phSafetySwitch == false && logFile == NULL) {
 		logFile = new SDCardBufferedLog<LogItem>("AHRSA%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
-		//Serial.printf("Opened log file %s\n", logFile->currentFile.c_str());
+		logFilename = logFile->currentFile;
+		Serial.printf("Opened log file '%s'\n", logFile->currentFile.c_str());
 	} 
 	if (phSafetySwitch == true && logFile != NULL) {
+		Serial.printf("Closing log file '%s'\n", logFile->currentFile.c_str());
 		delete logFile;
 		logFile = NULL;
-		//printSD();
+		printSD();
 	}
 
 	
-	imuRead();
-	int pwmOutput;
-	float roll = ahrs.add(ahrsInput);
-	pid.add(roll, millis()/1000.0);
-	if (armServo) {  
-		int servoOutput = min(2500.0,(max(500.0, 1500 + 134 + pid.corr)));
-		pwmOutput = servoOutput * 4915 / 1500;
-	} else {
-		pwmOutput = 0;
+	if (imuRead()) {
+		roll = ahrs.add(ahrsInput);
+		pid.add(roll, millis()/1000.0);
+		if (armServo) {  
+			servoOutput = servoTrim + pid.corr;
+			pwmOutput = max(1500, min(7300, servoOutput * 4915 / 1500));
+			//Serial.printf("%05.2f %04d %04d\n", pid.corr, servoOutput, pwmOutput);
+		} else {
+			pwmOutput = 0;
+		}
+		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
+		logItem.pidP = pid.err.p;
+		logItem.pidI = pid.err.i;
+		logItem.pidD = pid.err.d;
+		logItem.finalGain = pid.finalGain;
+		logItem.gainP = pid.gain.p;
+		logItem.gainI = pid.gain.i;
+		logItem.gainD = pid.gain.d;
+		logItem.pwmOutput = pwmOutput;
+		logItem.servoTrim = servoTrim;
+		if (logFile != NULL) {
+			sdLog();
+		}
 	}
-	ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
-	
-	logItem.pidP = pid.err.p;
-	logItem.pidI = pid.err.i;
-	logItem.pidD = pid.err.d;
-	logItem.pidG = pid.finalGain;
-	logItem.pwmOutput = pwmOutput;
-	logItem.servoTrim = servoTrim;
-	
+
+
+	if (screenEnabled) { 
+		ed.update();
+		pid.gain.p = ed.pidp.value;
+		pid.gain.i = ed.pidi.value;
+		pid.gain.d = ed.pidd.value;
+		pid.finalGain = ed.pidg.value;
+		servoTrim = ed.srvt.value;
+	}
 	if (screenEnabled && screenTimer.tick()) {
 		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
 		Display::mode.color.vf = ST7735_BLACK;
 		Display::roll.color.vf = ST7735_RED;
 
-		Display::ip = WiFi.localIP().toString().c_str();
-		Display::dtk = (int)desiredTrk;
-		Display::hdg = (int)lastHdg;
-		Display::navt = navDTK;
-		Display::obs = obs;
-		Display::knob = re.value;
-		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch;
-		Display::udp = udpBytes % 1000;
-		Display::ser = serBytes % 1000;
-		Display::mav = mavHeartbeats % 1000;
-		Display::roll = roll;
-		Display::log = (logFile != NULL) ? logFile->currentFile.c_str() : "none        ";
+		Display::ip = WiFi.localIP().toString().c_str(); 
+		Display::dtk = (int)desiredTrk; 
+		Display::hdg = (int)ahrsInput.hdg; 
+		Display::navt = navDTK; Display::obs = obs; 
+		Display::knob = ed.re.value; 
+		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; Display::udp = udpBytes % 1000; 
+		Display::ser = serBytes % 1000; 
+		Display::mav = mavHeartbeats % 1000; 
+		Display::roll = roll; Display::log = logFilename.c_str();
+		Display::roll.setInverse(false, (logFile != NULL));
+		
+		//Display::pidc = pid.corr;
+		//Display::serv = pwmOutput;
 	}
 	
 	if (blinkTimer.tick()) 
@@ -544,7 +702,7 @@ void loop() {
 			mavlink_send(buf, len); 
 
 		} else if (apMode == 3 || apMode == 4 || apMode == 5) {
-			int new_mode = 7; // 7 = CRUISE
+/*			int new_mode = 7; // 7 = CRUISE
 			mavlink_msg_set_mode_pack(1, 200, &msg, targetSysId, 1, new_mode); 
 			len = mavlink_msg_to_send_buffer(buf, &msg);
 			mavlink_send(buf, len); 
@@ -552,10 +710,10 @@ void loop() {
 			if (apMode == 3) 
 				desiredTrk = (int)re.value;
 			if (apMode == 4) 
-				desiredTrk = (int)(obs + 15.5 /*mag variation*/ + 360) % 360;
+				desiredTrk = (int)(obs + 15.5  + 360) % 360;
 			if (apMode == 5) 
 				desiredTrk = navDTK;
-	
+*/
 			mavlink_msg_param_set_pack(1, 200, &msg, 0, 0, "CRUISE_HEADING", desiredTrk, MAV_VAR_FLOAT);
 			len = mavlink_msg_to_send_buffer(buf, &msg);
 			mavlink_send(buf, len);
