@@ -240,6 +240,11 @@ void imuLog()
   }
 }
 
+void printMag() {
+      imu.updateCompass();
+      Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
+}
+
 void printDirectory(msdFile dir, int numTabs) {
   while(true) {
      msdFile entry =  dir.openNextFile();
@@ -276,23 +281,12 @@ void printSD() {
 #define SerialMav Serial1 
 
 void setup() {
-#ifdef U8G2
-	pinMode(26, INPUT);
-	pinMode(32, OUTPUT);
-	SerialMav.begin(57600, SERIAL_8N1, 32, 26);
-	SerialMav.setTimeout(1);
-	Serial.begin(57600, SERIAL_8N1);
-	Serial.setTimeout(1);
-#endif
-
-#ifdef TTGO
 	pinMode(32, INPUT);
 	pinMode(26, OUTPUT);
 	SerialMav.begin(57600, SERIAL_8N1, 32, 26);
 	SerialMav.setTimeout(1);
 	Serial.begin(57600, SERIAL_8N1);
 	Serial.setTimeout(1);
-#endif
 
 	Display::jd.begin();
 	//wdt.begin();  // doesn't work yet
@@ -308,7 +302,6 @@ void setup() {
 	attachInterrupt(digitalPinToInterrupt(button2.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button3.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button4.pin), buttonISR, CHANGE);
-
 
 	//SCREENLINE.println("Initializing IMU...");
 	imuInit();	
@@ -344,6 +337,10 @@ void setup() {
 	mavlink_open();
 
 	mavRemoteIp.fromString("192.168.43.166");
+
+	pinMode(0, OUTPUT);
+	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
+	ledcAttachPin(0, 1);   // GPIO 0 assigned to channel 1
 }
 
 
@@ -400,6 +397,7 @@ void loop() {
 	static bool screenEnabled = true;
 	static uint64_t lastLoop = micros();
 	
+	printMag();
 	delayMicroseconds(100);
 	//Serial.printf("%d\n", (int)(micros() - lastLoop));
 	//lastLoop = micros();
@@ -453,6 +451,10 @@ void loop() {
 		logFile = NULL;
 		//printSD();
 	}
+
+	int pwmOutput = re.value * 5800 / 360 + 1500;
+	ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
+
 	
 	if (screenEnabled && screenTimer.tick()) {
 		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
