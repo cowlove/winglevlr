@@ -481,14 +481,6 @@ void loop() {
 
 	buttonISR();
 	if (butFilt.newEvent()) { // MIDDLE BUTTON
-		/*
-		if (butFilt.wasLong == true) { // long press, hold current track
-			re.value = lastHdg;
-			apMode = 3;
-		}
-		if (butFilt.wasLong == false) { // short press, set new mode
-			apMode = butFilt.wasCount;
-		}*/
 		if (!butFilt.wasLong) { 
 			screenEnabled = true;
 			Display::jd.begin();
@@ -501,6 +493,7 @@ void loop() {
 	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
 		if (butFilt2.wasCount == 1) {
 			armServo = !armServo; 
+			pid.reset();
 			// send mavlink message for use in debuggin mavlink connections 
 			int new_mode = armServo;
 			mavlink_msg_set_mode_pack(1, 200, &msg, 1, 1, new_mode); 
