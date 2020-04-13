@@ -68,11 +68,10 @@ WiFiUDP udpMAV;
 #include <MPU9250_asukiaaa.h>
 #include <Kalman.h> 					// Source: https://github.com/TKJElectronics/KalmanFilter
 #define LED_PIN 22
-//RotaryEncoder re(27,33);
-DigitalButton button(34);
-DigitalButton button2(35);
-DigitalButton button3(39);
-DigitalButton button4(21);
+DigitalButton button(34); // middle
+DigitalButton button2(35); // left
+DigitalButton button3(39); // top
+DigitalButton button4(21); // knob press
 
 static IPAddress mavRemoteIp;
 #define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
@@ -109,7 +108,7 @@ namespace Display {
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f"); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> srvt(&jd,70,y,    "SRVT:", "%04.0f");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f");JDisplayItem<float> xxxx(&jd,70,y,    "XXXX:", "%05.1f");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f");//JDisplayItem<float> xxxx(&jd,70,y,    "XXXX:", "%05.1f");
 }
 
 WatchDogTimer wdt(10000);
@@ -470,7 +469,9 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("roll %+05.1f servo %04d Loop time min/avg/max %d/%d/%d\n", roll, servoOutput, loopTime.min(), loopTime.average(), loopTime.max());
+		Serial.printf("roll %+05.1f servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", roll, servoOutput, 
+		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
+		loopTime.min(), loopTime.average(), loopTime.max());
 	}
 	
 	//Serial.printf("%d\n", (int)(micros() - lastLoop));
@@ -479,7 +480,7 @@ void loop() {
 	
 
 	buttonISR();
-	if (butFilt.newEvent()) {
+	if (butFilt.newEvent()) { // MIDDLE BUTTON
 		/*
 		if (butFilt.wasLong == true) { // long press, hold current track
 			re.value = lastHdg;
@@ -488,23 +489,31 @@ void loop() {
 		if (butFilt.wasLong == false) { // short press, set new mode
 			apMode = butFilt.wasCount;
 		}*/
-		screenEnabled = true;
-		Display::jd.begin();
-		Display::jd.forceUpdate();
-	}
-	if (butFilt2.newEvent()) { 
-		if (butFilt2.wasLong) {
-			if (butFilt2.wasCount == 2)  {
-				mavlink_msg_command_long_pack(1, 2, &msg, 0, 0, MAV_CMD_PREFLIGHT_CALIBRATION, 0, 0, 0, 0, 0, 4/*param5*/, 0, 0);
-				len = mavlink_msg_to_send_buffer(buf, &msg);
-				mavlink_send(buf, len);
-			}	
+		if (!butFilt.wasLong) { 
+			screenEnabled = true;
+			Display::jd.begin();
+			Display::jd.forceUpdate();
 		} else { 
-			apMode = apMode == 4 ? 1 : 4;
+			screenEnabled = false;
+			Display::jd.clear();
 		}
-		mavTimer.alarmNow();
 	}
-	if (butFilt3.newEvent()) {
+	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
+		if (butFilt2.wasCount == 1) {
+			armServo = !armServo; 
+			// send mavlink message for use in debuggin mavlink connections 
+			int new_mode = armServo;
+			mavlink_msg_set_mode_pack(1, 200, &msg, 1, 1, new_mode); 
+			len = mavlink_msg_to_send_buffer(buf, &msg);
+			mavlink_send(buf, len); 
+		}
+		if (butFilt2.wasLong && butFilt2.wasCount == 2)  {
+			mavlink_msg_command_long_pack(1, 2, &msg, 0, 0, MAV_CMD_PREFLIGHT_CALIBRATION, 0, 0, 0, 0, 0, 4/*param5*/, 0, 0);
+			len = mavlink_msg_to_send_buffer(buf, &msg);
+			mavlink_send(buf, len);
+		}	
+	}
+	if (butFilt3.newEvent()) { // TOP or RIGHT button 
 		phSafetySwitch = !phSafetySwitch;
 		if (phSafetySwitch == false) {
 			screenEnabled = false;
@@ -517,8 +526,7 @@ void loop() {
 		mavTimer.alarmNow();
 	}
 	
-	// main knob button
-	if (butFilt4.newEvent()) {
+	if (butFilt4.newEvent()) { 	// main knob button
 		if (butFilt4.wasCount == 1) { 
 			ed.buttonPress(butFilt4.wasLong);
 		}
