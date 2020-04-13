@@ -108,7 +108,7 @@ namespace Display {
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f"); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> srvt(&jd,70,y,    "SRVT:", "%04.0f");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f");//JDisplayItem<float> xxxx(&jd,70,y,    "XXXX:", "%05.1f");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f"); JDisplayItem<float> setb(&jd,70,y,    "SETB:", "%05.1f");
 }
 
 WatchDogTimer wdt(10000);
@@ -250,6 +250,7 @@ public:
 		selectedItem = 0;
 		//re.begin( [this]()->void{ this->re.ISR(); });
 	}
+	inline void negateSelectedValue(); 
 	inline void update(); 
 	inline void buttonPress(bool longpress);			
 		
@@ -274,6 +275,15 @@ public:
 		di.update(false);
 	};
 };
+
+inline void JDisplayEditor::negateSelectedValue() { 
+	if (!editing) { 
+		items[selectedItem]->value *= -1.0;
+	} else {
+		items[selectedItem]->newValue *= -1.0;
+	}
+	items[selectedItem]->update();
+}
 
 inline void JDisplayEditor::update() { 
 	if (!editing) { 
@@ -323,6 +333,7 @@ public:
 	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
 	JDisplayEditableItem srvt = JDisplayEditableItem(Display::srvt, 1);
+	JDisplayEditableItem setb = JDisplayEditableItem(Display::setb, .1);
 	
 	MyEditor() : JDisplayEditor(33, 27) {
 		add(&pidp);	
@@ -330,6 +341,7 @@ public:
 		add(&pidd);	
 		add(&pidg);	
 		add(&srvt);
+		add(&setb);
 	}
 } ed;
 
@@ -399,6 +411,7 @@ void setup() {
 	ed.pidd.value = pid.gain.d;
 	ed.pidg.value = pid.finalGain;
 	ed.srvt.value = servoTrim;
+	ed.setb.value = 1.6;
 	
 	pinMode(0, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
@@ -451,7 +464,7 @@ void loop() {
 	static int desiredTrk = 180;
 	static int apMode = 1;
 	static int gpsUseGDL90 = 1;
-	static int obs = 0;
+	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
 	static bool screenEnabled = true;
@@ -481,6 +494,8 @@ void loop() {
 
 	buttonISR();
 	if (butFilt.newEvent()) { // MIDDLE BUTTON
+		ed.negateSelectedValue();
+		/*
 		if (!butFilt.wasLong) { 
 			screenEnabled = true;
 			Display::jd.begin();
@@ -489,6 +504,7 @@ void loop() {
 			screenEnabled = false;
 			Display::jd.clear();
 		}
+		*/
 	}
 	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
 		if (butFilt2.wasCount == 1) {
@@ -524,9 +540,7 @@ void loop() {
 			ed.buttonPress(butFilt4.wasLong);
 		}
 		if (butFilt4.wasLong && butFilt4.wasCount == 2) {
-			armServo = !armServo;
-			if (armServo)
-				pid.reset();
+			ed.negateSelectedValue();
 		}
 		if (butFilt4.wasLong && butFilt4.wasCount == 3) {
 			screenEnabled = !screenEnabled;
@@ -554,7 +568,12 @@ void loop() {
 	
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
-		pid.add(roll, millis()/1000.0);
+		double hdgErr = ahrsInput.hdg - desiredTrk;
+		if(hdgErr < -180) hdgErr += 360;
+		if(hdgErr > 180) hdgErr -= 360;
+		float desBank = max(-15.0, min(15.0, hdgErr * ed.setb.value));
+		
+		pid.add(roll - desBank, millis()/1000.0);
 		if (armServo) {  
 			servoOutput = servoTrim + pid.corr;
 			pwmOutput = max(1500, min(7300, servoOutput * 4915 / 1500));
@@ -594,7 +613,8 @@ void loop() {
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = (int)desiredTrk; 
 		Display::hdg = (int)ahrsInput.hdg; 
-		Display::navt = navDTK; Display::obs = obs; 
+		Display::navt = navDTK; 
+		Display::obs = obs; 
 		Display::knob = ed.re.value; 
 		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; Display::udp = udpBytes % 1000; 
 		Display::ser = serBytes % 1000; 
@@ -688,7 +708,7 @@ void loop() {
 		len = mavlink_msg_to_send_buffer(buf, &msg);
 		mavlink_send(buf, len);
 	 
-		if (apMode == 1) { 
+/*		if (apMode == 1) { 
 			int new_mode = 0; // 0 == MANUAL  
 			desiredTrk = -1;
 			mavlink_msg_set_mode_pack(1, 200, &msg, targetSysId, 1, new_mode); 
@@ -703,7 +723,7 @@ void loop() {
 			mavlink_send(buf, len); 
 
 		} else if (apMode == 3 || apMode == 4 || apMode == 5) {
-/*			int new_mode = 7; // 7 = CRUISE
+			int new_mode = 7; // 7 = CRUISE
 			mavlink_msg_set_mode_pack(1, 200, &msg, targetSysId, 1, new_mode); 
 			len = mavlink_msg_to_send_buffer(buf, &msg);
 			mavlink_send(buf, len); 
@@ -714,11 +734,12 @@ void loop() {
 				desiredTrk = (int)(obs + 15.5  + 360) % 360;
 			if (apMode == 5) 
 				desiredTrk = navDTK;
-*/
+
 			mavlink_msg_param_set_pack(1, 200, &msg, 0, 0, "CRUISE_HEADING", desiredTrk, MAV_VAR_FLOAT);
 			len = mavlink_msg_to_send_buffer(buf, &msg);
 			mavlink_send(buf, len);
 		}
+		*/
 	}
 
 	int recsize = 0;
@@ -764,6 +785,9 @@ void loop() {
 				line[11] = 0; 
 				sscanf(line, "$PMRRV34%d", &obs);
 				index = 0;
+				if (obs != lastObs)
+					desiredTrk = ((int)(obs + 15.5 + 360)) % 360;
+				lastObs = obs;
 			}
 			gps.encode(buf[i]);
 			if (!gpsUseGDL90 && gps.location.isUpdated()) {
@@ -774,6 +798,7 @@ void loop() {
 				if (apMode == 4) 
 					apMode = 5;
 				navDTK = 0.01 * gps.parseDecimal(desiredHeading.value());
+				desiredTrk = navDTK;
 			}
 		}
 	}
