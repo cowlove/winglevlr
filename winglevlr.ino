@@ -554,7 +554,7 @@ void loop() {
 	}
 	
 	if (phSafetySwitch == false && logFile == NULL) {
-		logFile = new SDCardBufferedLog<LogItem>("AHRSA%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+		logFile = new SDCardBufferedLog<LogItem>("AHRSB%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
 		logFilename = logFile->currentFile;
 		Serial.printf("Opened log file '%s'\n", logFile->currentFile.c_str());
 	} 
@@ -571,9 +571,9 @@ void loop() {
 		double hdgErr = ahrsInput.hdg - desiredTrk;
 		if(hdgErr < -180) hdgErr += 360;
 		if(hdgErr > 180) hdgErr -= 360;
-		float desBank = max(-15.0, min(15.0, hdgErr * ed.setb.value));
+		float desRoll = max(-15.0, min(15.0, hdgErr * ed.setb.value));
 		
-		pid.add(roll - desBank, millis()/1000.0);
+		pid.add(roll - desRoll, millis()/1000.0);
 		if (armServo) {  
 			servoOutput = servoTrim + pid.corr;
 			pwmOutput = max(1500, min(7300, servoOutput * 4915 / 1500));
@@ -591,6 +591,8 @@ void loop() {
 		logItem.gainD = pid.gain.d;
 		logItem.pwmOutput = pwmOutput;
 		logItem.servoTrim = servoTrim;
+		logItem.desRoll = desRoll;
+		logItem.dtk = desiredTrk;
 		if (logFile != NULL) {
 			sdLog();
 		}
