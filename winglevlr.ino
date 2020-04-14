@@ -108,7 +108,7 @@ namespace Display {
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f"); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> srvt(&jd,70,y,    "SRVT:", "%04.0f");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f"); JDisplayItem<float> setb(&jd,70,y,    "SETB:", "%05.1f");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f"); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f");
 }
 
 WatchDogTimer wdt(10000);
@@ -134,6 +134,9 @@ void imuInit() {
   imu.setSampleRate(1000);
   imu.setGyroFSR(250/*deg per sec*/);
   imu.setAccelFSR(4/*G*/);
+  imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL | INV_XYZ_COMPASS);
+  imu.setCompassSampleRate(100); // Set mag rate to 10Hz
+
   //imu.dmpSetInterruptMode(DMP_INT_CONTINUOUS);
   //imu.setIntLevel(INT_ACTIVE_LOW);
   //imu.enableInterrupt(1);
@@ -191,8 +194,8 @@ void sdLog()  {
 
 void printMag() {
       imu.updateCompass();
-      Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcGyro(imu.gx), (float)imu.calcGyro(imu.gy), (float)imu.calcGyro(imu.gz) );
-      //Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
+      //Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcGyro(imu.gx), (float)imu.calcGyro(imu.gy), (float)imu.calcGyro(imu.gz) );
+      Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
 }
 
 void printDirectory(msdFile dir, int numTabs) {
@@ -333,7 +336,7 @@ public:
 	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
 	JDisplayEditableItem srvt = JDisplayEditableItem(Display::srvt, 1);
-	JDisplayEditableItem setb = JDisplayEditableItem(Display::setb, .1);
+	JDisplayEditableItem navg = JDisplayEditableItem(Display::navg, .1);
 	
 	MyEditor() : JDisplayEditor(33, 27) {
 		add(&pidp);	
@@ -341,11 +344,14 @@ public:
 		add(&pidd);	
 		add(&pidg);	
 		add(&srvt);
-		add(&setb);
+		add(&navg);
 	}
 } ed;
 
 void setup() {
+	pinMode(LED_PIN, OUTPUT);
+	digitalWrite(LED_PIN, 1);
+
 	pinMode(32, INPUT);
 	pinMode(26, OUTPUT);
 	Serial1.begin(57600, SERIAL_8N1, 32, 26);
@@ -354,9 +360,10 @@ void setup() {
 	Serial.setTimeout(1);
 
 	Display::jd.begin();
+	Display::jd.clear();
+	
 	//wdt.begin();  // doesn't work yet
 
-	pinMode(LED_PIN, OUTPUT);
 	pinMode(button.pin, INPUT_PULLUP);
 	pinMode(button2.pin, INPUT_PULLUP);
 	pinMode(button3.pin, INPUT_PULLUP);
@@ -411,7 +418,7 @@ void setup() {
 	ed.pidd.value = pid.gain.d;
 	ed.pidg.value = pid.finalGain;
 	ed.srvt.value = servoTrim;
-	ed.setb.value = 1.6;
+	ed.navg.value = .8;
 	
 	pinMode(0, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
@@ -494,8 +501,8 @@ void loop() {
 
 	buttonISR();
 	if (butFilt.newEvent()) { // MIDDLE BUTTON
-		ed.negateSelectedValue();
-		/*
+		//ed.negateSelectedValue();
+		
 		if (!butFilt.wasLong) { 
 			screenEnabled = true;
 			Display::jd.begin();
@@ -504,7 +511,7 @@ void loop() {
 			screenEnabled = false;
 			Display::jd.clear();
 		}
-		*/
+		
 	}
 	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
 		if (butFilt2.wasCount == 1) {
@@ -554,7 +561,7 @@ void loop() {
 	}
 	
 	if (phSafetySwitch == false && logFile == NULL) {
-		logFile = new SDCardBufferedLog<LogItem>("AHRSB%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+		logFile = new SDCardBufferedLog<LogItem>("AHRSC%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
 		logFilename = logFile->currentFile;
 		Serial.printf("Opened log file '%s'\n", logFile->currentFile.c_str());
 	} 
@@ -571,7 +578,7 @@ void loop() {
 		double hdgErr = ahrsInput.hdg - desiredTrk;
 		if(hdgErr < -180) hdgErr += 360;
 		if(hdgErr > 180) hdgErr -= 360;
-		float desRoll = max(-15.0, min(15.0, hdgErr * ed.setb.value));
+		float desRoll = max(-15.0, min(15.0, hdgErr * ed.navg.value));
 		
 		pid.add(roll - desRoll, millis()/1000.0);
 		if (armServo) {  
@@ -592,6 +599,7 @@ void loop() {
 		logItem.pwmOutput = pwmOutput;
 		logItem.servoTrim = servoTrim;
 		logItem.desRoll = desRoll;
+		logItem.roll = roll;
 		logItem.dtk = desiredTrk;
 		if (logFile != NULL) {
 			sdLog();

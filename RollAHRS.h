@@ -134,7 +134,7 @@ struct LogItem {
 	short pwmOutput, servoTrim;
 	float pidP, pidI, pidD;
 	float gainP, gainI, gainD, finalGain;
-	float desRoll, dtk;
+	float desRoll, dtk, roll;
 	AhrsInput ai;
 	String toString() { return ai.toString(); } 
 	LogItem fromString(const char *s) { 
