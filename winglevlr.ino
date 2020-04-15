@@ -130,11 +130,14 @@ void imuInit() {
   
   pinMode(IMU_INT_PIN, INPUT_PULLUP);
   
-  imu.setSampleRate(1000);
   imu.setGyroFSR(250/*deg per sec*/);
   imu.setAccelFSR(4/*G*/);
   imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL | INV_XYZ_COMPASS);
-  imu.setCompassSampleRate(100); // Set mag rate to 10Hz
+ 
+  // FIFO seems slower than just sampling 
+  //imu.setCompassSampleRate(100); // Set mag rate to 10Hz
+  //imu.setSampleRate(1000);
+  //imu.configureFifo(INV_XYZ_GYRO |INV_XYZ_ACCEL);  
 
   //imu.dmpSetInterruptMode(DMP_INT_CONTINUOUS);
   //imu.setIntLevel(INT_ACTIVE_LOW);
@@ -149,15 +152,15 @@ void imuInit() {
 
 static AhrsInput ahrsInput;
 bool imuRead() { 
-	//if (imu.fifoAvailable() && imu.dmpUpdateFifo() == INV_SUCCESS) {
-	if (1) {
-		//imu.computeEulerAngles();
+	
+	//if (imu.fifoAvailable() && imu.updateFifo() == INV_SUCCESS) { // FIFO is slow
+	if(true){
 		imu.updateAccel();
 		imu.updateGyro();
 		imu.updateCompass();
 
 		AhrsInput &x = ahrsInput;
-		x.sec = millis() / 1000.0;
+		x.sec = micros() / 1000000.0;
 		x.ax = imu.calcAccel(imu.ax);
 		x.ay = imu.calcAccel(imu.ay);
 		x.az = imu.calcAccel(imu.az);
@@ -192,9 +195,11 @@ void sdLog()  {
 }
 
 void printMag() {
-      imu.updateCompass();
-      //Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcGyro(imu.gx), (float)imu.calcGyro(imu.gy), (float)imu.calcGyro(imu.gz) );
-      Serial.printf("%+09.4f %+09.4f %+09.4f\n", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
+      //imu.updateCompass();
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcGyro(imu.gx), (float)imu.calcGyro(imu.gy), (float)imu.calcGyro(imu.gz) );
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcAccel(imu.ax), (float)imu.calcAccel(imu.ay), (float)imu.calcAccel(imu.az) );
+      Serial.println("");
 }
 
 void printDirectory(msdFile dir, int numTabs) {
@@ -465,7 +470,7 @@ void loop() {
 	static char lastParam[64];
 	static int lastHdg;
 	static int mavHeartbeats;
-	static int desiredTrk = 180;
+	static float desiredTrk = -1;
 	static int apMode = 1;
 	static int gpsUseGDL90 = 1;
 	static int obs = 0, lastObs = 0;
@@ -480,6 +485,7 @@ void loop() {
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
 	static String logFilename("none");
+	uint64_t lastGpsFix = 0;
 
 	delayMicroseconds(10);
 	uint64_t now = micros();
@@ -495,6 +501,8 @@ void loop() {
 	//lastLoop = micros();
 	//printMag();
 	
+	if (now - lastGpsFix > 1000000 * 5)
+		ahrsInput.hdg = -1;
 
 	buttonISR();
 	if (butFilt.newEvent()) { // MIDDLE BUTTON
@@ -576,20 +584,23 @@ void loop() {
 
 	
 	if (imuRead()) {
+		float desRoll = 0;
 		roll = ahrs.add(ahrsInput);
-		double hdgErr = ahrsInput.hdg - desiredTrk;
-		if(hdgErr < -180) hdgErr += 360;
-		if(hdgErr > 180) hdgErr -= 360;
-		float desRoll = max(-ed.maxb.value, min(+ed.maxb.value, (float)(hdgErr * ed.navg.value)));
-		
-		pid.add(roll - desRoll, roll, micros()/1000000.0);
-		if (armServo) {  
-			servoOutput = servoTrim + pid.corr;
-			pwmOutput = max(1550, min(7300, servoOutput * 4915 / 1500));
-			//Serial.printf("%05.2f %04d %04d\n", pid.corr, servoOutput, pwmOutput);
-		} else {
-			pwmOutput = 0;
+
+		pwmOutput = 0;
+		if (ahrs.valid() || digitalRead(button4.pin) == 0) { // hold down button to override and make servo work  
+			double hdgErr = ahrsInput.hdg - desiredTrk;
+			if(hdgErr < -180) hdgErr += 360;
+			if(hdgErr > 180) hdgErr -= 360;
+			desRoll = max(-ed.maxb.value, min(+ed.maxb.value, (float)(hdgErr * ed.navg.value)));	
+			pid.add(roll - desRoll, roll, ahrsInput.sec);
+			if (armServo) {  
+				servoOutput = servoTrim + pid.corr;
+				pwmOutput = max(1550, min(7300, servoOutput * 4915 / 1500));
+				//Serial.printf("%05.2f %04d %04d\n", pid.corr, servoOutput, pwmOutput);
+			}
 		}
+		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
 		logItem.pidP = pid.err.p;
 		logItem.pidI = pid.err.i;
@@ -767,6 +778,7 @@ void loop() {
 				GDL90Parser::State s = gdl90.getState();
 				if (gpsUseGDL90 && s.valid && s.updated) { 
 					gpsFixes++;
+					
 					mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
 					ahrsInput.alt = s.alt;
 					ahrsInput.hdg = s.track;
