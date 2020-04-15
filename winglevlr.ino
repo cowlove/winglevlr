@@ -35,7 +35,6 @@ RollAHRS ahrs;
 PidControl pid(30);
 static int servoTrim = 1500;
 
-
 #define MAVLINK_PORT 14450
 void mavlink_open();
 void mavlink_send(const uint8_t *, int);
@@ -230,8 +229,6 @@ void printSD() {
 	}
 }
 
-
-
 class JDisplayEditableItem;
 
 class JDisplayEditor {
@@ -338,7 +335,7 @@ public:
 	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, 1);
 	JDisplayEditableItem navg = JDisplayEditableItem(Display::navg, .1);
 	
-	MyEditor() : JDisplayEditor(33, 27) {
+	MyEditor() : JDisplayEditor(0, 27) {
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
@@ -379,8 +376,8 @@ void setup() {
 	
 	if (digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
 		//SCREENLINE.println("Opening SD card...");
-		open_TTGOTS_SD();
-		printSD();
+		//open_TTGOTS_SD();
+		//printSD();
 
 		//SCREENLINE.println("Connecting to WiFi...");
 		//WiFi.mode(WIFI_STA);
@@ -420,9 +417,9 @@ void setup() {
 	ed.maxb.value = 15;
 	ed.navg.value = .8;
 	
-	pinMode(0, OUTPUT);
+	pinMode(33, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
-	ledcAttachPin(0, 1);   // GPIO 0 assigned to channel 1
+	ledcAttachPin(33, 1);   // GPIO 0 assigned to channel 1
 }
 
 void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float hdop, float vdop) {
@@ -588,7 +585,7 @@ void loop() {
 		pid.add(roll - desRoll, millis()/1000.0);
 		if (armServo) {  
 			servoOutput = servoTrim + pid.corr;
-			pwmOutput = max(1500, min(7300, servoOutput * 4915 / 1500));
+			pwmOutput = max(1550, min(7300, servoOutput * 4915 / 1500));
 			//Serial.printf("%05.2f %04d %04d\n", pid.corr, servoOutput, pwmOutput);
 		} else {
 			pwmOutput = 0;
