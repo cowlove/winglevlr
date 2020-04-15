@@ -32,7 +32,8 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl pid(30);
+PidControl rollPID(30) /*200Hz*/, navPID(50); /*10Hz*/
+
 static int servoTrim = 1500;
 
 #define MAVLINK_PORT 14450
@@ -410,21 +411,23 @@ void setup() {
 	mavlink_open();
 	mavRemoteIp.fromString("192.168.43.166");
 
-	pid.setGains(7.52, 0, 0.11);
-	pid.finalGain = 16.8;
+	rollPID.setGains(7.52, 0, 0.11);
+	rollPID.finalGain = 16.8;
+	navPID.setGains(2, 0, 0.1);
+	navPID.finalGain = 1.0;
 
 	ed.begin();
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
-	ed.pidp.value = pid.gain.p;
-	ed.pidi.value = pid.gain.i;
-	ed.pidd.value = pid.gain.d;
-	ed.pidg.value = pid.finalGain;
+	ed.pidp.value = rollPID.gain.p;
+	ed.pidi.value = rollPID.gain.i;
+	ed.pidd.value = rollPID.gain.d;
+	ed.pidg.value = rollPID.finalGain;
 	ed.maxb.value = 15;
-	ed.navg.value = .8;
+	ed.navg.value = navPID.finalGain;
 	
 	pinMode(33, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
-	ledcAttachPin(33, 1);   // GPIO 0 assigned to channel 1
+	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
 }
 
 void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float hdop, float vdop) {
@@ -480,12 +483,13 @@ void loop() {
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
 	static RollingAverage<int,1000> loopTime;
-	static EggTimer serialReportTimer(500);
+	static EggTimer serialReportTimer(500), navPIDTimer(100);
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
 	static String logFilename("none");
 	uint64_t lastGpsFix = 0;
+
 
 	delayMicroseconds(10);
 	uint64_t now = micros();
@@ -506,8 +510,6 @@ void loop() {
 
 	buttonISR();
 	if (butFilt.newEvent()) { // MIDDLE BUTTON
-		//ed.negateSelectedValue();
-		
 		if (!butFilt.wasLong) {
 			if (butFilt.wasCount == 1) {
 				screenEnabled = true;
@@ -526,7 +528,8 @@ void loop() {
 	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
 		if (butFilt2.wasCount == 1) {
 			armServo = !armServo; 
-			pid.reset();
+			rollPID.reset();
+			navPID.reset();
 			// send mavlink message for use in debuggin mavlink connections 
 			int new_mode = armServo;
 			mavlink_msg_set_mode_pack(1, 200, &msg, 1, 1, new_mode); 
@@ -592,23 +595,26 @@ void loop() {
 			double hdgErr = ahrsInput.hdg - desiredTrk;
 			if(hdgErr < -180) hdgErr += 360;
 			if(hdgErr > 180) hdgErr -= 360;
-			desRoll = max(-ed.maxb.value, min(+ed.maxb.value, (float)(hdgErr * ed.navg.value)));	
-			pid.add(roll - desRoll, roll, ahrsInput.sec);
+			if (navPIDTimer.tick()) {
+				desRoll = navPID.add(hdgErr, hdgErr, ahrsInput.sec);
+				desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
+			}	
+			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 			if (armServo) {  
-				servoOutput = servoTrim + pid.corr;
+				servoOutput = servoTrim + rollPID.corr;
 				pwmOutput = max(1550, min(7300, servoOutput * 4915 / 1500));
 				//Serial.printf("%05.2f %04d %04d\n", pid.corr, servoOutput, pwmOutput);
 			}
 		}
 		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
-		logItem.pidP = pid.err.p;
-		logItem.pidI = pid.err.i;
-		logItem.pidD = pid.err.d;
-		logItem.finalGain = pid.finalGain;
-		logItem.gainP = pid.gain.p;
-		logItem.gainI = pid.gain.i;
-		logItem.gainD = pid.gain.d;
+		logItem.pidP = rollPID.err.p;
+		logItem.pidI = rollPID.err.i;
+		logItem.pidD = rollPID.err.d;
+		logItem.finalGain = rollPID.finalGain;
+		logItem.gainP = rollPID.gain.p;
+		logItem.gainI = rollPID.gain.i;
+		logItem.gainD = rollPID.gain.d;
 		logItem.pwmOutput = pwmOutput;
 		logItem.servoTrim = servoTrim;
 		logItem.desRoll = desRoll;
@@ -619,14 +625,15 @@ void loop() {
 		}
 	}
 
-
 	if (screenEnabled) { 
 		ed.update();
-		pid.gain.p = ed.pidp.value;
-		pid.gain.i = ed.pidi.value;
-		pid.gain.d = ed.pidd.value;
-		pid.finalGain = ed.pidg.value;
+		rollPID.gain.p = ed.pidp.value;
+		rollPID.gain.i = ed.pidi.value;
+		rollPID.gain.d = ed.pidd.value;
+		rollPID.finalGain = ed.pidg.value;
+		navPID.finalGain = ed.navg.value;
 	}
+	
 	if (screenEnabled && screenTimer.tick()) {
 		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
 		Display::mode.color.vf = ST7735_BLACK;
@@ -777,12 +784,12 @@ void loop() {
 				gdl90.add(buf[i]);
 				GDL90Parser::State s = gdl90.getState();
 				if (gpsUseGDL90 && s.valid && s.updated) { 
-					gpsFixes++;
-					
 					mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
 					ahrsInput.alt = s.alt;
 					ahrsInput.hdg = s.track;
 					ahrsInput.gspeed = s.hvel;
+					gpsFixes++;
+					lastGpsFix = now;
 				}
 			}
 		}
@@ -814,11 +821,12 @@ void loop() {
 			}
 			gps.encode(buf[i]);
 			if (!gpsUseGDL90 && gps.location.isUpdated()) {
-				gpsFixes++;
 				mav_gps_msg(gps.location.lat(), gps.location.lng(), gps.altitude.meters(), gps.course.deg(), gps.speed.mps(), gps.hdop.hdop(), 2.34);
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
 				ahrsInput.hdg = gps.course.deg();
 				ahrsInput.gspeed = gps.speed.knots();
+				gpsFixes++;
+				lastGpsFix = now;
 			}
 			if (desiredHeading.isUpdated()) { 
 				if (apMode == 4) 
