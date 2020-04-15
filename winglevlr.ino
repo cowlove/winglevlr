@@ -100,14 +100,14 @@ namespace Display {
 	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d");  JDisplayItem<int>    hdg(&jd,70,y,    " HDG:", "%03d");
 	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d");  JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d");
 	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d");  JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d");
-	JDisplayItem<int>    udp(&jd,10,y+=10," UDP:", "%03d");  JDisplayItem<int>    ser(&jd,70,y,    " SER:", "%03d");
+	JDisplayItem<int>    udp(&jd,10,y+=10," UDP:", "%03d");  JDisplayItem<int>    ser(&jd,70,y,    " FIX:", "%03d");
 	JDisplayItem<int>    mav(&jd,10,y+=10," MAV:", "%03d");  JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s");
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d");
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f"); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> srvt(&jd,70,y,    "SRVT:", "%04.0f");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.0f");
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f"); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f");
 }
 
@@ -335,7 +335,7 @@ public:
 	JDisplayEditableItem pidi = JDisplayEditableItem(Display::pidi, .01);
 	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
-	JDisplayEditableItem srvt = JDisplayEditableItem(Display::srvt, 1);
+	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, .1);
 	JDisplayEditableItem navg = JDisplayEditableItem(Display::navg, .1);
 	
 	MyEditor() : JDisplayEditor(33, 27) {
@@ -343,7 +343,7 @@ public:
 		add(&pidi);	
 		add(&pidd);	
 		add(&pidg);	
-		add(&srvt);
+		add(&maxb);
 		add(&navg);
 	}
 } ed;
@@ -417,7 +417,7 @@ void setup() {
 	ed.pidi.value = pid.gain.i;
 	ed.pidd.value = pid.gain.d;
 	ed.pidg.value = pid.finalGain;
-	ed.srvt.value = servoTrim;
+	ed.maxb.value = 15;
 	ed.navg.value = .8;
 	
 	pinMode(0, OUTPUT);
@@ -503,10 +503,15 @@ void loop() {
 	if (butFilt.newEvent()) { // MIDDLE BUTTON
 		//ed.negateSelectedValue();
 		
-		if (!butFilt.wasLong) { 
-			screenEnabled = true;
-			Display::jd.begin();
-			Display::jd.forceUpdate();
+		if (!butFilt.wasLong) {
+			if (butFilt.wasCount == 1) {
+				screenEnabled = true;
+				Display::jd.begin();
+				Display::jd.forceUpdate();
+			} else { 
+				gpsUseGDL90 = !gpsUseGDL90;
+			}
+				
 		} else { 
 			screenEnabled = false;
 			Display::jd.clear();
@@ -578,7 +583,7 @@ void loop() {
 		double hdgErr = ahrsInput.hdg - desiredTrk;
 		if(hdgErr < -180) hdgErr += 360;
 		if(hdgErr > 180) hdgErr -= 360;
-		float desRoll = max(-15.0, min(15.0, hdgErr * ed.navg.value));
+		float desRoll = max(-ed.maxb.value, min(+ed.maxb.value, (float)(hdgErr * ed.navg.value)));
 		
 		pid.add(roll - desRoll, millis()/1000.0);
 		if (armServo) {  
@@ -613,7 +618,6 @@ void loop() {
 		pid.gain.i = ed.pidi.value;
 		pid.gain.d = ed.pidd.value;
 		pid.finalGain = ed.pidg.value;
-		servoTrim = ed.srvt.value;
 	}
 	if (screenEnabled && screenTimer.tick()) {
 		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
@@ -627,7 +631,7 @@ void loop() {
 		Display::obs = obs; 
 		Display::knob = ed.re.value; 
 		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; Display::udp = udpBytes % 1000; 
-		Display::ser = serBytes % 1000; 
+		Display::ser = gpsFixes % 1000; //serBytes % 1000; 
 		Display::mav = mavHeartbeats % 1000; 
 		Display::roll = roll; Display::log = logFilename.c_str();
 		Display::roll.setInverse(false, (logFile != NULL));
@@ -803,6 +807,9 @@ void loop() {
 			if (!gpsUseGDL90 && gps.location.isUpdated()) {
 				gpsFixes++;
 				mav_gps_msg(gps.location.lat(), gps.location.lng(), gps.altitude.meters(), gps.course.deg(), gps.speed.mps(), gps.hdop.hdop(), 2.34);
+				ahrsInput.alt = gps.altitude.meters() * 3.2808;
+				ahrsInput.hdg = gps.course.deg();
+				ahrsInput.gspeed = gps.speed.knots();
 			}
 			if (desiredHeading.isUpdated()) { 
 				if (apMode == 4) 

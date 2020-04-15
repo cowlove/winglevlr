@@ -40,7 +40,7 @@ public:
 	}
 	bool checkForValid() {
 		// TODO use these ad-hoc sanity checks until CRC works 
-		if (state.lon < -123 || state.lon > 120) return false;
+		if (state.lon < -130 || state.lon > -120) return false;
 		if (state.lat < 45 || state.lat > 49) return false;
 		if (state.hvel < 0 || state.hvel > 140) return false;
 		if (state.alt < -500 || state.alt > 19000) return false;
@@ -98,7 +98,7 @@ public:
 						state.updated = true;
 						setValid();
 						unlock();
-						//printf("MSG10: %.4f %.4f %.1f %d\n", state.lat, state.lon, state.track, state.hvel);
+						printf("MSG10: %.4f %.4f %.1f %d\n", state.lat, state.lon, state.track, state.hvel);
 					}
 				}
 				if (buf[0] == 11) { // MSG11 geometric altitude packet
@@ -106,7 +106,7 @@ public:
 						state.alt = ((int16_t)(((buf[1]) << 8) | buf[2])) * 5.0 / 3.3208 + 20; // 20m geoid height
 						setValid();
 						unlock();
-						printf("MSG11: %d\n", state.alt);
+						//printf("MSG11: %d\n", state.alt);
 					}
 				}
 				if (index > 0) // finished packet, wait for next one 
