@@ -39,7 +39,8 @@ public:
 	RunningLeastSquares 
 		bankFit = RunningLeastSquares(100), 
 		gpsHdgFit = RunningLeastSquares(100), 
-		magHdgFit = RunningLeastSquares(300), 
+		magHdgFit = RunningLeastSquares(50), 
+		magHdgRawFit = RunningLeastSquares(50), 
 		dipBankFit = RunningLeastSquares(100);
 		
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
@@ -103,10 +104,11 @@ public:
 			lastMagHdg = mh;
 		}		
 
+		magHdgRawFit.add(l.sec, rawMagHdg);
 		magHdgFit.add(l.sec, magHdg);
 		gpsHdgFit.add(l.sec, l.hdg);
 		
-		if (count % 90000000 == 0) { 
+		if (count % 3217 == 0) { 
 			gpsHdgFit.rebaseX();
 			magHdgFit.rebaseX();
 		}
@@ -130,15 +132,52 @@ public:
 	}
 };
 
-struct LogItem {
+
+struct LogItem0 {
+	AhrsInput ai;
+	String toString() { return ai.toString(); } 
+	LogItem0 fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+};
+
+struct LogItemA {
+	short pwmOutput, servoTrim;
+	float pidP, pidI, pidD;
+	float gainP, gainI, gainD, finalGain;
+	AhrsInput ai;
+	String toString() { return ai.toString(); } 
+	LogItemA fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+};
+
+struct LogItemB {
+	short pwmOutput, servoTrim;
+	float pidP, pidI, pidD;
+	float gainP, gainI, gainD, finalGain;
+	float desRoll, dtk;
+	AhrsInput ai;
+	String toString() { return ai.toString(); } 
+	LogItemB fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+};
+
+struct LogItemC {
 	short pwmOutput, servoTrim;
 	float pidP, pidI, pidD;
 	float gainP, gainI, gainD, finalGain;
 	float desRoll, dtk, roll;
 	AhrsInput ai;
 	String toString() { return ai.toString(); } 
-	LogItem fromString(const char *s) { 
+	LogItemC fromString(const char *s) { 
 		ai.fromString(s);
 		return *this;
 	}
 };
+
+typedef LogItemC LogItem;
