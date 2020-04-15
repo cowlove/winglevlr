@@ -423,13 +423,13 @@ public:
 		int lf, lb, vf, vb; 
 	} defaultColors; 
 	void begin() { 
-		//pinMode(27,INPUT);//Backlight:27
-		//digitalWrite(27,HIGH);//New version added to backlight control
+		//pinMode(27,OUTPUT); 		//Backlight:27  TODO:JIM 27 appears to be an external pin 
+		//digitalWrite(27,HIGH);	//New version added to backlight control
 		tft.initR(INITR_18GREENTAB);                             // 1.44 v2.1
 		tft.fillScreen(ST7735_BLACK);                            // CLEAR
 		tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);           // GREEN
 		tft.setRotation(1);                                      // 
-		//forceUpdate();
+		forceUpdate();
 	}
 	void clear() { 
 		tft.fillScreen(ST7735_BLACK);                            // CLEAR

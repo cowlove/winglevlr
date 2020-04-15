@@ -49,6 +49,10 @@ public:
 	float lastMagHdg = 0;
 	float compYH =0;
 	
+	bool valid() { 
+		return prev.hdg != -1;
+	}
+	
 	float add(const AhrsInput &i) {
 		AhrsInput l(i);
 		float dt = 0;
