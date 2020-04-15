@@ -335,7 +335,7 @@ public:
 	JDisplayEditableItem pidi = JDisplayEditableItem(Display::pidi, .01);
 	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
-	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, .1);
+	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, 1);
 	JDisplayEditableItem navg = JDisplayEditableItem(Display::navg, .1);
 	
 	MyEditor() : JDisplayEditor(33, 27) {
