@@ -30,27 +30,31 @@ public:
 	}
 	State getState() {
 		State rval;
+		rval.valid = false;
 		if (lock()) {
 			rval = state;
 			state.updated = false;
 			unlock();
-		}
-		else rval.valid = false;
+		} 
 		return rval;
 	}
 	bool checkForValid() {
-		// TODO use these ad-hoc sanity checks until CRC works 
-		if (state.lon < -130 || state.lon > -120) return false;
-		if (state.lat < 45 || state.lat > 49) return false;
-		if (state.hvel < 0 || state.hvel > 140) return false;
-		if (state.alt < -500 || state.alt > 19000) return false;
 		unsigned int crc = crcCompute(buf, index - 2);
+		unsigned int found_crc =(((uint16_t)(buf[index - 1]))<<8) | buf[index-2];
+		if (found_crc != crc) 
+			return false;
+		
+		// TODO HACK use these ad-hoc sanity checks until CRC works 
+		// if (state.lon < -130 || state.lon > -120) return false;
+		//if (state.lat < 45 || state.lat > 49) return false;
+		//if (state.hvel < 0 || state.hvel > 140) return false;
+		//if (state.alt < -500 || state.alt > 15000) return false;
 		return true;
 	}
-	unsigned char Crc16Table[256];
+	uint16_t Crc16Table[256];
 
 	void crcInit(void) { 
-		unsigned int i, bitctr, crc;     
+		uint16_t bitctr, crc, i;     
 		for (i = 0; i < 256; i++) { 
 			crc = (i << 8);         
 			for (bitctr = 0; bitctr < 8; bitctr++) { 
@@ -59,14 +63,15 @@ public:
 			Crc16Table[i] = crc;
 		} 
 	}
-	unsigned int crcCompute(
+	
+	uint16_t crcCompute(
 		unsigned char *block,       
-		unsigned long int length) {
-			unsigned long int i;
-			unsigned short crc = 0;
-			for (i = 0; i < length; i++)     {
-				crc = Crc16Table[crc >> 8] ^ (crc << 8) ^ block[i];
-			}     
+		uint32_t length) {
+		uint32_t i;
+		uint16_t crc = 0;
+		for (i = 0; i < length; i++)     {
+			crc = Crc16Table[crc >> 8] ^ (crc << 8) ^ block[i];
+		}     
 		return crc; 
 	}
 
@@ -79,9 +84,11 @@ public:
 			msgCount++;
 		}
 	}
+	
 	void add(char b) { // handle one character in GDL90 stream
 		if (b == 0x7e) { // got a flag byte
 			if (index >= 0) { // end of packet flag, packet complete
+				setValid();
 				if (buf[0] == 0) { // MSG00 heartbeat
 					state.timestamp = (((unsigned long)buf[4]) << 8) + ((unsigned long)(buf[3]));
 				}
@@ -96,15 +103,13 @@ public:
 						state.vvel = ((((unsigned long)buf[15]) & 0xf) << 8) | buf[16];
 						state.track = buf[17] * 360.0 / 256;
 						state.updated = true;
-						setValid();
 						unlock();
-						printf("MSG10: %.4f %.4f %.1f %d\n", state.lat, state.lon, state.track, state.hvel);
+						//printf("MSG10: %.4f %.4f %.1f %d\n", state.lat, state.lon, state.track, state.hvel);
 					}
 				}
 				if (buf[0] == 11) { // MSG11 geometric altitude packet
 					if (lock()) { 
 						state.alt = ((int16_t)(((buf[1]) << 8) | buf[2])) * 5.0 / 3.3208 + 20; // 20m geoid height
-						setValid();
 						unlock();
 						//printf("MSG11: %d\n", state.alt);
 					}
@@ -121,12 +126,11 @@ public:
 			if (b == 0x7d) { // escape character
 				esc = 1;
 				return;
-			}
-			else if (esc == 1) { // following an escape character
+			} else if (esc == 1) { // following an escape character
 				b ^= 0x20;
 				esc = 0;
 			}
-			if (index >= 0 && index < sizeof(buf))
+			if (index >= 0 && (unsigned int)index < sizeof(buf))
 				buf[index++] = b; // store valid byte
 		}
 
