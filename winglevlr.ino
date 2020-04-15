@@ -582,7 +582,7 @@ void loop() {
 		if(hdgErr > 180) hdgErr -= 360;
 		float desRoll = max(-ed.maxb.value, min(+ed.maxb.value, (float)(hdgErr * ed.navg.value)));
 		
-		pid.add(roll - desRoll, millis()/1000.0);
+		pid.add(roll - desRoll, roll, micros()/1000000.0);
 		if (armServo) {  
 			servoOutput = servoTrim + pid.corr;
 			pwmOutput = max(1550, min(7300, servoOutput * 4915 / 1500));
