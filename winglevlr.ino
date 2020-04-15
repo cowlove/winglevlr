@@ -107,7 +107,7 @@ namespace Display {
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d");
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f"); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.0f");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f");
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f"); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f");
 }
 
