@@ -22,6 +22,8 @@ struct AhrsInput {
 
 inline static float windup360(float now, float prev) { 
 	float hd = now - prev;
+	if (hd > 1000000 || hd < -1000000) 
+		return now;
 	while (hd < -180) hd += 360;
 	while (hd > +180) hd -= 360;
 	return prev + hd;

@@ -321,7 +321,7 @@ class StaleData {
 	uint64_t timeout, lastUpdate;
 	T value, invalidValue;
 public:
-	StaleData(int t, T i) : timeout(t), invalidValue(i) {} 
+	StaleData(int t, T i) : lastUpdate(0), timeout(t), invalidValue(i) {} 
 	bool isValid() { return millis() - lastUpdate < timeout; }
 	operator T&() { return isValid() ? value : invalidValue; }
 	StaleData<T>& operator =(const T&v) {
@@ -515,8 +515,9 @@ void loop() {
 		Display::navt = navDTK; 
 		Display::obs = obs; 
 		Display::knob = ed.re.value; 
-		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; Display::udp = udpBytes % 1000; 
-		Display::ser = gpsFixes % 1000; //serBytes % 1000; 
+		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; 
+		//Display::udp = udpBytes % 1000; 
+		//Display::ser = gpsFixes % 1000; //serBytes % 1000; 
 		Display::mav = mavHeartbeats % 1000; 
 		Display::roll = roll; Display::log = logFilename.c_str();
 		Display::roll.setInverse(false, (logFile != NULL));
@@ -575,6 +576,8 @@ void loop() {
 		if (n > 0) {
 			Serial1.write(buf, n);
 			avail -= n;
+		} else { 
+			break;
 		}
 	}
 
@@ -647,10 +650,11 @@ void loop() {
 		int avail = udpG90.parsePacket();
 		while(avail > 0) { 
 			recsize = udpG90.read(buf, min(avail,(int)sizeof(buf)));
+			if (recsize <= 0)
+				break;
 			avail -= recsize;
 			udpBytes += recsize; //+ random(0,2);
 			for (int i = 0; i < recsize; i++) {  
-				yield();
 				gdl90.add(buf[i]);
 				GDL90Parser::State s = gdl90.getState();
 				if (gpsUseGDL90 && s.valid && s.updated) { 
@@ -671,6 +675,8 @@ void loop() {
 		static int index;
 		
 		int n = udpSL30.read(buf, sizeof(buf));
+		if (n <= 0)
+			break;
 		avail -= n;
 		udpBytes += n; // + random(0,2);
 		for (int i = 0; i < n; i++) {

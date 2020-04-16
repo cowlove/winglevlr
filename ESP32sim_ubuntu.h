@@ -3,14 +3,18 @@
 #include <algorithm>
 #include <vector>
 #include <cstring>
+#include <string>
 #include <stdio.h>
 #include <math.h>
 #include <stdarg.h>
+#include <iostream>
+#include <fstream>
+
 
 using namespace std;
-
-uint64_t millis() { static uint64_t m = 0; return ++m; }
-uint64_t micros() { return millis() * 1000; }
+static uint64_t _micros = 0;
+uint64_t micros() { return ++_micros; }
+uint64_t millis() { return micros() / 1000; }
 void pinMode(int, int) {}
 int digitalRead(int) { return 1; }
 int digitalPinToInterrupt(int) { return 0; }
@@ -19,8 +23,8 @@ void attachInterrupt(int, void (*)(), int) {}
 void ledcSetup(int, int, int) {}
 void ledcAttachPin(int, int) {}
 void ledcWrite(int, int) {} 
-void delay(int) {}
-void delayMicroseconds(int) {}
+void delayMicroseconds(int m) { _micros += m; }
+void delay(int m) { delayMicroseconds(m*1000); }
 void yield() {}
 
 #define radians(x) ((x)*M_PI/180)
@@ -41,18 +45,19 @@ void yield() {}
 
 class FakeSerial { 
 	public:
+	bool toConsole = false;
 	void begin() {}
 	void begin(int, int, int, int) {}
 	void begin(int, int) {}
-	int print(const char *p) { return this->printf("%s", p); }
-	int println(const char *p= NULL) { return this->printf("%s\n", p != NULL ? p : ""); }
-	int print(char c) { return this->printf("%c", c); } 
-	int printf(const char  *f, ...) { 
+	void print(const char *p) { this->printf("%s", p); }
+	void println(const char *p= NULL) { this->printf("%s\n", p != NULL ? p : ""); }
+	void print(char c) { this->printf("%c", c); } 
+	void printf(const char  *f, ...) { 
 		va_list args;
 		va_start (args, f);
-		int r = vprintf (f, args);
+		if (toConsole) 
+			vprintf (f, args);
 		va_end (args);
-		return r;
 	}
 	void setTimeout(int) {} 
 	int available() { return 0; }
@@ -63,10 +68,11 @@ class FakeSerial {
 #define WL_CONNECTED 0
 class String {
 	public:
-	String(const char *) {}
+	std::string st;
+	String(const char *s) : st(s) {}
 	String() {}
-	bool operator!=(const String&) { return false; } 
-	const char *c_str(void) { return "FakeString";  }
+	bool operator!=(const String& x) { return st != x.st; } 
+	const char *c_str(void) { return st.c_str(); }
 };
 class IPAddress {
 public:
@@ -101,13 +107,26 @@ public:
 };
 
 class WiFiUDP {
+	ifstream i;
+	int delay;
+	int nextPacket;
 public:
-	void begin(int) {}
+	void begin(int p) {
+		char fname[256];
+		snprintf(fname, sizeof(fname), "udp%04d.dat", p);
+		i = ifstream(fname, ios_base::in | ios::binary);
+		nextPacket = _micros;
+		delay = 50;
+	}
 	void beginPacket(IPAddress, int) {}
 	void write(uint8_t *, int) {}
 	void endPacket() {}
-	int parsePacket() { return 0; } ;
-	int read(const uint8_t *, int) { return 0; }
+	int parsePacket() { return i.good() &&  _micros > nextPacket; } ;
+	int read(uint8_t *buf, int buflen) {
+		nextPacket = _micros + delay; 
+		i.read((char *)buf, 1);
+		return i.gcount();
+	}
 	IPAddress remoteIP() { return IPAddress(); } 
 };
 #define INV_SUCCESS 1
@@ -137,7 +156,13 @@ typedef char byte;
 
 void setup(void);
 void loop(void);
-int main() {
+static void JDisplayToConsole(bool b);
+int main(int argc, char **argv) {
+	for(char **a = argv + 1; a < argv+argc; a++) {
+		if (strcmp(*a, "--serial") == 0) Serial.toConsole = true;
+		if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
+	}
+	
 	setup();
 	while(1) loop();
 }

@@ -4,8 +4,8 @@
 #BOARD=heltec_wifi_kit_32
 #BOARD=nodemcu-32s
 
-winglevlr_ubuntu:	winglevlr.ino 
-	g++ -x c++ -g winglevlr.ino -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
+winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
+	g++ -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
 
 CHIP=esp32
 OTA_ADDR=192.168.43.222

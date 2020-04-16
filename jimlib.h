@@ -462,10 +462,13 @@ void SDCardBufferedLogThread(void *p) {
 //Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #endif
 
+
+
 class JDisplayItemBase;
 class JDisplay {
 	std::vector<JDisplayItemBase *> items;
 public:
+	static bool displayToConsole;
 	static const struct Colors { 
 		int lf, lb, vf, vb; 
 	} defaultColors; 
@@ -491,7 +494,7 @@ public:
 #else
 	void begin() {}
 	void clear() {}
-	void printAt(int, int, const char *, int, int) {}
+	void printAt(int x, int y, const char *f, int, int) { if (displayToConsole) ::printf("%02d,%02d: %s\n", x, y, f); }
 #endif
 
 	void addItem(JDisplayItemBase *i) { 
@@ -500,6 +503,9 @@ public:
 	inline void forceUpdate();
 	
 };
+
+bool JDisplay::displayToConsole = false;
+static void JDisplayToConsole(bool b) { JDisplay::displayToConsole = b; } 
 
 #ifndef UBUNTU
 const JDisplay::Colors JDisplay::defaultColors = { ST7735_WHITE, ST7735_BLACK, ST7735_YELLOW, ST7735_BLACK };
