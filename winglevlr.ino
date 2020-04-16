@@ -9,22 +9,21 @@
 #include "WiFiManager.h"
 #include "WiFiUdp.h"
 #include "WiFiMulti.h"
-#include "mavlink.h"
-#include "TinyGPS++.h"
-#include "G90Parser.h"
 #include <MPU9250_asukiaaa.h>
 #include <SparkFunMPU9250-DMP.h>
 #include <RunningLeastSquares.h>
-
-#include "mavlink.h"
-#include "Wire.h"
 #include <mySD.h>
+#include "Wire.h"
+
 #include "jimlib.h"
 #include "RollAHRS.h"
 #include "PidControl.h"
-
+#include "mavlink.h"
+#include "TinyGPS++.h"
+#include "G90Parser.h"
 
 WiFiMulti wifi;
+
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
 TinyGPSCustom vtgCourse(gps, "GPVTG", 1);
@@ -41,33 +40,12 @@ static int servoTrim = 1500;
 void mavlink_open();
 void mavlink_send(const uint8_t *, int);
 
-static void IRAM_ATTR resetModule() {
-   //esp_restart();
-}
-
-class WatchDogTimer {
-	int timeout;
-	hw_timer_t *timer = NULL;
-public: 
-	WatchDogTimer(int ms = 10000) : timeout(ms) {}
-	void begin(int ms = 0) {
-		if (ms > 0) 
-			timeout = ms;
-		timer = timerBegin(0, 80, true);                  //timer 0, div 80
-		timerAttachInterrupt(timer, &resetModule, true);  //attach callback
-		timerAlarmWrite(timer, timeout, false); //set time in us
-		timerAlarmEnable(timer);                          //enable interrupt
-	}
-	void feed() { timerWrite(timer, 0); }
-};
-
 WiFiUDP udpSL30;
 WiFiUDP udpNMEA;
 WiFiUDP udpG90;
 WiFiUDP udpMAV;
 
 #include <MPU9250_asukiaaa.h>
-#include <Kalman.h> 					// Source: https://github.com/TKJElectronics/KalmanFilter
 #define LED_PIN 22
 DigitalButton button(34); // middle
 DigitalButton button2(35); // left
@@ -112,8 +90,6 @@ namespace Display {
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f"); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f");
 }
 
-WatchDogTimer wdt(10000);
-
 MPU9250_DMP imu;
 #define IMU_INT_PIN 4
 
@@ -130,7 +106,7 @@ void imuInit() {
     }
   }
   
-  pinMode(IMU_INT_PIN, INPUT_PULLUP);
+  //pinMode(IMU_INT_PIN, INPUT_PULLUP);
   
   imu.setGyroFSR(250/*deg per sec*/);
   imu.setAccelFSR(4/*G*/);
@@ -184,7 +160,6 @@ bool imuRead() {
 	}
 	return false;
 }
-
 
 LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
@@ -460,7 +435,21 @@ void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float 
 	mavlink_send(mavbuf, len);
 }	
 
-
+template<class T> 
+class StaleData {
+	uint64_t timeout, lastUpdate;
+	T value, invalidValue;
+public:
+	StaleData(int t, T i) : timeout(t), invalidValue(i) {} 
+	bool isValid() { return millis() - lastUpdate < timeout; }
+	operator T&() { return isValid() ? value : invalidValue; }
+	StaleData<T>& operator =(const T&v) {
+		value = v;
+		lastUpdate = millis();
+		return *this;
+	}
+};
+ 
 void loop() {
 	mavlink_message_t msg;
 	uint16_t len;
@@ -489,8 +478,7 @@ void loop() {
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
 	static String logFilename("none");
-	uint64_t lastGpsFix = 0;
-
+	StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 
 	delayMicroseconds(10);
 	uint64_t now = micros();
@@ -506,8 +494,6 @@ void loop() {
 	//lastLoop = micros();
 	//printMag();
 	
-	if (now - lastGpsFix > 1000000 * 5)
-		ahrsInput.hdg = -1;
 
 	buttonISR();
 	if (butFilt.newEvent()) { // MIDDLE BUTTON
@@ -575,7 +561,7 @@ void loop() {
 	}
 	
 	if (phSafetySwitch == false && logFile == NULL) {
-		logFile = new SDCardBufferedLog<LogItem>("AHRSC%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+		logFile = new SDCardBufferedLog<LogItem>("AHRSD%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
 		logFilename = logFile->currentFile;
 		Serial.printf("Opened log file '%s'\n", logFile->currentFile.c_str());
 	} 
@@ -586,13 +572,16 @@ void loop() {
 		printSD();
 	}
 
+	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
+	ahrsInput.gpsTrackVTG = gpsTrackVTG;
+	ahrsInput.gpsTrackRMC = gpsTrackRMC;
 	if (imuRead()) {
-		float desRoll = 0;
+		float desRoll = 0;		
 		roll = ahrs.add(ahrsInput);
 
 		pwmOutput = 0;
 		if (ahrs.valid() || digitalRead(button4.pin) == 0) { // hold down button to override and make servo work  
-			double hdgErr = ahrsInput.hdg - desiredTrk;
+			double hdgErr = ahrsInput.gpsTrackGDL90 - desiredTrk;
 			if(hdgErr < -180) hdgErr += 360;
 			if(hdgErr > 180) hdgErr -= 360;
 			if (navPIDTimer.tick()) {
@@ -641,7 +630,7 @@ void loop() {
 
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = (int)desiredTrk; 
-		Display::hdg = (int)ahrsInput.hdg; 
+		Display::hdg = (int)ahrsInput.gpsTrackGDL90; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
 		Display::knob = ed.re.value; 
@@ -786,10 +775,9 @@ void loop() {
 				if (gpsUseGDL90 && s.valid && s.updated) { 
 					mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
 					ahrsInput.alt = s.alt;
-					ahrsInput.hdg = s.track;
+					gpsTrackGDL90 = s.track;
 					ahrsInput.gspeed = s.hvel;
 					gpsFixes++;
-					lastGpsFix = now;
 				}
 			}
 		}
@@ -820,14 +808,19 @@ void loop() {
 				lastObs = obs;
 			}
 			gps.encode(buf[i]);
-			// Use only VTG course so as to only use G5 data 
-			if (!gpsUseGDL90 && gps.location.isUpdated() && vtgCourse.isUpdated()) {
+			// Use only VTG course so as to only use G5 data
+			if (vtgCourse.isUpdated()) {  
+				gpsTrackVTG = gps.parseDecimal(vtgCourse.value()) * 0.01; //gps.course.deg();
+			}
+			if (gps.course.isUpdated()) { 
+				gpsTrackRMC = gps.course.deg();
+			}
+			if (!gpsUseGDL90 && gps.location.isUpdated()) {
 				mav_gps_msg(gps.location.lat(), gps.location.lng(), gps.altitude.meters(), gps.course.deg(), gps.speed.mps(), gps.hdop.hdop(), 2.34);
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
-				ahrsInput.hdg = gps.parseDecimal(vtgCourse.value()) * 0.01; //gps.course.deg();
 				ahrsInput.gspeed = gps.speed.knots();
 				gpsFixes++;
-				lastGpsFix = now;
+				//lastGpsFix = now;
 			}
 			if (desiredHeading.isUpdated()) { 
 				if (apMode == 4) 

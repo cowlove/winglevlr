@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
 		 << ahrs.bankAngle /*8*/ << " " << 0 << " " << l.ai.gspeed  << " " 
 /*11*/	 << l.ai.mx << " " << l.ai.my << " " << ahrs.magHdgRawFit.averageY()  << " " << ahrs.magHdgFit.averageY()	 << " " << ahrs.bankCorrection << " "
 /*16*/	 << ahrs.gpsBankAngle << " " << ahrs.magBankAngle << " " << ahrs.dipBankAngle << " " << ahrs.bankFit.averageY() << " " 
-/*20*/	 << servo <<" "<< pid.err.p <<" "<< pid.err.d<<" "
+/*20*/	 << servo <<" "<< pid.err.p <<" "<< pid.err.d<<" " << ahrs.dipBankAngle2
 #ifdef LOGITEM_VERSION_C
 /*23*/	 << l.finalGain <<" "<< cmd
 #endif

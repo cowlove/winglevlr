@@ -5,21 +5,28 @@
 using namespace std;
 
 struct AhrsInput { 
-	float sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed;
+	float sec, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed;
 	String toString() { 
 		static char buf[2048];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f", 
-		sec, hdg, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed);
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f", 
+		sec, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed);
 		return String(buf);	
 	 }
 	 AhrsInput fromString(const char *s) { 
-		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &hdg, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
+		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		&sec, &gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
 		return *this;
 	}
 		 
 };
 
+inline static float windup360(float now, float prev) { 
+	float hd = now - prev;
+	while (hd < -180) hd += 360;
+	while (hd > +180) hd -= 360;
+	return prev + hd;
+}
+	
 class RollAHRS {
 	float fit360(float h) { 
 		while(h <= 0) h += 360;
@@ -34,7 +41,7 @@ class RollAHRS {
 		  gyrOffY = -0.2906,
 		  gyrOffZ = -1.7086;
 public:
-	float gpsBankAngle, magBankAngle, dipBankAngle, magHdg, rawMagHdg, bankCorrection, bankAngle;
+	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, bankCorrection, bankAngle;
 
 	RunningLeastSquares 
 		bankFit = RunningLeastSquares(100), 
@@ -50,7 +57,7 @@ public:
 	float compYH =0;
 	
 	bool valid() { 
-		return prev.hdg != -1;
+		return prev.gpsTrackGDL90 != -1;
 	}
 	
 	float add(const AhrsInput &i) {
@@ -79,38 +86,47 @@ public:
 		float xyMagnitude = sqrt(l.mx*l.mx + l.my*l.my);
 		float localDip = 62; //deg
 		float levelBankZComponent = sin(localDip * M_PI/180) * magTotalMagnitude;  // constant Z component at all level headings, due to dip
+		levelBankZComponent = min(levelBankZComponent, yzMagnitude);
+		float levelYZAngle = asin(levelBankZComponent / yzMagnitude) * 180 / M_PI;
+		float actualYZAngle = asin(l.mz / yzMagnitude) * 180 / M_PI;
+		dipBankAngle = actualYZAngle - levelYZAngle;
+		dipBankAngle2 = actualYZAngle - (180 - levelYZAngle);
+		
+		/*
 		float dipBank = (asin(levelBankZComponent / yzMagnitude) - asin(l.mz / yzMagnitude)) * 180 / M_PI;
+		dipBankAngle2 = (M_PI - asin(levelBankZComponent / yzMagnitude) - asin(l.mz / yzMagnitude)) * 180 / M_PI;
 		if (!isnan(dipBank))
 			dipBankFit.add(l.sec, dipBank);
-
+		*/
 		// correct magHdg for dip error 
+		
 		float y1 = sqrt(yzMagnitude*yzMagnitude - levelBankZComponent*levelBankZComponent);
 		float y2 = sqrt(yzMagnitude*yzMagnitude - l.mz * l.mz);
+		y1 = min(y1, xyMagnitude);
+		y2 = min(y2, xyMagnitude);
+		if (y2 > xyMagnitude) y2 = xyMagnitude;
 		bankCorrection = (acos(y1/xyMagnitude) - acos(y2/xyMagnitude)) * 180 / M_PI;
-		if (isnan(bankCorrection)) bankCorrection = 0;
+		//printf("actualZ %f levelZ %f y1:%f y2:%f yzM:%f xyM:%f mz:%f lzBC:%f\n", actualZAngle, levelZAngle, y1, y2, yzMagnitude, xyMagnitude, l.mz, levelBankZComponent);
+		if (isnan(bankCorrection)) {
+			bankCorrection = 0;
+		}
 		
 		rawMagHdg = fit360(magHdg);
 		magHdg += bankCorrection;
 		magHdg = fit360(magHdg);
 	
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
-		if (count > 0) { 			
-			float hd = l.hdg - prev.hdg;
-			while (hd < -180) hd += 360;
-			while (hd > +180) hd -= 360;
-			l.hdg = prev.hdg + hd;
-			
-			hd = magHdg - lastMagHdg;
-			while (hd < -180) hd += 360;
-			while (hd > +180) hd -= 360;
-			float mh = magHdg;
-			magHdg = lastMagHdg + hd;
-			lastMagHdg = mh;
-		}		
+		if (count > 0) { 	
+			l.gpsTrackGDL90 = windup360(l.gpsTrackGDL90, prev.gpsTrackGDL90);
+			l.gpsTrackVTG = windup360(l.gpsTrackVTG, prev.gpsTrackVTG);
+			l.gpsTrackRMC = windup360(l.gpsTrackRMC, prev.gpsTrackRMC);
+			magHdg = windup360(magHdg, lastMagHdg);
+			lastMagHdg = magHdg;
+		}
 
 		magHdgRawFit.add(l.sec, rawMagHdg);
 		magHdgFit.add(l.sec, magHdg);
-		gpsHdgFit.add(l.sec, l.hdg);
+		gpsHdgFit.add(l.sec, l.gpsTrackGDL90);
 		
 		if (count % 3217 == 0) { 
 			gpsHdgFit.rebaseX();
@@ -121,7 +137,7 @@ public:
 		
 		gpsBankAngle = -atan((2*M_PI*tas)/(9.81*360 / gpsHdgFit.slope()))*180/M_PI;
 		magBankAngle = -atan((2*M_PI*tas)/(9.81*360 / magHdgFit.slope()))*180/M_PI;
-		dipBankAngle = dipBankFit.averageY();
+		//dipBankAngle = dipBank; //dipBankFit.averageY();
 		
 		bankAngle = (isnan(gpsBankAngle) ? 0 : (1.0 * gpsBankAngle)) +
 						  (isnan(magBankAngle) ? 0 : (0.0 * magBankAngle)) + 

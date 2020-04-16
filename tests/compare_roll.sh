@@ -1,8 +1,8 @@
 #!/bin/bash
 
-F2=./logs/${1}-esp.plog
+F2=../logs/${1}-esp.plog
 
-make $F1 $F2 $F3 $F4
+make $F2
 #XRANGE='[100:400]' #'[100:*]'
 #XRANGE='[100:1000]'
 XRANGE='[*:*]'
@@ -15,14 +15,18 @@ set y2tic
 set ytic nomirror
 p ${XRANGE} \
 	f2 u (\$2-F2_min_x):7 w l tit "Roll Comp Filter" \
-	,f2 u (\$2-F2_min_x):(\$20) w l ax x1y2 tit "AHRS Servo Output" \
+	, f2 u (\$2-F2_min_x):(\$16) w l tit "GPS Delta Bank" \
 	
-stats [100:300] f2 u 1:20
-stats [100:300] f3 u 1:3 
 
 pause 1000
 EOF
 exit
+	# Too junky to even use 
+	, f2 u (\$2-F2_min_x):(\$17) w l tit "Mag Delta Bank" \
+	, f2 u (\$2-F2_min_x):(\$18) w l tit "Dip Bank" \
+
+
+
 	f2 u (\$2-F2_min_x):(\$20) w l ax x1y2  tit "AHRS Servo Output" \
 
 	f4 u (\$1-F4_min_x):(\$6) w l ax x1y2 tit "ArduPilot PID P" \
