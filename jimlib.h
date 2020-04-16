@@ -64,16 +64,24 @@ public:
 	DigitalDebounce a,b;
 	int limMin, limMax;
 	int value;
-	boolean wrap;
+	bool wrap;
 	unsigned long lastChange;
-	
-	portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
+#ifndef UBUNTU
+	portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 	void IRAM_ATTR ISR() {	
 		portENTER_CRITICAL_ISR(&(this->mux));
 		check();
 		portEXIT_CRITICAL_ISR(&(this->mux));
 	}
+	void begin(void (*ISR_callback)(void)) {
+		attachInterrupt(digitalPinToInterrupt(pin1), ISR_callback, CHANGE);
+		attachInterrupt(digitalPinToInterrupt(pin3), ISR_callback, CHANGE);
+	}
+#else
+	void begin(void *) {};
+#endif
+	
 	RotaryEncoder(int p1, int p3, int debounce = 0) : a(debounce), b(debounce), pin1(p1), pin3(p3){
 		pinMode(pin1, INPUT_PULLUP);
 		pinMode(pin3, INPUT_PULLUP);
@@ -87,10 +95,6 @@ public:
 		limMin = mn;
 		limMax = mx;
 		this->wrap = wrap;
-	}
-	void begin(void (*ISR_callback)(void)) {
-		attachInterrupt(digitalPinToInterrupt(pin1), ISR_callback, CHANGE);
-		attachInterrupt(digitalPinToInterrupt(pin3), ISR_callback, CHANGE);
 	}
 	void check() {
 		int buta = !digitalRead(pin1);
@@ -218,7 +222,7 @@ class DigitalButtonLongShort {
 	DigitalButton button;
 	DigitalButtonLongShort(int p, int l = 1000, int d = 250) : filter(l, d), button(p) {}
 	bool newEvent() { return filter.newEvent(); } 
-	bool run() { 
+	void run() { 
 		filter.check(button.duration());
 	}
 	bool newEventR() { run(); return newEvent(); }
@@ -281,11 +285,12 @@ void SDCardBufferedLogThread(void *p);
 
 template <class T>
 class SDCardBufferedLog {
+#ifndef UBUNTU
 	QueueHandle_t queue;
 	int timo;
 	int flushInterval;
 	bool exitNow = false;
-	char *filename;
+	const char *filename;
 
 	void exit() { 
 		exitNow = true;
@@ -294,11 +299,11 @@ class SDCardBufferedLog {
 		while(exitNow)
 			delay(1);
 	}
-	boolean textMode;
+	bool textMode;
 public:
 	String currentFile;
 	
-	SDCardBufferedLog(char *fname, int len, int timeout, int flushInt, boolean textMode = true) : 
+	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true) : 
 		filename(fname), 
 		flushInterval(flushInt), 
 		timo((timeout+portTICK_PERIOD_MS-1)/portTICK_PERIOD_MS) {
@@ -381,13 +386,19 @@ public:
 		while(uxQueueMessagesWaiting(queue) > 0) 
 			sleep(1);
 	}
+#else
+public:
+	String currentFile;
+	void add(T *v, int t) {}
+	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true) {}
+#endif
+
 };	
 
 template <class T>
 void SDCardBufferedLogThread(void *p) {
 	((SDCardBufferedLog<T> *)p)->thread(); 
 }
-
 
 
 
@@ -402,6 +413,7 @@ void SDCardBufferedLogThread(void *p) {
 // f2 = 0;
 // f1 = 1.1;
 
+#ifndef UBUNTU
 #include <Adafruit_GFX.h>               // Core graphics library
 #include <Adafruit_ST7735.h>            // Hardware-specific library
 
@@ -411,16 +423,18 @@ void SDCardBufferedLogThread(void *p) {
 #define TFT_SCLK 5   
 #define TFT_MOSI 23  
 #define ST7735
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+//Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+#endif
 
 class JDisplayItemBase;
-class JDisplay { 
-	Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+class JDisplay {
 	std::vector<JDisplayItemBase *> items;
 public:
 	static const struct Colors { 
 		int lf, lb, vf, vb; 
 	} defaultColors; 
+#ifndef UBUNTU 
+	Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 	void begin() { 
 		//pinMode(27,OUTPUT); 		//Backlight:27  TODO:JIM 27 appears to be an external pin 
 		//digitalWrite(27,HIGH);	//New version added to backlight control
@@ -438,6 +452,12 @@ public:
 		tft.setCursor(x, y);
 		tft.print(s);
 	}
+#else
+	void begin() {}
+	void clear() {}
+	void printAt(int, int, const char *, int, int) {}
+#endif
+
 	void addItem(JDisplayItemBase *i) { 
 		items.push_back(i);
 	}
@@ -445,7 +465,11 @@ public:
 	
 };
 
+#ifndef UBUNTU
 const JDisplay::Colors JDisplay::defaultColors = { ST7735_WHITE, ST7735_BLACK, ST7735_YELLOW, ST7735_BLACK };
+#else
+const JDisplay::Colors JDisplay::defaultColors = { 0, 0, 0, 0 };
+#endif
 
 class JDisplayItemBase {
 	int x, y, updates;
@@ -507,7 +531,7 @@ class JDisplayItem : public JDisplayItemBase {
 public:
 	JDisplayItem(JDisplay *d, int x, int y, const char *label, const char *fmt, JDisplay::Colors colors = JDisplay::defaultColors) :
 		JDisplayItemBase(d, x, y, label, fmt, colors) {}
-	JDisplayItem<T>& operator =(const T&v) { setValue(v); }
+	JDisplayItem<T>& operator =(const T&v) { setValue(v); return *this; }
 };
 
 

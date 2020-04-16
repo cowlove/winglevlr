@@ -15,7 +15,13 @@
 #include <RunningLeastSquares.h>
 #include <mySD.h>
 #include "Wire.h"
+#include <MPU9250_asukiaaa.h>
+#else
+#include "ESP32sim_ubuntu.h"
 #endif
+
+
+
 
 #include "jimlib.h"
 #include "RollAHRS.h"
@@ -47,7 +53,6 @@ WiFiUDP udpNMEA;
 WiFiUDP udpG90;
 WiFiUDP udpMAV;
 
-#include <MPU9250_asukiaaa.h>
 #define LED_PIN 22
 DigitalButton button(34); // middle
 DigitalButton button2(35); // left
@@ -181,6 +186,7 @@ void printMag() {
       Serial.println("");
 }
 
+#ifndef UBUNTU
 void printDirectory(msdFile dir, int numTabs) {
   while(true) {
      msdFile entry =  dir.openNextFile();
@@ -212,6 +218,9 @@ void printSD() {
 		root.close();
 	}
 }
+#else
+void printSD() {}
+#endif
 
 class MyEditor : public JDisplayEditor {
 public:
@@ -298,7 +307,9 @@ void setup() {
 	navPID.finalGain = 1.0;
 
 	ed.begin();
+#ifndef UBUNTU
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
+#endif
 	ed.pidp.value = rollPID.gain.p;
 	ed.pidi.value = rollPID.gain.i;
 	ed.pidd.value = rollPID.gain.d;
@@ -555,7 +566,7 @@ void loop() {
 	
 	if (Serial1.available()) {
 		int l = Serial1.readBytes(buf, sizeof(buf));
-		serBytes += l + random(0,2);
+		serBytes += l;// + random(0,2);
 		if (WiFi.status() == WL_CONNECTED) { 
 			udpMAV.beginPacket(mavRemoteIp ,MAVLINK_PORT); // todo - could send to the last ip we received from instead of bcast addr 
 			udpMAV.write((uint8_t *)buf, l);
@@ -595,7 +606,7 @@ void loop() {
 	while (avail > 0) { 
 		mavRemoteIp = udpMAV.remoteIP();	
 		int n = udpMAV.read(buf, min(avail,(int)sizeof(buf)));
-		mavBytesIn += n + random(0,2);
+		mavBytesIn += n;// + random(0,2);
 		if (n > 0) {
 			Serial1.write(buf, n);
 			avail -= n;
@@ -672,7 +683,7 @@ void loop() {
 		while(avail > 0) { 
 			recsize = udpG90.read(buf, min(avail,(int)sizeof(buf)));
 			avail -= recsize;
-			udpBytes += recsize + random(0,2);
+			udpBytes += recsize; //+ random(0,2);
 			for (int i = 0; i < recsize; i++) {  
 				yield();
 				gdl90.add(buf[i]);
@@ -696,7 +707,7 @@ void loop() {
 		
 		int n = udpSL30.read(buf, sizeof(buf));
 		avail -= n;
-		udpBytes += n + random(0,2);
+		udpBytes += n; // + random(0,2);
 		for (int i = 0; i < n; i++) {
 			if (index >= sizeof(line))
 				index = 0;
