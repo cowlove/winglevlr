@@ -1,3 +1,4 @@
+#ifdef UBUNTU
 #include <iostream>
 #include <fstream>
 
@@ -36,3 +37,4 @@ int main(int argc, char **argv) {
 		 <<  endl;
 	}
 }
+#endif

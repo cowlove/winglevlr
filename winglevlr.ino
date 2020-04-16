@@ -27,6 +27,7 @@
 WiFiMulti wifi;
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
+TinyGPSCustom vtgCourse(gps, "GPVTG", 1);
 
 GDL90Parser gdl90;
 GDL90Parser::State state;
@@ -585,7 +586,6 @@ void loop() {
 		printSD();
 	}
 
-	
 	if (imuRead()) {
 		float desRoll = 0;
 		roll = ahrs.add(ahrsInput);
@@ -820,10 +820,11 @@ void loop() {
 				lastObs = obs;
 			}
 			gps.encode(buf[i]);
-			if (!gpsUseGDL90 && gps.location.isUpdated()) {
+			// Use only VTG course so as to only use G5 data 
+			if (!gpsUseGDL90 && gps.location.isUpdated() && vtgCourse.isUpdated()) {
 				mav_gps_msg(gps.location.lat(), gps.location.lng(), gps.altitude.meters(), gps.course.deg(), gps.speed.mps(), gps.hdop.hdop(), 2.34);
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
-				ahrsInput.hdg = gps.course.deg();
+				ahrsInput.hdg = gps.parseDecimal(vtgCourse.value()) * 0.01; //gps.course.deg();
 				ahrsInput.gspeed = gps.speed.knots();
 				gpsFixes++;
 				lastGpsFix = now;
