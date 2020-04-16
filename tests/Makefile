@@ -1,9 +1,13 @@
+all:	test_plog test_tinygps parsed_vtg.txt
 
-
-
-plog:	plog.cpp
-	g++ -g plog.cpp -I.. -o plog
-
+clean:
+	rm test_plog test_tinygps parsed_vtg.txt
+	
+parsed_vtg.txt:	nmea.txt test_tinygps 
+	./test_tinygps $< > $@
+	
+%:	%.cpp
+	g++ -DUBUNTU -I.. -I/home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src $< -o $@ -g
 
 %.plog: %.dat plog
 	./plog $< > $@
