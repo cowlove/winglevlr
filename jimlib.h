@@ -405,7 +405,6 @@ void SDCardBufferedLogThread(void *p) {
 #include <Adafruit_GFX.h>               // Core graphics library
 #include <Adafruit_ST7735.h>            // Hardware-specific library
 
-
 #define TFT_CS 16
 #define TFT_RST 9  
 #define TFT_DC 17
@@ -447,7 +446,6 @@ public:
 };
 
 const JDisplay::Colors JDisplay::defaultColors = { ST7735_WHITE, ST7735_BLACK, ST7735_YELLOW, ST7735_BLACK };
-
 
 class JDisplayItemBase {
 	int x, y, updates;
@@ -504,7 +502,6 @@ inline void JDisplay::forceUpdate() {
 	}
 }
 
-
 template<class T>
 class JDisplayItem : public JDisplayItemBase { 
 public:
@@ -513,4 +510,101 @@ public:
 	JDisplayItem<T>& operator =(const T&v) { setValue(v); }
 };
 
+
+
+class JDisplayEditableItem;
+
+class JDisplayEditor {
+	std::vector<JDisplayEditableItem *> items;
+	bool editing;
+	int selectedItem;
+public:
+	RotaryEncoder re;
+	JDisplayEditor(int p1, int p2) : re(p1, p2) {}
+	void add(JDisplayEditableItem *i) { 
+		items.push_back(i);
+	}
+	void begin() {
+		re.limMin = 0;
+		re.limMax = items.size() - 1;
+		editing = false;
+		re.wrap = false;
+		re.value = 0;
+		selectedItem = 0;
+		//re.begin( [this]()->void{ this->re.ISR(); });
+	}
+	inline void negateSelectedValue(); 
+	inline void update(); 
+	inline void buttonPress(bool longpress);			
+		
+};
+
+class JDisplayEditableItem { 
+protected:
+	JDisplayItemBase &di; 
+public:
+	float value, newValue, increment;
+	enum { UNSELECTED, SELECTED, EDITING } state;
+	JDisplayEditableItem(JDisplayItemBase &i, float inc) : di(i), increment(inc) {
+	}
+	void update() { 
+		if (state == EDITING) {
+			di.setValue(newValue);
+			di.setInverse(false, true);
+		} else { 
+			di.setValue(value);
+			di.setInverse(state == SELECTED, false);
+		}
+		di.update(false);
+	};
+};
+
+inline void JDisplayEditor::negateSelectedValue() { 
+	if (!editing) { 
+		items[selectedItem]->value *= -1.0;
+	} else {
+		items[selectedItem]->newValue *= -1.0;
+	}
+	items[selectedItem]->update();
+}
+
+inline void JDisplayEditor::update() { 
+	if (!editing) { 
+		if (selectedItem != re.value) { 
+			selectedItem = re.value;
+			for(int n = 0; n < items.size(); n++) {
+				items[n]->state = (n == selectedItem) ? JDisplayEditableItem::SELECTED : 
+					JDisplayEditableItem::UNSELECTED;
+				items[n]->update();
+			}
+		}
+	} else { 
+		items[selectedItem]->newValue = items[selectedItem]->value + re.value * items[selectedItem]->increment;
+		items[selectedItem]->update();
+	}
+}
+			
+inline void JDisplayEditor::buttonPress(bool longpress) { 
+	if (!editing) { 
+		editing = true;
+		selectedItem = re.value;
+		items[selectedItem]->state = JDisplayEditableItem::EDITING;
+		items[selectedItem]->newValue = items[selectedItem]->value;
+		items[selectedItem]->update();
+		re.limMin = -10000;
+		re.limMax = +10000;
+		re.wrap = false;
+		re.value = 0;
+	} else { 
+		editing = false;
+		if (longpress == false) 
+			items[selectedItem]->value = items[selectedItem]->newValue;
+		items[selectedItem]->state = JDisplayEditableItem::SELECTED;
+		re.limMin = 0;
+		re.limMax = items.size() - 1;
+		re.wrap = false;
+		re.value = selectedItem;
+	}
+	items[selectedItem]->update();
+}
 
