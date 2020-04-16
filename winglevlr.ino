@@ -186,41 +186,6 @@ void printMag() {
       Serial.println("");
 }
 
-#ifndef UBUNTU
-void printDirectory(msdFile dir, int numTabs) {
-  while(true) {
-     msdFile entry =  dir.openNextFile();
-     if (! entry) {
-       break;
-     }
-     for (uint8_t i=0; i<numTabs; i++) {
-       Serial.print('\t');   // we'll have a nice indentation
-     }
-     // Print the name
-     Serial.print(entry.name());
-     /* Recurse for directories, otherwise print the file size */
-     if (entry.isDirectory()) {
-       Serial.println("/");
-       printDirectory(entry, numTabs+1);
-     } else {
-       /* files have sizes, directories do not */
-       Serial.print("\t\t");
-       Serial.println(entry.size());
-     }
-     entry.close();
-	}
-}
-
-void printSD() { 
-	msdFile root = SD.open("/");
-	if (root) {
-		printDirectory(root, 0);
-		root.close();
-	}
-}
-#else
-void printSD() {}
-#endif
 
 class MyEditor : public JDisplayEditor {
 public:
