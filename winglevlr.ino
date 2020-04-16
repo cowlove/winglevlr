@@ -82,19 +82,19 @@ void buttonISR() {
 namespace Display {
 	JDisplay jd;
 	int y = 0;
-	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s");
-	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d");  JDisplayItem<int>    hdg(&jd,70,y,    " HDG:", "%03d");
-	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d");  JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d");
-	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d");  JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d");
-	JDisplayItem<int>    udp(&jd,10,y+=10," UDP:", "%03d");  JDisplayItem<int>    ser(&jd,70,y,    " FIX:", "%03d");
-	JDisplayItem<int>    mav(&jd,10,y+=10," MAV:", "%03d");  JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f");
-	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s");
+	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
+	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d ");  JDisplayItem<int>    hdg(&jd,70,y,    " HDG:", "%03d ");
+	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d ");  JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
+	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d ");  JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
+	JDisplayItem<int>    gdl(&jd,10,y+=10," GDL:", "%03d ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
+	JDisplayItem<int>    mav(&jd,10,y+=10," MAV:", "%03d ");  JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
+	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
 
-    //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d");
+    //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f"); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f"); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f"); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f");
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f "); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f ");
 }
 
 MPU9250_DMP imu;
@@ -516,8 +516,8 @@ void loop() {
 		Display::obs = obs; 
 		Display::knob = ed.re.value; 
 		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; 
-		//Display::udp = udpBytes % 1000; 
-		//Display::ser = gpsFixes % 1000; //serBytes % 1000; 
+		Display::gdl = gpsTrackGDL90;
+		Display::vtg = gpsTrackVTG;
 		Display::mav = mavHeartbeats % 1000; 
 		Display::roll = roll; Display::log = logFilename.c_str();
 		Display::roll.setInverse(false, (logFile != NULL));
