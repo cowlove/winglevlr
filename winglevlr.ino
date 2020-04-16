@@ -83,7 +83,7 @@ namespace Display {
 	JDisplay jd;
 	int y = 0;
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
-	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d ");  JDisplayItem<int>    hdg(&jd,70,y,    " HDG:", "%03d ");
+	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
 	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d ");  JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
 	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d ");  JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
 	JDisplayItem<int>    gdl(&jd,10,y+=10," GDL:", "%03d ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
@@ -346,7 +346,7 @@ void loop() {
 	static int mavHeartbeats;
 	static float desiredTrk = -1;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 1;
+	static int gpsUseGDL90 = 1; // 0- use VTG sentence, 1 use GDL90 data, 2 use RMC sentence 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
@@ -384,7 +384,7 @@ void loop() {
 				Display::jd.begin();
 				Display::jd.forceUpdate();
 			} else { 
-				gpsUseGDL90 = !gpsUseGDL90;
+				gpsUseGDL90 = (gpsUseGDL90 + 1) % 3;
 			}
 				
 		} else { 
@@ -456,6 +456,10 @@ void loop() {
 	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
 	ahrsInput.gpsTrackVTG = gpsTrackVTG;
 	ahrsInput.gpsTrackRMC = gpsTrackRMC;
+	if (gpsUseGDL90 == 0) ahrsInput.gpsTrack = gpsTrackVTG;
+	if (gpsUseGDL90 == 1) ahrsInput.gpsTrack = gpsTrackGDL90;
+	if (gpsUseGDL90 == 2) ahrsInput.gpsTrack = gpsTrackRMC;
+	
 	if (imuRead()) {
 		float desRoll = 0;		
 		roll = ahrs.add(ahrsInput);
@@ -511,7 +515,7 @@ void loop() {
 
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = (int)desiredTrk; 
-		Display::hdg = (int)ahrsInput.gpsTrackGDL90; 
+		Display::trk= ahrsInput.gpsTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
 		Display::knob = ed.re.value; 
@@ -657,12 +661,14 @@ void loop() {
 			for (int i = 0; i < recsize; i++) {  
 				gdl90.add(buf[i]);
 				GDL90Parser::State s = gdl90.getState();
-				if (gpsUseGDL90 && s.valid && s.updated) { 
-					mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
-					ahrsInput.alt = s.alt;
+				if (s.valid && s.updated) { 
 					gpsTrackGDL90 = s.track;
-					ahrsInput.gspeed = s.hvel;
-					gpsFixes++;
+					if (gpsUseGDL90 == 1) {
+						gpsFixes++;
+						ahrsInput.alt = s.alt;
+						ahrsInput.gspeed = s.hvel;
+						mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
+					}
 				}
 			}
 		}
@@ -702,12 +708,11 @@ void loop() {
 			if (gps.course.isUpdated()) { 
 				gpsTrackRMC = gps.course.deg();
 			}
-			if (!gpsUseGDL90 && gps.location.isUpdated()) {
+			if (gps.location.isUpdated() && gpsUseGDL90 == 2) {
 				mav_gps_msg(gps.location.lat(), gps.location.lng(), gps.altitude.meters(), gps.course.deg(), gps.speed.mps(), gps.hdop.hdop(), 2.34);
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
 				ahrsInput.gspeed = gps.speed.knots();
 				gpsFixes++;
-				//lastGpsFix = now;
 			}
 			if (desiredHeading.isUpdated()) { 
 				if (apMode == 4) 

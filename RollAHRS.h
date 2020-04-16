@@ -5,16 +5,16 @@
 using namespace std;
 
 struct AhrsInput { 
-	float sec, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed;
+	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed;
 	String toString() { 
 		static char buf[2048];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f", 
-		sec, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed);
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f", 
+		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, q4, gspeed);
 		return String(buf);	
 	 }
 	 AhrsInput fromString(const char *s) { 
-		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
+		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
 		return *this;
 	}
 		 
@@ -59,7 +59,7 @@ public:
 	float compYH =0;
 	
 	bool valid() { 
-		return prev.gpsTrackGDL90 != -1;
+		return prev.gpsTrack != -1;
 	}
 	
 	float add(const AhrsInput &i) {
@@ -119,16 +119,14 @@ public:
 	
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
 		if (count > 0) { 	
-			l.gpsTrackGDL90 = windup360(l.gpsTrackGDL90, prev.gpsTrackGDL90);
-			l.gpsTrackVTG = windup360(l.gpsTrackVTG, prev.gpsTrackVTG);
-			l.gpsTrackRMC = windup360(l.gpsTrackRMC, prev.gpsTrackRMC);
+			l.gpsTrack = windup360(l.gpsTrackRMC, prev.gpsTrack);
 			magHdg = windup360(magHdg, lastMagHdg);
 			lastMagHdg = magHdg;
 		}
 
 		magHdgRawFit.add(l.sec, rawMagHdg);
 		magHdgFit.add(l.sec, magHdg);
-		gpsHdgFit.add(l.sec, l.gpsTrackGDL90);
+		gpsHdgFit.add(l.sec, l.gpsTrack);
 		
 		if (count % 3217 == 0) { 
 			gpsHdgFit.rebaseX();
