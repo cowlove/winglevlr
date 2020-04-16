@@ -16,14 +16,14 @@
   GDL:174                              
   GDL:174   VTG:                       
   GDL:174   VTG:188.8                  
-  MAV:                                 
-  MAV:000                              
-  MAV:000  ROLL:                       
-  MAV:000  ROLL:+00.0                  
+  RMC:                                 
+  RMC:189.0                            
+  RMC:189.0ROLL:                       
+  RMC:189.0ROLL:+00.0                  
   LOG:                                 
   LOG:none                             
-  MAV:000  ROLL:+00.0                  
-  MAV:000  ROLL:+00.0                  
+  RMC:189.0ROLL:+00.0                  
+  RMC:189.0ROLL:+00.0                  
  WIFI:                                 
  WIFI:                                 
   DTK:243   HDG:174                    
@@ -42,56 +42,68 @@
   GDL:175   VTG:188.8                  
   GDL:175   VTG:188.8                  
   GDL:175   VTG:190.4                  
-  MAV:000  ROLL:+00.0                  
-  MAV:000  ROLL:+00.0                  
+  RMC:189.0ROLL:+00.0                  
+  RMC:193.0ROLL:+00.0                  
   LOG:none                             
   LOG:none                             
   DTK:246   HDG:175                    
  NAVT:246   OBS:174                    
   GDL:175   VTG:176.1                  
+  RMC:175.0ROLL:+00.0                  
   DTK:248   HDG:175                    
  NAVT:248   OBS:174                    
   GDL:175   VTG:189.0                  
+  RMC:188.0ROLL:+00.0                  
   DTK:251   HDG:175                    
  NAVT:251   OBS:174                    
   GDL:175   VTG:189.1                  
+  RMC:189.0ROLL:+00.0                  
   DTK:253   HDG:175                    
  NAVT:253   OBS:174                    
   GDL:175   VTG:189.9                  
+  RMC:190.0ROLL:+00.0                  
   DTK:255   HDG:175                    
  NAVT:255   OBS:174                    
   GDL:175   VTG:209.2                  
+  RMC:204.0ROLL:+00.0                  
   DTK:255   HDG:177                    
   GDL:177   VTG:209.2                  
   GDL:177   VTG:249.3                  
-  MAV:000  ROLL:-03.9                  
+  RMC:249.0ROLL:+00.0                  
+  RMC:249.0ROLL:-03.9                  
   GDL:177   VTG:241.4                  
-  MAV:000  ROLL:+00.0                  
+  RMC:244.0ROLL:-03.9                  
+  RMC:244.0ROLL:+00.0                  
   DTK:257   HDG:177                    
   DTK:257   HDG:175                    
  NAVT:257   OBS:174                    
   GDL:175   VTG:241.4                  
   GDL:175   VTG:197.3                  
+  RMC:195.0ROLL:+00.0                  
   DTK:259   HDG:175                    
  NAVT:259   OBS:174                    
   GDL:175   VTG:237.2                  
+  RMC:239.0ROLL:+00.0                  
   DTK:259   HDG:174                    
   GDL:174   VTG:237.2                  
   GDL:174   VTG:277.0                  
-  MAV:000  ROLL:+07.1                  
+  RMC:277.0ROLL:+00.0                  
+  RMC:277.0ROLL:+07.1                  
   DTK:258   HDG:174                    
  NAVT:258   OBS:174                    
   GDL:174   VTG:274.5                  
-  MAV:000  ROLL:+00.0                  
+  RMC:274.0ROLL:+07.1                  
+  RMC:274.0ROLL:+00.0                  
   GDL:174   VTG:276.7                  
   DTK:258   HDG:172                    
   GDL:172   VTG:276.7                  
-  MAV:000  ROLL:+01.7                  
-  MAV:000  ROLL:+00.0                  
+  RMC:274.0ROLL:+01.7                  
+  RMC:274.0ROLL:+00.0                  
   DTK:258   HDG:-01                    
   GDL:-01   VTG:276.7                  
   GDL:-01   VTG:-01.0                  
-  MAV:000  ROLL:+03.9                  
-  MAV:000  ROLL:+00.0                  
-  MAV:000  ROLL:+00.0                  
-  MAV:000  ROLL:+00.0                  
+  RMC:-01.0ROLL:+00.0                  
+  RMC:-01.0ROLL:+03.7                  
+  RMC:-01.0ROLL:+00.0                  
+  RMC:-01.0ROLL:+00.0                  
+  RMC:-01.0ROLL:+00.0                  

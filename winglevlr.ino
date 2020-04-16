@@ -87,7 +87,7 @@ namespace Display {
 	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d ");  JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
 	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d ");  JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
 	JDisplayItem<int>    gdl(&jd,10,y+=10," GDL:", "%03d ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
-	JDisplayItem<int>    mav(&jd,10,y+=10," MAV:", "%03d ");  JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
+	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");  JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
@@ -518,7 +518,7 @@ void loop() {
 		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; 
 		Display::gdl = gpsTrackGDL90;
 		Display::vtg = gpsTrackVTG;
-		Display::mav = mavHeartbeats % 1000; 
+		Display::rmc = gpsTrackRMC; 
 		Display::roll = roll; Display::log = logFilename.c_str();
 		Display::roll.setInverse(false, (logFile != NULL));
 		
