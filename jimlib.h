@@ -492,9 +492,26 @@ public:
 		tft.print(s);
 	}
 #else
-	void begin() {}
+	static const int xsize = 40, ysize = 20;
+	char lines[ysize][xsize];
+	void begin() {
+		for(int y = 0; y < ysize; y++)  {
+			for(int x = 0; x < xsize; x++) { 
+				lines[y][x] = ' ';
+			}
+			lines[y][xsize - 1] = '\0';
+		}
+	}
 	void clear() {}
-	void printAt(int x, int y, const char *f, int, int) { if (displayToConsole) ::printf("%02d,%02d: %s\n", x, y, f); }
+	void printAt(int x, int y, const char *f, int, int) { 
+		char *line = lines[y/10];
+		int flen = strlen(f);
+		for (int n = 0; n < flen; n++) { 
+			line[x/6 + n] = f[n];
+		}
+		if (displayToConsole) 
+			::printf("%s\n", line);
+	}
 #endif
 
 	void addItem(JDisplayItemBase *i) { 
