@@ -1,14 +1,11 @@
-
-
 #BOARD=esp32doit-devkit-v1
 #BOARD=heltec_wifi_kit_32
 #BOARD=nodemcu-32s
+VERBOSE=1
 
 test.out:	winglevlr_ubuntu
-	./winglevlr_ubuntu --jdisplay --serial --seconds 10  > $@
+	./winglevlr_ubuntu --jdisplay --serial --seconds 10  | tee $@
 	
-
-
 winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
 	g++ -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
 
