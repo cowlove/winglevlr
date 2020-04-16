@@ -5,7 +5,7 @@
 #BOARD=nodemcu-32s
 
 test.out:	winglevlr_ubuntu
-	./winglevlr_ubuntu --jdisplay --seconds 200 > $@
+	./winglevlr_ubuntu --jdisplay --serial --seconds 10  > $@
 	
 
 
