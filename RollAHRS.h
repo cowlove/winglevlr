@@ -14,7 +14,7 @@ struct AhrsInput {
 	 }
 	 AhrsInput fromString(const char *s) { 
 		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
+		&sec, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &q4, &gspeed);
 		return *this;
 	}
 		 
