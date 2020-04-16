@@ -580,7 +580,7 @@ void loop() {
 		roll = ahrs.add(ahrsInput);
 
 		pwmOutput = 0;
-		if (ahrs.valid() || digitalRead(button4.pin) == 0) { // hold down button to override and make servo work  
+		if ((ahrs.valid() && desiredTrk != -1) || digitalRead(button4.pin) == 0) { // hold down button to override and make servo work  
 			double hdgErr = ahrsInput.gpsTrackGDL90 - desiredTrk;
 			if(hdgErr < -180) hdgErr += 360;
 			if(hdgErr > 180) hdgErr -= 360;
