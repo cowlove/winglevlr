@@ -450,7 +450,7 @@ void loop() {
 		Serial.printf("Closing log file '%s'\n", logFile->currentFile.c_str());
 		delete logFile;
 		logFile = NULL;
-		printSD();
+		//printSD();
 	}
 
 	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
