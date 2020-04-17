@@ -40,7 +40,7 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, navPID(50); /*10Hz*/
+PidControl rollPID(30) /*200Hz*/, navPID(50); /*20Hz*/
 
 static int servoTrim = 1500;
 
@@ -84,7 +84,7 @@ namespace Display {
 	int y = 0;
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
-	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d ");    JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
+	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
 	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d ");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
 	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");   JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
@@ -355,12 +355,13 @@ void loop() {
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
 	static RollingAverage<int,1000> loopTime;
-	static EggTimer serialReportTimer(500), navPIDTimer(100);
+	static EggTimer serialReportTimer(500), navPIDTimer(50);
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
 	static String logFilename("none");
 	static StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
+	static float desRoll = 0;		
 	delayMicroseconds(10);
 	uint64_t now = micros();
 	loopTime.add(now - lastLoop);
@@ -461,23 +462,21 @@ void loop() {
 	if (gpsUseGDL90 == 2) ahrsInput.gpsTrack = gpsTrackRMC;
 	
 	if (imuRead()) {
-		float desRoll = 0;		
 		roll = ahrs.add(ahrsInput);
-
 		pwmOutput = 0;
 		if ((ahrs.valid() && desiredTrk != -1) || digitalRead(button4.pin) == 0) { // hold down button to override and make servo work  
-			double hdgErr = ahrsInput.gpsTrackGDL90 - desiredTrk;
+			double hdgErr = ahrsInput.gpsTrack - desiredTrk;
 			if(hdgErr < -180) hdgErr += 360;
 			if(hdgErr > 180) hdgErr -= 360;
 			if (navPIDTimer.tick()) {
-				desRoll = navPID.add(hdgErr, hdgErr, ahrsInput.sec);
+				desRoll = -navPID.add(hdgErr, ahrsInput.gpsTrack, ahrsInput.sec);
 				desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
 			}	
 			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
+			//Serial.printf("%05.2f %05.2f %04d\n", desRoll, roll);
 			if (armServo) {  
 				servoOutput = servoTrim + rollPID.corr;
 				pwmOutput = max(1550, min(7300, servoOutput * 4915 / 1500));
-				//Serial.printf("%05.2f %04d %04d\n", pid.corr, servoOutput, pwmOutput);
 			}
 		}
 		

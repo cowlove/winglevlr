@@ -5,9 +5,9 @@
   DTK:243.0 TRK:                       
   DTK:243.0 TRK:174.4                  
  NAVT:                                 
- NAVT:243                              
- NAVT:243   OBS:                       
- NAVT:243   OBS:174                    
+ NAVT:243.0                            
+ NAVT:243.0 OBS:                       
+ NAVT:243.0 OBS:174                    
  KNOB:                                 
  KNOB:000                              
  KNOB:000  MODE:                       
@@ -19,21 +19,21 @@
   RMC:                                 
   RMC:189.0                            
   RMC:189.0ROLL:                       
-  RMC:189.0ROLL:+00.1                  
+  RMC:189.0ROLL:+00.0                  
   LOG:                                 
   LOG:none                             
-  RMC:189.0ROLL:+00.1                  
-  RMC:189.0ROLL:+00.1                  
+  RMC:189.0ROLL:+00.0                  
+  RMC:189.0ROLL:+00.0                  
  WIFI:                                 
  WIFI:                                 
   DTK:243.0 TRK:174.4                  
   DTK:244.0 TRK:174.4                  
   DTK:244.0 TRK:174.4                  
   DTK:244.0 TRK:175.8                  
- NAVT:243   OBS:174                    
- NAVT:244   OBS:174                    
- NAVT:244   OBS:174                    
- NAVT:244   OBS:174                    
+ NAVT:243.0 OBS:174                    
+ NAVT:244.0 OBS:174                    
+ NAVT:244.0 OBS:174                    
+ NAVT:244.0 OBS:174                    
  KNOB:000  MODE:011                    
  KNOB:000  MODE:011                    
  KNOB:000  MODE:011                    
@@ -42,77 +42,65 @@
   GDL:175.8 VTG:188.8                  
   GDL:175.8 VTG:188.8                  
   GDL:175.8 VTG:193.0                  
-  RMC:189.0ROLL:+00.1                  
-  RMC:193.0ROLL:+00.1                  
-  RMC:193.0ROLL:-01.1                  
+  RMC:189.0ROLL:+00.0                  
+  RMC:193.0ROLL:+00.0                  
+  RMC:193.0ROLL:-00.0                  
   LOG:none                             
   LOG:none                             
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/38
   DTK:246.0 TRK:175.8                  
- NAVT:246   OBS:174                    
+ NAVT:246.0 OBS:174                    
   GDL:175.8 VTG:174.4                  
-  RMC:174.0ROLL:-01.1                  
-  RMC:174.0ROLL:+11.9                  
+  RMC:174.0ROLL:-00.0                  
+  RMC:174.0ROLL:+00.0                  
   DTK:248.0 TRK:175.8                  
- NAVT:248   OBS:174                    
+ NAVT:248.0 OBS:174                    
   GDL:175.8 VTG:188.2                  
-  RMC:187.0ROLL:+11.9                  
-  RMC:187.0ROLL:-14.4                  
-roll -00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/37
+  RMC:187.0ROLL:+00.0                  
+roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/37
   DTK:250.0 TRK:175.8                  
- NAVT:250   OBS:174                    
+ NAVT:250.0 OBS:174                    
   GDL:175.8 VTG:189.6                  
-  RMC:191.0ROLL:-14.4                  
-  RMC:191.0ROLL:-00.0                  
+  RMC:191.0ROLL:+00.0                  
   DTK:252.0 TRK:175.8                  
- NAVT:252   OBS:174                    
+ NAVT:252.0 OBS:174                    
   GDL:175.8 VTG:191.3                  
-  RMC:191.0ROLL:-01.7                  
   DTK:254.0 TRK:175.8                  
- NAVT:254   OBS:174                    
+ NAVT:254.0 OBS:174                    
   GDL:175.8 VTG:193.4                  
-  RMC:193.0ROLL:-01.7                  
-  RMC:193.0ROLL:-08.3                  
-roll -10.8 servo 0000 buttons 1111 Loop time min/avg/max 32/32/38
+  RMC:193.0ROLL:+00.0                  
+roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/38
   DTK:255.0 TRK:175.8                  
- NAVT:255   OBS:174                    
+ NAVT:255.0 OBS:174                    
   GDL:175.8 VTG:249.7                  
-  RMC:251.0ROLL:-08.3                  
-  RMC:251.0ROLL:-16.8                  
+  RMC:251.0ROLL:+00.0                  
   DTK:255.0 TRK:177.2                  
   GDL:177.2 VTG:249.7                  
   GDL:177.2 VTG:245.3                  
-  RMC:248.0ROLL:-16.8                  
   RMC:248.0ROLL:+00.0                  
-roll +18.9 servo 0000 buttons 1111 Loop time min/avg/max 32/32/38
+roll +00.1 servo 0000 buttons 1111 Loop time min/avg/max 32/32/38
   DTK:256.0 TRK:177.2                  
   DTK:256.0 TRK:175.8                  
- NAVT:256   OBS:174                    
+ NAVT:256.0 OBS:174                    
   GDL:175.8 VTG:245.3                  
   GDL:175.8 VTG:192.3                  
   RMC:194.0ROLL:+00.0                  
-  RMC:194.0ROLL:+13.0                  
   DTK:259.0 TRK:175.8                  
- NAVT:259   OBS:174                    
+ NAVT:259.0 OBS:174                    
   GDL:175.8 VTG:225.8                  
-  RMC:219.0ROLL:+13.0                  
-  RMC:219.0ROLL:-03.8                  
+  RMC:219.0ROLL:+00.0                  
   GDL:175.8 VTG:268.3                  
-  RMC:269.0ROLL:-03.8                  
-  RMC:269.0ROLL:-21.1                  
-roll +06.4 servo 0000 buttons 1111 Loop time min/avg/max 32/32/38
+  RMC:269.0ROLL:+00.0                  
+roll +02.8 servo 0000 buttons 1111 Loop time min/avg/max 32/32/38
   DTK:259.0 TRK:174.4                  
   GDL:174.4 VTG:268.3                  
   GDL:174.4 VTG:274.0                  
-  RMC:274.0ROLL:-21.1                  
-  RMC:274.0ROLL:+01.4                  
+  RMC:274.0ROLL:+00.0                  
   DTK:258.0 TRK:174.4                  
- NAVT:258   OBS:174                    
+ NAVT:258.0 OBS:174                    
   GDL:174.4 VTG:276.7                  
-  RMC:276.0ROLL:+01.4                  
-  RMC:276.0ROLL:+09.2                  
+  RMC:276.0ROLL:+00.0                  
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/33
-  RMC:274.0ROLL:+09.2                  
   RMC:274.0ROLL:+00.0                  
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
@@ -123,27 +111,33 @@ roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
   DTK:258.0 TRK:174.4                  
   GDL:174.4 VTG:276.7                  
+  RMC:274.0ROLL:-00.0                  
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
+  RMC:274.0ROLL:+00.0                  
   DTK:258.0 TRK:175.8                  
   GDL:175.8 VTG:276.7                  
+  RMC:274.0ROLL:-00.0                  
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
+  RMC:274.0ROLL:+00.0                  
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
 roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
   DTK:258.0 TRK:177.2                  
   GDL:177.2 VTG:276.7                  
+  RMC:274.0ROLL:-00.2                  
+  GDL:177.2 VTG:-01.0                  
+  RMC:-01.0ROLL:-00.2                  
+  RMC:-01.0ROLL:+00.0                  
+roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
   DTK:258.0 TRK:175.8                  
-  GDL:175.8 VTG:276.7                  
   GDL:175.8 VTG:-01.0                  
-  RMC:-01.0ROLL:+00.0                  
-  RMC:-01.0ROLL:-13.4                  
-roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 31/31/31
-  RMC:-01.0ROLL:+00.0                  
-roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 31/31/31
+roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
   DTK:258.0 TRK:177.2                  
   GDL:177.2 VTG:-01.0                  
-roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 31/31/31
+roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
   DTK:258.0 TRK:175.8                  
   GDL:175.8 VTG:-01.0                  
-roll +00.0 servo 0000 buttons 1111 Loop time min/avg/max 31/31/31
+  RMC:-01.0ROLL:+12.9                  
+roll +00.1 servo 0000 buttons 1111 Loop time min/avg/max 32/32/32
+  RMC:-01.0ROLL:+00.0                  
   DTK:258.0 TRK:174.4                  
   GDL:174.4 VTG:-01.0                  
