@@ -357,6 +357,7 @@ public:
 	}
 	~SDCardBufferedLog() { 
 		 this->exit();
+		 printSD();
 		 SD.end();
 	}
 	void add(T *v) {
@@ -395,7 +396,7 @@ public:
 			if (xQueueReceive(queue, &v, timo) == pdTRUE) {
 				if (!exitNow) {
 					uint64_t now = millis();
-					if (false && f) {
+					if (f) {
 						if (textMode)  
 							f.println(v.toString());
 						else 
