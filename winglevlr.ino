@@ -60,7 +60,7 @@ DigitalButton button3(39); // top
 DigitalButton button4(21); // knob press
 
 static IPAddress mavRemoteIp;
-#define BUFFER_LENGTH 64 // minimum buffer size that can be used with qnx (I don't know why)
+#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
 static uint8_t buf[BUFFER_LENGTH];
 EggTimer screenTimer(200), blinkTimer(1000), udpDebugTimer(1000), mavTimer(300);
 
