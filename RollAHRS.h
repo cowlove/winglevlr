@@ -119,7 +119,7 @@ public:
 	
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
 		if (count > 0) { 	
-			l.gpsTrack = windup360(l.gpsTrackRMC, prev.gpsTrack);
+			l.gpsTrack = windup360(l.gpsTrack, prev.gpsTrack);
 			magHdg = windup360(magHdg, lastMagHdg);
 			lastMagHdg = magHdg;
 		}
