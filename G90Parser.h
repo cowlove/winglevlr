@@ -66,10 +66,9 @@ public:
 	
 	uint16_t crcCompute(
 		unsigned char *block,       
-		uint32_t length) {
-		uint32_t i;
+		int length) {
 		uint16_t crc = 0;
-		for (i = 0; i < length; i++)     {
+		for (int i = 0; i < length; i++)     {
 			crc = Crc16Table[crc >> 8] ^ (crc << 8) ^ block[i];
 		}     
 		return crc; 

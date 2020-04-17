@@ -60,7 +60,7 @@ DigitalButton button3(39); // top
 DigitalButton button4(21); // knob press
 
 static IPAddress mavRemoteIp;
-#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
+#define BUFFER_LENGTH 64 // minimum buffer size that can be used with qnx (I don't know why)
 static uint8_t buf[BUFFER_LENGTH];
 EggTimer screenTimer(200), blinkTimer(1000), udpDebugTimer(1000), mavTimer(300);
 
@@ -83,11 +83,11 @@ namespace Display {
 	JDisplay jd;
 	int y = 0;
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
-	JDisplayItem<int>    dtk(&jd,10,y+=10," DTK:", "%03d ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
-	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d ");  JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
-	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d ");  JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
-	JDisplayItem<int>    gdl(&jd,10,y+=10," GDL:", "%03d ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
-	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");  JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
+	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
+	JDisplayItem<int>   navt(&jd,10,y+=10,"NAVT:", "%03d ");    JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
+	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d ");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
+	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
+	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");   JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
@@ -329,6 +329,7 @@ public:
 		lastUpdate = millis();
 		return *this;
 	}
+	T getValue() { return value; } 
 };
  
 void loop() {
@@ -359,8 +360,7 @@ void loop() {
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
 	static String logFilename("none");
-	StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
-
+	static StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 	delayMicroseconds(10);
 	uint64_t now = micros();
 	loopTime.add(now - lastLoop);
@@ -514,15 +514,15 @@ void loop() {
 		Display::roll.color.vf = ST7735_RED;
 
 		Display::ip = WiFi.localIP().toString().c_str(); 
-		Display::dtk = (int)desiredTrk; 
-		Display::trk= ahrsInput.gpsTrack; 
+		Display::dtk = desiredTrk; 
+		Display::trk = ahrsInput.gpsTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
 		Display::knob = ed.re.value; 
 		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; 
-		Display::gdl = gpsTrackGDL90;
-		Display::vtg = gpsTrackVTG;
-		Display::rmc = gpsTrackRMC; 
+		Display::gdl = (float)gpsTrackGDL90;
+		Display::vtg = (float)gpsTrackVTG;
+		Display::rmc = (float)gpsTrackRMC; 
 		Display::roll = roll; Display::log = logFilename.c_str();
 		Display::roll.setInverse(false, (logFile != NULL));
 		
@@ -661,7 +661,7 @@ void loop() {
 			for (int i = 0; i < recsize; i++) {  
 				gdl90.add(buf[i]);
 				GDL90Parser::State s = gdl90.getState();
-				if (s.valid && s.updated) { 
+				if (s.valid && s.updated) {
 					gpsTrackGDL90 = s.track;
 					if (gpsUseGDL90 == 1) {
 						gpsFixes++;

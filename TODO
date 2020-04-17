@@ -4,3 +4,8 @@
 * Keep working on mag dip bank
 
 * ? Log GDL90 and NMEA strings?
+
+* Make automated testing target 
+	python ~/src/gdl90/gdl90_sender.py -p 4000 -f ./udp4000.dat --delay 1
+	catsleep ./udp7891.dat  | socat -u - udp-sendto:255.255.255.255:7891,broadcast
+
