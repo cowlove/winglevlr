@@ -1,12 +1,23 @@
 #!/bin/bash
 
-F2=../logs/${1}-esp.plog
+F2=$1
 
 make $F2
 #XRANGE='[100:400]' #'[100:*]'
 #XRANGE='[100:1000]'
 XRANGE='[*:*]'
+
+if [ $2 = "html" ]; then 
+	TERMSPEC="set term canvas size 1400,600;set output '${F2}.gnuplot.html'"
+	WAIT=""
+else
+	TERMSPEC="set term qt size 2048,1024"
+	WAIT="pause 1000"
+fi
+
 cat << EOF | gnuplot
+$TERMSPEC
+set title "${F2} Roll Analysis"
 
 f2="$F2"
 stats f2 u 2:20 name "F2"
@@ -14,16 +25,19 @@ set grid
 set y2tic
 set ytic nomirror
 p ${XRANGE} \
-	f2 u (\$2-F2_min_x):7 w l tit "Roll Comp Filter" \
-	, f2 u (\$2-F2_min_x):(\$16) w l tit "GPS Delta Bank" \
+	f2 u (\$2-F2_min_x):7 w l tit "Roll Comp Filter",\
+	f2 u (\$2-F2_min_x):(\$16) w l tit "GPS Delta Bank",\
 	
+$WAIT
 
-pause 1000
 EOF
+
+
 exit
 	# Too junky to even use 
 	, f2 u (\$2-F2_min_x):(\$17) w l tit "Mag Delta Bank" \
 	, f2 u (\$2-F2_min_x):(\$18) w l tit "Dip Bank" \
+	f2 u (\$2-F2_min_x):6 w l tit "Roll Raw Gyro",\
 
 
 

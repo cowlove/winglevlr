@@ -56,7 +56,7 @@ public:
 	int count = 0;
 	AhrsInput prev;
 	float lastMagHdg = 0;
-	float compYH =0;
+	float compYH =0, rollG = 0;
 	
 	bool valid() { 
 		return prev.gpsTrack != -1;
@@ -145,7 +145,8 @@ public:
 		bankFit.add(l.sec, bankAngle);
 		float compRatio = .002; // will depend on sample rate, this works for 50Hz 
 		compYH = (compYH + l.gy * 1.45 /*gyroGain*/ * dt) * (1-compRatio) + (bankAngle * compRatio);
-				
+		rollG  += l.gy * dt;
+		
 		count++;
 		prev = l;
 		return compYH;
