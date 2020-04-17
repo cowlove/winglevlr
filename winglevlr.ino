@@ -268,7 +268,7 @@ void setup() {
 
 	rollPID.setGains(7.52, 0, 0.11);
 	rollPID.finalGain = 16.8;
-	navPID.setGains(2, 0, 0.1);
+	navPID.setGains(0.5, 0, 0.1);
 	navPID.finalGain = 1.0;
 
 	ed.begin();
@@ -279,7 +279,7 @@ void setup() {
 	ed.pidi.value = rollPID.gain.i;
 	ed.pidd.value = rollPID.gain.d;
 	ed.pidg.value = rollPID.finalGain;
-	ed.maxb.value = 15;
+	ed.maxb.value = 10;
 	ed.navg.value = navPID.finalGain;
 	
 	pinMode(33, OUTPUT);
@@ -347,7 +347,7 @@ void loop() {
 	static int mavHeartbeats;
 	static float desiredTrk = -1;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 1; // 0- use VTG sentence, 1 use GDL90 data, 2 use RMC sentence 
+	static int gpsUseGDL90 = 0; // 0- use VTG sentence, 1 use GDL90 data, 2 use RMC sentence 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
