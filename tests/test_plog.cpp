@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
 	
 		int servo = min(2500.0,(max(500.0, 1500.0 + cmd)));
 		
-		cout << ahrs.count << " " << l.ai.sec << " " << 0 << " " << l.ai.gpsTrack << " " << 0 << " " << ahrs.rollG  << " " << (ahrs.compYH) << " " 
+		cout << ahrs.count << " " << l.ai.sec << " " << l.ai.gpsTrackGDL90 << " " << l.ai.gpsTrackVTG << " " << l.ai.gpsTrack << " " << ahrs.rollG  << " " << (ahrs.compYH) << " " 
 		 << ahrs.bankAngle /*8*/ << " " << 0 << " " << l.ai.gspeed  << " " 
 /*11*/	 << l.ai.mx << " " << l.ai.my << " " << ahrs.magHdgRawFit.averageY()  << " " << ahrs.magHdgFit.averageY()	 << " " << ahrs.bankCorrection << " "
 /*16*/	 << ahrs.gpsBankAngle << " " << ahrs.magBankAngle << " " << ahrs.dipBankAngle << " " << ahrs.bankFit.averageY() << " " 

@@ -41,7 +41,7 @@ GDL90Parser::State state;
 
 RollAHRS ahrs;
 PidControl rollPID(30) /*200Hz*/, navPID(50); /*20Hz*/
-
+PidControl *knobPID = &rollPID;
 static int servoTrim = 1500;
 
 #define MAVLINK_PORT 14450
@@ -93,7 +93,7 @@ namespace Display {
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.2f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f "); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f ");
 }
 
@@ -190,7 +190,7 @@ void printMag() {
 class MyEditor : public JDisplayEditor {
 public:
 	JDisplayEditableItem pidp = JDisplayEditableItem(Display::pidp, .01);
-	JDisplayEditableItem pidi = JDisplayEditableItem(Display::pidi, .01);
+	JDisplayEditableItem pidi = JDisplayEditableItem(Display::pidi, .001);
 	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
 	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, 1);
@@ -275,10 +275,10 @@ void setup() {
 #ifndef UBUNTU
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
-	ed.pidp.value = rollPID.gain.p;
-	ed.pidi.value = rollPID.gain.i;
-	ed.pidd.value = rollPID.gain.d;
-	ed.pidg.value = rollPID.finalGain;
+	ed.pidp.value = knobPID->gain.p;
+	ed.pidi.value = knobPID->gain.i;
+	ed.pidd.value = knobPID->gain.d;
+	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 10;
 	ed.navg.value = navPID.finalGain;
 	
@@ -347,7 +347,7 @@ void loop() {
 	static int mavHeartbeats;
 	static float desiredTrk = -1;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 0; // 0- use VTG sentence, 1 use GDL90 data, 2 use RMC sentence 
+	static int gpsUseGDL90 = 0; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
@@ -459,7 +459,18 @@ void loop() {
 	ahrsInput.gpsTrackRMC = gpsTrackRMC;
 	if (gpsUseGDL90 == 0) ahrsInput.gpsTrack = gpsTrackVTG;
 	if (gpsUseGDL90 == 1) ahrsInput.gpsTrack = gpsTrackGDL90;
-	if (gpsUseGDL90 == 2) ahrsInput.gpsTrack = gpsTrackRMC;
+	if (gpsUseGDL90 == 2) {
+		if (!gpsTrackVTG.isValid()) {
+			ahrsInput.gpsTrack = gpsTrackGDL90;
+		} else if (!gpsTrackGDL90.isValid()) {
+			ahrsInput.gpsTrack = gpsTrackVTG;
+		} else { 
+			float diff = gpsTrackVTG - gpsTrackGDL90; 
+			if (diff < -180) diff += 360;
+			if (diff > 180) diff -= 360;
+			ahrsInput.gpsTrack = gpsTrackVTG - diff / 2;
+		}
+	}
 	
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
@@ -500,10 +511,10 @@ void loop() {
 
 	if (screenEnabled) { 
 		ed.update();
-		rollPID.gain.p = ed.pidp.value;
-		rollPID.gain.i = ed.pidi.value;
-		rollPID.gain.d = ed.pidd.value;
-		rollPID.finalGain = ed.pidg.value;
+		knobPID->gain.p = ed.pidp.value;
+		knobPID->gain.i = ed.pidi.value;
+		knobPID->gain.d = ed.pidd.value;
+		knobPID->finalGain = ed.pidg.value;
 		navPID.finalGain = ed.navg.value;
 	}
 	
@@ -674,6 +685,34 @@ void loop() {
 	}
 	while(recsize > 0);
 
+	if (Serial.available()) {
+		static char line[128]; // TODO make a line parser class with a lambda/closure
+		static int index;
+		int n = Serial.readBytes(buf, sizeof(buf));
+		for (int i = 0; i < n; i++) {
+			if (index >= sizeof(line))
+				index = 0;
+			if (buf[i] != '\r')
+				line[index++] = buf[i];
+			if (buf[i] == '\n' || buf[i] == '\r') {
+				index = 0;
+				float f;
+				if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
+				if (sscanf(line, "knob=%f", &f) == 1) {
+					if (f == 1) {
+						knobPID = &rollPID;
+					} else if (f == 2) { 
+						knobPID = &navPID;
+					}
+					ed.pidp.value = knobPID->gain.p;
+					ed.pidi.value = knobPID->gain.i;
+					ed.pidd.value = knobPID->gain.d;
+					ed.pidg.value = knobPID->finalGain;
+				}
+			}
+		}
+	}
+
 	avail = udpSL30.parsePacket();
 	while(avail > 0) { 
 		static char line[128];
@@ -692,7 +731,7 @@ void loop() {
 			if (buf[i] == '\n' || buf[i] == '\r') {
 				// 0123456789012
 				// $PMRRV34nnnXX
-				line[11] = 0; 
+				line[11] = 0; // TODO calculate the checksum 
 				sscanf(line, "$PMRRV34%d", &obs);
 				index = 0;
 				if (obs != lastObs)
