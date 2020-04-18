@@ -269,8 +269,10 @@ void setup() {
 	rollPID.setGains(7.52, 0, 0.11);
 	rollPID.finalGain = 16.8;
 	navPID.setGains(0.5, 0, 0.1);
-	navPID.finalGain = 1.0;
-
+	navPID.finalGain = 0.9;
+	navPID.hiGain.p = 0; 
+	navPID.hiGainTrans.p = 0;
+	
 	ed.begin();
 #ifndef UBUNTU
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
@@ -347,7 +349,7 @@ void loop() {
 	static int mavHeartbeats;
 	static float desiredTrk = -1;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 0; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
+	static int gpsUseGDL90 = 1; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
@@ -673,7 +675,7 @@ void loop() {
 				GDL90Parser::State s = gdl90.getState();
 				if (s.valid && s.updated) {
 					gpsTrackGDL90 = s.track;
-					if (gpsUseGDL90 == 1) {
+					if (gpsUseGDL90 == 1 || gpsUseGDL90 == 2) {
 						gpsFixes++;
 						ahrsInput.alt = s.alt;
 						ahrsInput.gspeed = s.hvel;
@@ -747,7 +749,7 @@ void loop() {
 				gpsTrackRMC = gps.course.deg();
 			}
 			if (gps.location.isUpdated() && gpsUseGDL90 == 2) {
-				mav_gps_msg(gps.location.lat(), gps.location.lng(), gps.altitude.meters(), gps.course.deg(), gps.speed.mps(), gps.hdop.hdop(), 2.34);
+				//mav_gps_msg(gps.location.lat(), gps.location.lng(), gps.altitude.meters(), gps.course.deg(), gps.speed.mps(), gps.hdop.hdop(), 2.34);
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
 				ahrsInput.gspeed = gps.speed.knots();
 				gpsFixes++;

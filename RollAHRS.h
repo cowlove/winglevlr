@@ -47,16 +47,18 @@ public:
 
 	RunningLeastSquares // all at about 200 HZ */
 		bankFit = RunningLeastSquares(100), 
-		gpsHdgFit = RunningLeastSquares(1000),  // TODO run GPS histories at lower rate 
+		gpsHdgFit = RunningLeastSquares(500),  // TODO run GPS histories at lower rate 
 		magHdgFit = RunningLeastSquares(50), 
 		magHdgRawFit = RunningLeastSquares(50), 
-		dipBankFit = RunningLeastSquares(100);
+		dipBankFit = RunningLeastSquares(100),
+		gyroDriftFit = RunningLeastSquares(300); 
 		
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
 	int count = 0;
 	AhrsInput prev;
 	float lastMagHdg = 0;
-	float compYH =0, rollG = 0;
+	float compR = 0, compYH =0, rollG = 0;
+	float gyroDrift = 0;
 	
 	bool valid() { 
 		return prev.gpsTrack != -1;
@@ -69,6 +71,8 @@ public:
 			l.sec = (count * fakeTimeMs) / 1000.0;	
 		if (count > 0 ) 
 			dt = l.sec - prev.sec;
+		
+		bool tick10HZ = (floor(l.sec / .1) != floor(prev.sec / .1));
 		
 		l.mx = -l.mx + magOffX;
 		l.my = -l.my + magOffY;
@@ -143,10 +147,14 @@ public:
 						  (isnan(magBankAngle) ? 0 : (0.0 * magBankAngle)) + 
 						  (isnan(dipBankAngle) ? 0 : (0.0 * dipBankAngle));
 		bankFit.add(l.sec, bankAngle);
-		float compRatio = .002; // will depend on sample rate, this works for 50Hz 
-		compYH = (compYH + l.gy * 1.45 /*gyroGain*/ * dt) * (1-compRatio) + (bankAngle * compRatio);
+		float compRatio = .0006; // will depend on sample rate, this works for 50Hz 
+		compR = (compR + l.gy * 1.20 /*gyroGain*/ * dt) * (1-compRatio) + (bankAngle * compRatio);
 		rollG  += l.gy * dt;
-		
+		if (tick10HZ) { 
+			gyroDriftFit.add(l.sec, compR - rollG);
+			gyroDrift = gyroDriftFit.slope();
+		}
+		compYH = compR + gyroDrift * 8.8;
 		count++;
 		prev = l;
 		return compYH;
