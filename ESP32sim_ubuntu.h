@@ -1,4 +1,3 @@
-
 #include <cstdint>
 #include <algorithm>
 #include <vector>
@@ -12,11 +11,11 @@
 #include "RunningLeastSquares.h"
 
 using namespace std;
-static int currentPwm = 0;
 static uint64_t _micros = 0;
 uint64_t micros() { return ++_micros; }
 uint64_t millis() { return micros() / 1000; }
 void pinMode(int, int) {}
+static int ESP32sim_currentPwm = 0;
 int digitalRead(int p) {
 	// HACK simple proof-of-concept to simulate button push and arm
 	// the servos  
@@ -25,7 +24,7 @@ int digitalRead(int p) {
 	return 1; 
 }
 void ledcWrite(int chan, int val) { 
-	currentPwm = val;
+	ESP32sim_currentPwm = val;
 	//printf("pwm %d\n", val);
 } 
 int digitalPinToInterrupt(int) { return 0; }
@@ -124,16 +123,17 @@ public:
 	void begin(int p) {
 		char fname[256];
 		snprintf(fname, sizeof(fname), "udp%04d.dat", p);
-		i = ifstream(fname, ios_base::in | ios::binary);
+		// TMP HACK - don't read GDL data, let sim do it below 
+		//	i = ifstream(fname, ios_base::in | ios::binary);
 		nextPacket = _micros;
-		delay = 50;
+		delay = 500;
 	}
 	void beginPacket(IPAddress, int) {}
 	void write(uint8_t *, int) {}
 	void endPacket() {}
 	int parsePacket() { return i.good() &&  _micros > nextPacket; } ;
 	int read(uint8_t *buf, int buflen) {
-		nextPacket = _micros + delay; 
+		nextPacket += delay; 
 		i.read((char *)buf, 1);
 		return i.gcount();
 	}
@@ -143,10 +143,16 @@ public:
 #define INV_XYZ_GYRO 1
 #define INV_XYZ_ACCEL 0
 #define INV_XYZ_COMPASS 0
+// TODO: remove these pokes, instead send NMEA or GDL90 data 
+// to the simulated UDP ports
+void ESP32sim_set_gpsTrackGDL90(float v);
+void ESP32sim_set_desiredTrk(float v);
+extern float desRoll;
 
 class MPU9250_DMP {
-	float bank = 0;
+	float bank = 0, track = 0;
 	RollingAverage<float,200> rollCmd;
+	uint64_t lastMillis = 0;
 public:
 	int begin(){ return true; }
 	void setGyroFSR(int) {};
@@ -154,9 +160,30 @@ public:
     void setSensors(int) {}
 	void updateAccel() {}
 	void updateGyro() {
-		rollCmd.add((currentPwm - 4915.0) / 4915.0);
+		// Simulate simply airplane roll/bank/track turn response to 
+		// servooutput read from ESP32sim_currentPwm; 
+		_micros += 3500;
+		rollCmd.add((ESP32sim_currentPwm - 4915.0) / 4915.0);
 		gy = rollCmd.average() * 2.0;
-		//printf("%f\n", gy);
+		bank += gy * .01;
+		bank = max(-15.0, min(15.0, (double)bank));
+		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
+			//printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, currentPwm, track, desRoll, bank, gy);
+		}
+		if (floor(lastMillis / 1000) != floor(millis() / 1000)) { // 1hz
+			track -= bank * 0.15;
+			if (track < 0) track += 360;
+			if (track > 360) track -= 360;	
+			ESP32sim_set_gpsTrackGDL90(track);
+		}
+		int s = millis()/1000;
+		if (s > 001) ESP32sim_set_desiredTrk(90);
+		if (s > 100) ESP32sim_set_desiredTrk(180);
+		if (s > 200) ESP32sim_set_desiredTrk(90);
+		if (s > 300) ESP32sim_set_desiredTrk(92);
+
+		
+		lastMillis = millis();
 	}
 	void updateCompass() {}
 	float calcAccel(float x) { return x; }
@@ -166,6 +193,7 @@ public:
 	float ax,ay,az,gx,gy,gz,mx,my,mz,qw,qx,qy,qz,pitch,roll,yaw;
 	MPU9250_DMP() { bzero(this, sizeof(this)); } 
 };
+
 typedef char byte;
 
 #include "TinyGPS++.h"

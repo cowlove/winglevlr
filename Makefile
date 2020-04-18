@@ -3,6 +3,11 @@
 #BOARD=nodemcu-32s
 VERBOSE=1
 
+plot:	winglevlr_ubuntu
+	./winglevlr_ubuntu --jdisplay --serial --seconds 500 | grep DTK | tr ':' ' ' > out.dat \
+		&& echo "f='./out.dat'; p f u 2 w l ti 'DTK', f u 4 w l ti 'TRK'; pause 100"| gnuplot
+
+
 test.out:	winglevlr_ubuntu
 	./winglevlr_ubuntu --jdisplay --serial --seconds 10  | tee $@
 	

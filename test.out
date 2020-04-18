@@ -1,169 +1,2602 @@
+00000004 servo 00000 track 00.00 bank: -00.02 gy: -02.00
+00000008 servo 00000 track 00.00 bank: -00.04 gy: -02.00
+00000012 servo 00000 track 00.00 bank: -00.06 gy: -02.00
+00000016 servo 00000 track 00.00 bank: -00.08 gy: -02.00
+00000020 servo 00000 track 00.00 bank: -00.10 gy: -02.00
+00000024 servo 00000 track 00.00 bank: -00.12 gy: -02.00
+00000028 servo 00000 track 00.00 bank: -00.14 gy: -02.00
+00000032 servo 00000 track 00.00 bank: -00.16 gy: -02.00
+00000036 servo 00000 track 00.00 bank: -00.18 gy: -02.00
+00000040 servo 00000 track 00.00 bank: -00.20 gy: -02.00
+00000044 servo 00000 track 00.00 bank: -00.22 gy: -02.00
+00000048 servo 00000 track 00.00 bank: -00.24 gy: -02.00
+00000052 servo 00000 track 00.00 bank: -00.26 gy: -02.00
+00000056 servo 00000 track 00.00 bank: -00.28 gy: -02.00
+00000060 servo 00000 track 00.00 bank: -00.30 gy: -02.00
+00000064 servo 00000 track 00.00 bank: -00.32 gy: -02.00
+00000068 servo 00000 track 00.00 bank: -00.34 gy: -02.00
+00000072 servo 00000 track 00.00 bank: -00.36 gy: -02.00
+00000076 servo 00000 track 00.00 bank: -00.38 gy: -02.00
+00000080 servo 00000 track 00.00 bank: -00.40 gy: -02.00
+00000084 servo 00000 track 00.00 bank: -00.42 gy: -02.00
+00000088 servo 00000 track 00.00 bank: -00.44 gy: -02.00
+00000092 servo 00000 track 00.00 bank: -00.46 gy: -02.00
+00000096 servo 00000 track 00.00 bank: -00.48 gy: -02.00
+00000100 servo 00000 track 00.00 bank: -00.50 gy: -02.00
+00000104 servo 00000 track 00.00 bank: -00.52 gy: -02.00
+00000108 servo 00000 track 00.00 bank: -00.54 gy: -02.00
+00000113 servo 00000 track 00.00 bank: -00.56 gy: -02.00
+00000117 servo 00000 track 00.00 bank: -00.58 gy: -02.00
+00000121 servo 00000 track 00.00 bank: -00.60 gy: -02.00
+00000125 servo 00000 track 00.00 bank: -00.62 gy: -02.00
+00000129 servo 00000 track 00.00 bank: -00.64 gy: -02.00
+00000133 servo 00000 track 00.00 bank: -00.66 gy: -02.00
+00000137 servo 00000 track 00.00 bank: -00.68 gy: -02.00
+00000141 servo 00000 track 00.00 bank: -00.70 gy: -02.00
+00000145 servo 00000 track 00.00 bank: -00.72 gy: -02.00
+00000149 servo 00000 track 00.00 bank: -00.74 gy: -02.00
+00000153 servo 00000 track 00.00 bank: -00.76 gy: -02.00
+00000157 servo 00000 track 00.00 bank: -00.78 gy: -02.00
+00000161 servo 00000 track 00.00 bank: -00.80 gy: -02.00
+00000165 servo 00000 track 00.00 bank: -00.82 gy: -02.00
+00000169 servo 00000 track 00.00 bank: -00.84 gy: -02.00
+00000173 servo 00000 track 00.00 bank: -00.86 gy: -02.00
+00000177 servo 00000 track 00.00 bank: -00.88 gy: -02.00
+00000181 servo 00000 track 00.00 bank: -00.90 gy: -02.00
+00000185 servo 00000 track 00.00 bank: -00.92 gy: -02.00
+00000189 servo 00000 track 00.00 bank: -00.94 gy: -02.00
+00000193 servo 00000 track 00.00 bank: -00.96 gy: -02.00
+00000197 servo 00000 track 00.00 bank: -00.98 gy: -02.00
+00000201 servo 00000 track 00.00 bank: -01.00 gy: -02.00
  WIFI:                                 
  WIFI:                                 
   DTK:                                 
-  DTK:242.0                            
-  DTK:242.0 TRK:                       
-  DTK:242.0 TRK:174.4                  
+  DTK:-01.0                            
+  DTK:-01.0 TRK:                       
+  DTK:-01.0 TRK:000.0                  
  NAVT:                                 
- NAVT:242.0                            
- NAVT:242.0 OBS:                       
- NAVT:242.0 OBS:174                    
+ NAVT:000.0                            
+ NAVT:000.0 OBS:                       
+ NAVT:000.0 OBS:000                    
  KNOB:                                 
  KNOB:000                              
  KNOB:000  MODE:                       
  KNOB:000  MODE:011                    
   GDL:                                 
-  GDL:174.4                            
-  GDL:174.4 VTG:                       
-  GDL:174.4 VTG:189.1                  
+  GDL:000.0                            
+  GDL:000.0 VTG:                       
+  GDL:000.0 VTG:000.0                  
   RMC:                                 
-  RMC:189.0                            
-  RMC:189.0ROLL:                       
-  RMC:189.0ROLL:+421.2                 
+  RMC:000.0                            
+  RMC:000.0ROLL:                       
+  RMC:000.0ROLL:-03.0                  
   LOG:                                 
   LOG:none                             
-  RMC:189.0ROLL:+421.2                 
-  RMC:189.0ROLL:+421.2                 
+  RMC:000.0ROLL:-03.0                  
+  RMC:000.0ROLL:-03.0                  
+00000205 servo 00000 track 00.00 bank: -01.02 gy: -02.00
+00000209 servo 00000 track 00.00 bank: -01.04 gy: -02.00
+00000214 servo 00000 track 00.00 bank: -01.06 gy: -02.00
+00000218 servo 00000 track 00.00 bank: -01.08 gy: -02.00
+00000222 servo 00000 track 00.00 bank: -01.10 gy: -02.00
+00000226 servo 00000 track 00.00 bank: -01.12 gy: -02.00
+00000230 servo 00000 track 00.00 bank: -01.14 gy: -02.00
+00000234 servo 00000 track 00.00 bank: -01.16 gy: -02.00
+00000238 servo 00000 track 00.00 bank: -01.18 gy: -02.00
+00000242 servo 00000 track 00.00 bank: -01.20 gy: -02.00
+00000246 servo 00000 track 00.00 bank: -01.22 gy: -02.00
+00000250 servo 00000 track 00.00 bank: -01.24 gy: -02.00
+00000254 servo 00000 track 00.00 bank: -01.26 gy: -02.00
+00000258 servo 00000 track 00.00 bank: -01.28 gy: -02.00
+00000262 servo 00000 track 00.00 bank: -01.30 gy: -02.00
+00000266 servo 00000 track 00.00 bank: -01.32 gy: -02.00
+00000270 servo 00000 track 00.00 bank: -01.34 gy: -02.00
+00000274 servo 00000 track 00.00 bank: -01.36 gy: -02.00
+00000278 servo 00000 track 00.00 bank: -01.38 gy: -02.00
+00000282 servo 00000 track 00.00 bank: -01.40 gy: -02.00
+00000286 servo 00000 track 00.00 bank: -01.42 gy: -02.00
+00000290 servo 00000 track 00.00 bank: -01.44 gy: -02.00
+00000294 servo 00000 track 00.00 bank: -01.46 gy: -02.00
+00000298 servo 00000 track 00.00 bank: -01.48 gy: -02.00
+00000302 servo 00000 track 00.00 bank: -01.50 gy: -02.00
+00000306 servo 00000 track 00.00 bank: -01.52 gy: -02.00
+00000310 servo 00000 track 00.00 bank: -01.54 gy: -02.00
+00000314 servo 00000 track 00.00 bank: -01.56 gy: -02.00
+00000319 servo 00000 track 00.00 bank: -01.58 gy: -02.00
+00000323 servo 00000 track 00.00 bank: -01.60 gy: -02.00
+00000327 servo 00000 track 00.00 bank: -01.62 gy: -02.00
+00000331 servo 00000 track 00.00 bank: -01.64 gy: -02.00
+00000335 servo 00000 track 00.00 bank: -01.66 gy: -02.00
+00000339 servo 00000 track 00.00 bank: -01.68 gy: -02.00
+00000343 servo 00000 track 00.00 bank: -01.70 gy: -02.00
+00000347 servo 00000 track 00.00 bank: -01.72 gy: -02.00
+00000351 servo 00000 track 00.00 bank: -01.74 gy: -02.00
+00000355 servo 00000 track 00.00 bank: -01.76 gy: -02.00
+00000359 servo 00000 track 00.00 bank: -01.78 gy: -02.00
+00000363 servo 00000 track 00.00 bank: -01.80 gy: -02.00
+00000367 servo 00000 track 00.00 bank: -01.82 gy: -02.00
+00000371 servo 00000 track 00.00 bank: -01.84 gy: -02.00
+00000375 servo 00000 track 00.00 bank: -01.86 gy: -02.00
+00000379 servo 00000 track 00.00 bank: -01.88 gy: -02.00
+00000383 servo 00000 track 00.00 bank: -01.90 gy: -02.00
+00000387 servo 00000 track 00.00 bank: -01.92 gy: -02.00
+00000391 servo 00000 track 00.00 bank: -01.94 gy: -02.00
+00000395 servo 00000 track 00.00 bank: -01.96 gy: -02.00
+00000399 servo 00000 track 00.00 bank: -01.98 gy: -02.00
+00000403 servo 00000 track 00.00 bank: -02.00 gy: -02.00
  WIFI:                                 
  WIFI:                                 
-  DTK:242.0 TRK:174.4                  
-  DTK:244.0 TRK:174.4                  
-  DTK:244.0 TRK:174.4                  
-  DTK:244.0 TRK:175.8                  
- NAVT:242.0 OBS:174                    
- NAVT:244.0 OBS:174                    
- NAVT:244.0 OBS:174                    
- NAVT:244.0 OBS:174                    
+  DTK:-01.0 TRK:000.0                  
+  DTK:-01.0 TRK:000.0                  
+  DTK:-01.0 TRK:000.0                  
+  DTK:-01.0 TRK:000.0                  
+ NAVT:000.0 OBS:000                    
+ NAVT:000.0 OBS:000                    
+ NAVT:000.0 OBS:000                    
+ NAVT:000.0 OBS:000                    
  KNOB:000  MODE:011                    
  KNOB:000  MODE:011                    
  KNOB:000  MODE:011                    
  KNOB:000  MODE:011                    
-  GDL:174.4 VTG:189.1                  
-  GDL:175.8 VTG:189.1                  
-  GDL:175.8 VTG:189.1                  
-  GDL:175.8 VTG:193.4                  
-  RMC:189.0ROLL:+421.2                 
-  RMC:193.0ROLL:+421.2                 
-  RMC:193.0ROLL:+00.4                  
+  GDL:000.0 VTG:000.0                  
+  GDL:000.0 VTG:000.0                  
+  GDL:000.0 VTG:000.0                  
+  GDL:000.0 VTG:000.0                  
+  RMC:000.0ROLL:-03.0                  
+  RMC:000.0ROLL:-03.0                  
+  RMC:000.0ROLL:-03.1                  
   LOG:none                             
   LOG:none                             
-  DTK:246.0 TRK:175.8                  
- NAVT:246.0 OBS:174                    
-  GDL:175.8 VTG:179.7                  
-  RMC:181.0ROLL:+00.4                  
-  RMC:181.0ROLL:+69.3                  
-  DTK:247.0 TRK:175.8                  
- NAVT:247.0 OBS:174                    
+00000407 servo 00000 track 00.00 bank: -02.02 gy: -02.00
+00000411 servo 00000 track 00.00 bank: -02.04 gy: -02.00
+00000415 servo 00000 track 00.00 bank: -02.06 gy: -02.00
+00000419 servo 00000 track 00.00 bank: -02.08 gy: -02.00
+00000424 servo 00000 track 00.00 bank: -02.10 gy: -02.00
+00000428 servo 00000 track 00.00 bank: -02.12 gy: -02.00
+00000432 servo 00000 track 00.00 bank: -02.14 gy: -02.00
+00000436 servo 00000 track 00.00 bank: -02.16 gy: -02.00
+00000440 servo 00000 track 00.00 bank: -02.18 gy: -02.00
+00000444 servo 00000 track 00.00 bank: -02.20 gy: -02.00
+00000448 servo 00000 track 00.00 bank: -02.22 gy: -02.00
+00000452 servo 00000 track 00.00 bank: -02.24 gy: -02.00
+00000456 servo 00000 track 00.00 bank: -02.26 gy: -02.00
+00000460 servo 00000 track 00.00 bank: -02.28 gy: -02.00
+00000464 servo 00000 track 00.00 bank: -02.30 gy: -02.00
+00000468 servo 00000 track 00.00 bank: -02.32 gy: -02.00
+00000472 servo 00000 track 00.00 bank: -02.34 gy: -02.00
+00000476 servo 00000 track 00.00 bank: -02.36 gy: -02.00
+00000480 servo 00000 track 00.00 bank: -02.38 gy: -02.00
+00000484 servo 00000 track 00.00 bank: -02.40 gy: -02.00
+00000488 servo 00000 track 00.00 bank: -02.42 gy: -02.00
+00000492 servo 00000 track 00.00 bank: -02.44 gy: -02.00
+00000496 servo 00000 track 00.00 bank: -02.46 gy: -02.00
+00000500 servo 00000 track 00.00 bank: -02.48 gy: -02.00
+00000504 servo 00000 track 00.00 bank: -02.50 gy: -02.00
+00000508 servo 00000 track 00.00 bank: -02.52 gy: -02.00
+00000512 servo 00000 track 00.00 bank: -02.54 gy: -02.00
+00000516 servo 00000 track 00.00 bank: -02.56 gy: -02.00
+00000520 servo 00000 track 00.00 bank: -02.58 gy: -02.00
+00000524 servo 00000 track 00.00 bank: -02.60 gy: -02.00
+00000528 servo 00000 track 00.00 bank: -02.62 gy: -02.00
+00000533 servo 00000 track 00.00 bank: -02.64 gy: -02.00
+00000537 servo 00000 track 00.00 bank: -02.66 gy: -02.00
+00000541 servo 00000 track 00.00 bank: -02.68 gy: -02.00
+00000545 servo 00000 track 00.00 bank: -02.70 gy: -02.00
+00000549 servo 00000 track 00.00 bank: -02.72 gy: -02.00
+00000553 servo 00000 track 00.00 bank: -02.74 gy: -02.00
+00000557 servo 00000 track 00.00 bank: -02.76 gy: -02.00
+00000561 servo 00000 track 00.00 bank: -02.78 gy: -02.00
+00000565 servo 00000 track 00.00 bank: -02.80 gy: -02.00
+00000569 servo 00000 track 00.00 bank: -02.82 gy: -02.00
+00000573 servo 00000 track 00.00 bank: -02.84 gy: -02.00
+00000577 servo 00000 track 00.00 bank: -02.86 gy: -02.00
+00000581 servo 00000 track 00.00 bank: -02.88 gy: -02.00
+00000585 servo 00000 track 00.00 bank: -02.90 gy: -02.00
+00000589 servo 00000 track 00.00 bank: -02.92 gy: -02.00
+00000593 servo 00000 track 00.00 bank: -02.94 gy: -02.00
+00000597 servo 00000 track 00.00 bank: -02.96 gy: -02.00
+00000601 servo 00000 track 00.00 bank: -02.98 gy: -02.00
+00000605 servo 00000 track 00.00 bank: -03.00 gy: -02.00
+  RMC:000.0ROLL:-03.3                  
+00000609 servo 00000 track 00.00 bank: -03.02 gy: -02.00
+00000613 servo 00000 track 00.00 bank: -03.04 gy: -02.00
+00000617 servo 00000 track 00.00 bank: -03.06 gy: -02.00
+00000621 servo 00000 track 00.00 bank: -03.08 gy: -02.00
+00000625 servo 00000 track 00.00 bank: -03.10 gy: -02.00
+00000629 servo 00000 track 00.00 bank: -03.12 gy: -02.00
+00000633 servo 00000 track 00.00 bank: -03.14 gy: -02.00
+00000638 servo 00000 track 00.00 bank: -03.16 gy: -02.00
+00000642 servo 00000 track 00.00 bank: -03.18 gy: -02.00
+00000646 servo 00000 track 00.00 bank: -03.20 gy: -02.00
+00000650 servo 00000 track 00.00 bank: -03.22 gy: -02.00
+00000654 servo 00000 track 00.00 bank: -03.24 gy: -02.00
+00000658 servo 00000 track 00.00 bank: -03.26 gy: -02.00
+00000662 servo 00000 track 00.00 bank: -03.28 gy: -02.00
+00000666 servo 00000 track 00.00 bank: -03.30 gy: -02.00
+00000670 servo 00000 track 00.00 bank: -03.32 gy: -02.00
+00000674 servo 00000 track 00.00 bank: -03.34 gy: -02.00
+00000678 servo 00000 track 00.00 bank: -03.36 gy: -02.00
+00000682 servo 00000 track 00.00 bank: -03.38 gy: -02.00
+00000686 servo 00000 track 00.00 bank: -03.40 gy: -02.00
+00000690 servo 00000 track 00.00 bank: -03.42 gy: -02.00
+00000694 servo 00000 track 00.00 bank: -03.44 gy: -02.00
+00000698 servo 00000 track 00.00 bank: -03.46 gy: -02.00
+00000702 servo 00000 track 00.00 bank: -03.48 gy: -02.00
+00000706 servo 00000 track 00.00 bank: -03.50 gy: -02.00
+00000710 servo 00000 track 00.00 bank: -03.52 gy: -02.00
+00000714 servo 00000 track 00.00 bank: -03.54 gy: -02.00
+00000718 servo 00000 track 00.00 bank: -03.56 gy: -02.00
+00000722 servo 00000 track 00.00 bank: -03.58 gy: -02.00
+00000726 servo 00000 track 00.00 bank: -03.60 gy: -02.00
+00000730 servo 00000 track 00.00 bank: -03.62 gy: -02.00
+00000734 servo 00000 track 00.00 bank: -03.64 gy: -02.00
+00000738 servo 00000 track 00.00 bank: -03.66 gy: -02.00
+00000743 servo 00000 track 00.00 bank: -03.68 gy: -02.00
+00000747 servo 00000 track 00.00 bank: -03.70 gy: -02.00
+00000751 servo 00000 track 00.00 bank: -03.72 gy: -02.00
+00000755 servo 00000 track 00.00 bank: -03.74 gy: -02.00
+00000759 servo 00000 track 00.00 bank: -03.76 gy: -02.00
+00000763 servo 00000 track 00.00 bank: -03.78 gy: -02.00
+00000767 servo 00000 track 00.00 bank: -03.80 gy: -02.00
+00000771 servo 00000 track 00.00 bank: -03.82 gy: -02.00
+00000775 servo 00000 track 00.00 bank: -03.84 gy: -02.00
+00000779 servo 00000 track 00.00 bank: -03.86 gy: -02.00
+00000783 servo 00000 track 00.00 bank: -03.88 gy: -02.00
+00000787 servo 00000 track 00.00 bank: -03.90 gy: -02.00
+00000791 servo 00000 track 00.00 bank: -03.92 gy: -02.00
+00000795 servo 00000 track 00.00 bank: -03.94 gy: -02.00
+00000799 servo 00000 track 00.00 bank: -03.96 gy: -02.00
+00000803 servo 00000 track 00.00 bank: -03.98 gy: -02.00
+00000807 servo 00000 track 00.00 bank: -04.00 gy: -02.00
  KNOB:000  MODE:111                    
-  GDL:175.8 VTG:180.1                  
-  RMC:178.0ROLL:+69.3                  
-  RMC:178.0ROLL:+69.2                  
-roll +58.4 servo -3465 buttons 1111 Loop time min/avg/max 36/36/41
-  DTK:249.0 TRK:175.8                  
- NAVT:249.0 OBS:174                    
-  GDL:175.8 VTG:191.5                  
-  RMC:191.0ROLL:+69.2                  
-  RMC:191.0ROLL:+58.4                  
-  DTK:251.0 TRK:175.8                  
- NAVT:251.0 OBS:174                    
-  GDL:175.8 VTG:189.0                  
-  RMC:188.0ROLL:+58.4                  
-  RMC:188.0ROLL:+48.4                  
-  DTK:253.0 TRK:175.8                  
- NAVT:253.0 OBS:174                    
-  GDL:175.8 VTG:189.9                  
-  RMC:190.0ROLL:+48.4                  
-  RMC:190.0ROLL:+40.6                  
-  DTK:254.0 TRK:175.8                  
- NAVT:254.0 OBS:174                    
-  GDL:175.8 VTG:204.0                  
-  RMC:193.0ROLL:+40.6                  
-  RMC:193.0ROLL:+34.8                  
-  DTK:255.0 TRK:175.8                  
- NAVT:255.0 OBS:174                    
-  GDL:175.8 VTG:249.7                  
-  RMC:251.0ROLL:+34.8                  
-  RMC:251.0ROLL:+30.3                  
-roll +11.8 servo -1307 buttons 1111 Loop time min/avg/max 36/36/42
-  DTK:255.0 TRK:177.2                  
-  GDL:177.2 VTG:249.7                  
-  GDL:177.2 VTG:247.4                  
-  RMC:248.0ROLL:+30.3                  
-  RMC:248.0ROLL:+12.0                  
-  DTK:256.0 TRK:177.2                  
-  DTK:256.0 TRK:175.8                  
- NAVT:256.0 OBS:174                    
-  GDL:175.8 VTG:247.4                  
-  GDL:175.8 VTG:195.9                  
-  RMC:199.0ROLL:+12.0                  
-  RMC:199.0ROLL:+37.6                  
-  DTK:258.0 TRK:175.8                  
- NAVT:258.0 OBS:174                    
-  GDL:175.8 VTG:211.4                  
-  RMC:211.0ROLL:+37.6                  
-  RMC:211.0ROLL:+27.3                  
-  DTK:259.0 TRK:175.8                  
- NAVT:259.0 OBS:174                    
-  GDL:175.8 VTG:239.8                  
-  RMC:249.0ROLL:+27.3                  
-  RMC:249.0ROLL:+24.2                  
-  DTK:259.0 TRK:174.4                  
-  GDL:174.4 VTG:239.8                  
-  GDL:174.4 VTG:277.0                  
-  RMC:276.0ROLL:+24.2                  
-  RMC:276.0ROLL:+51.5                  
-roll +33.3 servo -3952 buttons 1111 Loop time min/avg/max 36/36/42
-  DTK:258.0 TRK:174.4                  
- NAVT:258.0 OBS:174                    
-  GDL:174.4 VTG:274.5                  
-  RMC:274.0ROLL:+51.5                  
-  RMC:274.0ROLL:+33.2                  
-  GDL:174.4 VTG:276.7                  
-  RMC:274.0ROLL:+28.3                  
-  RMC:274.0ROLL:+24.8                  
-  RMC:274.0ROLL:+22.2                  
-  RMC:274.0ROLL:+20.0                  
-roll +18.3 servo -2079 buttons 1111 Loop time min/avg/max 36/36/37
-  RMC:274.0ROLL:+18.3                  
-  RMC:274.0ROLL:+17.0                  
-  RMC:274.0ROLL:+15.8                  
-  RMC:274.0ROLL:+14.9                  
-  DTK:258.0 TRK:173.0                  
-  GDL:173.0 VTG:276.7                  
-  RMC:274.0ROLL:+17.1                  
-roll +15.3 servo -1694 buttons 1111 Loop time min/avg/max 36/36/36
-  RMC:274.0ROLL:+15.3                  
-  RMC:274.0ROLL:+14.5                  
-  RMC:274.0ROLL:+13.8                  
-  RMC:274.0ROLL:+13.2                  
-  RMC:274.0ROLL:+12.7                  
-roll +12.3 servo -1316 buttons 1111 Loop time min/avg/max 36/36/36
-  RMC:274.0ROLL:+12.3                  
-  RMC:274.0ROLL:+11.9                  
-  DTK:258.0 TRK:174.4                  
-  GDL:174.4 VTG:276.7                  
-  RMC:274.0ROLL:+06.0                  
-  RMC:274.0ROLL:+09.3                  
-  RMC:274.0ROLL:+10.0                  
-roll +10.0 servo -1021 buttons 1111 Loop time min/avg/max 36/36/36
-  DTK:258.0 TRK:175.8                  
-  GDL:175.8 VTG:276.7                  
-  RMC:274.0ROLL:+06.3                  
-  RMC:274.0ROLL:+09.1                  
-  RMC:274.0ROLL:+09.2                  
-roll +09.2 servo -922 buttons 1111 Loop time min/avg/max 36/36/36
-  GDL:175.8 VTG:-01.0                  
-  RMC:-01.0ROLL:+09.2                  
-  DTK:258.0 TRK:177.2                  
-  GDL:177.2 VTG:-01.0                  
-  RMC:-01.0ROLL:+05.8                  
-  DTK:258.0 TRK:175.8                  
-  GDL:175.8 VTG:-01.0                  
-  RMC:-01.0ROLL:+26.5                  
-roll +10.4 servo -1040 buttons 1111 Loop time min/avg/max 36/36/36
-  RMC:-01.0ROLL:+09.9                  
-  RMC:-01.0ROLL:+09.3                  
-  RMC:-01.0ROLL:+09.2                  
-  DTK:258.0 TRK:177.2                  
-  GDL:177.2 VTG:-01.0                  
-  RMC:-01.0ROLL:+03.2                  
+  RMC:000.0ROLL:-03.4                  
+00000811 servo 06320 track 00.00 bank: -04.02 gy: -01.99
+00000815 servo 06333 track 00.00 bank: -04.04 gy: -01.97
+00000819 servo 06337 track 00.00 bank: -04.06 gy: -01.96
+00000823 servo 06340 track 00.00 bank: -04.08 gy: -01.95
+00000827 servo 06343 track 00.00 bank: -04.10 gy: -01.94
+00000831 servo 06346 track 00.00 bank: -04.12 gy: -01.92
+00000835 servo 06350 track 00.00 bank: -04.14 gy: -01.91
+00000839 servo 06350 track 00.00 bank: -04.16 gy: -01.90
+00000843 servo 06353 track 00.00 bank: -04.17 gy: -01.88
+00000847 servo 06356 track 00.00 bank: -04.19 gy: -01.87
+00000852 servo 06360 track 00.00 bank: -04.21 gy: -01.86
+00000856 servo 06363 track 00.00 bank: -04.23 gy: -01.85
+00000860 servo 06366 track 00.00 bank: -04.25 gy: -01.83
+00000864 servo 06369 track 00.00 bank: -04.27 gy: -01.82
+00000868 servo 06369 track 00.00 bank: -04.28 gy: -01.81
+00000872 servo 06373 track 00.00 bank: -04.30 gy: -01.79
+00000876 servo 06376 track 00.00 bank: -04.32 gy: -01.78
+00000880 servo 06379 track 00.00 bank: -04.34 gy: -01.77
+00000884 servo 06382 track 00.00 bank: -04.36 gy: -01.75
+00000888 servo 06382 track 00.00 bank: -04.37 gy: -01.74
+00000892 servo 06386 track 00.00 bank: -04.39 gy: -01.73
+00000896 servo 06389 track 00.00 bank: -04.41 gy: -01.72
+00000900 servo 06392 track 00.00 bank: -04.42 gy: -01.70
+00000904 servo 06382 track 00.00 bank: -04.44 gy: -01.69
+00000908 servo 06376 track 00.00 bank: -04.46 gy: -01.68
+00000912 servo 06369 track 00.00 bank: -04.47 gy: -01.66
+00000916 servo 06366 track 00.00 bank: -04.49 gy: -01.65
+00000920 servo 06363 track 00.00 bank: -04.51 gy: -01.64
+00000924 servo 06360 track 00.00 bank: -04.52 gy: -01.62
+00000928 servo 06356 track 00.00 bank: -04.54 gy: -01.61
+00000932 servo 06353 track 00.00 bank: -04.56 gy: -01.60
+00000936 servo 06350 track 00.00 bank: -04.57 gy: -01.59
+00000940 servo 06350 track 00.00 bank: -04.59 gy: -01.57
+00000944 servo 06346 track 00.00 bank: -04.60 gy: -01.56
+00000948 servo 06346 track 00.00 bank: -04.62 gy: -01.55
+00000952 servo 06343 track 00.00 bank: -04.63 gy: -01.53
+00000957 servo 06343 track 00.00 bank: -04.65 gy: -01.52
+00000961 servo 06343 track 00.00 bank: -04.66 gy: -01.51
+00000965 servo 06343 track 00.00 bank: -04.68 gy: -01.50
+00000969 servo 06343 track 00.00 bank: -04.69 gy: -01.48
+00000973 servo 06346 track 00.00 bank: -04.71 gy: -01.47
+00000977 servo 06346 track 00.00 bank: -04.72 gy: -01.46
+00000981 servo 06350 track 00.00 bank: -04.74 gy: -01.44
+00000985 servo 06353 track 00.00 bank: -04.75 gy: -01.43
+00000989 servo 06353 track 00.00 bank: -04.77 gy: -01.42
+00000993 servo 06356 track 00.00 bank: -04.78 gy: -01.40
+00000997 servo 06360 track 00.00 bank: -04.79 gy: -01.39
+00001001 servo 06366 track 00.00 bank: -04.81 gy: -01.38
+roll -03.4 servo 2101 buttons 1111 Loop time min/avg/max 13/4021/4043
+00001005 servo 06884 track 352.79 bank: -04.82 gy: -01.37
+00001009 servo 07300 track 352.79 bank: -04.84 gy: -01.35
+  DTK:270.0 TRK:000.0                  
+  DTK:270.0 TRK:352.8                  
+  GDL:352.8 VTG:000.0                  
+00001013 servo 07300 track 352.79 bank: -04.85 gy: -01.34
+00001017 servo 07300 track 352.79 bank: -04.86 gy: -01.32
+00001021 servo 07300 track 352.79 bank: -04.87 gy: -01.31
+00001025 servo 07300 track 352.79 bank: -04.89 gy: -01.29
+00001029 servo 07300 track 352.79 bank: -04.90 gy: -01.28
+00001033 servo 07300 track 352.79 bank: -04.91 gy: -01.26
+00001037 servo 07300 track 352.79 bank: -04.93 gy: -01.25
+00001041 servo 07300 track 352.79 bank: -04.94 gy: -01.23
+00001045 servo 07300 track 352.79 bank: -04.95 gy: -01.22
+00001049 servo 07300 track 352.79 bank: -04.96 gy: -01.20
+00001053 servo 07300 track 352.79 bank: -04.97 gy: -01.19
+00001057 servo 07300 track 352.79 bank: -04.99 gy: -01.17
+00001062 servo 07300 track 352.79 bank: -05.00 gy: -01.16
+00001066 servo 07300 track 352.79 bank: -05.01 gy: -01.14
+00001070 servo 07300 track 352.79 bank: -05.02 gy: -01.13
+00001074 servo 07300 track 352.79 bank: -05.03 gy: -01.11
+00001078 servo 07300 track 352.79 bank: -05.04 gy: -01.10
+00001082 servo 07300 track 352.79 bank: -05.05 gy: -01.08
+00001086 servo 07300 track 352.79 bank: -05.06 gy: -01.07
+00001090 servo 07300 track 352.79 bank: -05.07 gy: -01.05
+00001094 servo 07300 track 352.79 bank: -05.08 gy: -01.04
+00001098 servo 07300 track 352.79 bank: -05.09 gy: -01.02
+00001102 servo 07300 track 352.79 bank: -05.10 gy: -01.01
+00001106 servo 07300 track 352.79 bank: -05.11 gy: -00.99
+00001110 servo 07300 track 352.79 bank: -05.12 gy: -00.98
+00001114 servo 07300 track 352.79 bank: -05.13 gy: -00.96
+00001118 servo 07300 track 352.79 bank: -05.14 gy: -00.95
+00001122 servo 07300 track 352.79 bank: -05.15 gy: -00.93
+00001126 servo 07300 track 352.79 bank: -05.16 gy: -00.92
+00001130 servo 07300 track 352.79 bank: -05.17 gy: -00.90
+00001134 servo 07300 track 352.79 bank: -05.18 gy: -00.89
+00001138 servo 07300 track 352.79 bank: -05.19 gy: -00.87
+00001142 servo 07300 track 352.79 bank: -05.20 gy: -00.86
+00001146 servo 07300 track 352.79 bank: -05.21 gy: -00.85
+00001150 servo 07300 track 352.79 bank: -05.21 gy: -00.83
+00001154 servo 07300 track 352.79 bank: -05.22 gy: -00.82
+00001158 servo 07300 track 352.79 bank: -05.23 gy: -00.80
+00001163 servo 07300 track 352.79 bank: -05.24 gy: -00.79
+00001167 servo 07300 track 352.79 bank: -05.25 gy: -00.77
+00001171 servo 07300 track 352.79 bank: -05.25 gy: -00.76
+00001175 servo 07300 track 352.79 bank: -05.26 gy: -00.74
+00001179 servo 07300 track 352.79 bank: -05.27 gy: -00.73
+00001183 servo 07300 track 352.79 bank: -05.28 gy: -00.71
+00001187 servo 07300 track 352.79 bank: -05.28 gy: -00.70
+00001191 servo 07300 track 352.79 bank: -05.29 gy: -00.68
+00001195 servo 07300 track 352.79 bank: -05.30 gy: -00.67
+00001199 servo 07300 track 352.79 bank: -05.30 gy: -00.65
+00001203 servo 07300 track 352.79 bank: -05.31 gy: -00.64
+00001207 servo 07300 track 352.79 bank: -05.31 gy: -00.62
+00001211 servo 07300 track 352.79 bank: -05.32 gy: -00.61
+  RMC:000.0ROLL:-00.2                  
+00001215 servo 07300 track 352.79 bank: -05.33 gy: -00.59
+00001219 servo 07300 track 352.79 bank: -05.33 gy: -00.58
+00001223 servo 07300 track 352.79 bank: -05.34 gy: -00.56
+00001227 servo 07300 track 352.79 bank: -05.34 gy: -00.55
+00001231 servo 07300 track 352.79 bank: -05.35 gy: -00.53
+00001235 servo 07300 track 352.79 bank: -05.35 gy: -00.52
+00001239 servo 07300 track 352.79 bank: -05.36 gy: -00.50
+00001243 servo 07300 track 352.79 bank: -05.36 gy: -00.49
+00001247 servo 07300 track 352.79 bank: -05.37 gy: -00.47
+00001251 servo 07300 track 352.79 bank: -05.37 gy: -00.46
+00001255 servo 07300 track 352.79 bank: -05.38 gy: -00.44
+00001259 servo 07300 track 352.79 bank: -05.38 gy: -00.43
+00001263 servo 07300 track 352.79 bank: -05.39 gy: -00.41
+00001268 servo 07300 track 352.79 bank: -05.39 gy: -00.40
+00001272 servo 07300 track 352.79 bank: -05.39 gy: -00.38
+00001276 servo 07300 track 352.79 bank: -05.40 gy: -00.37
+00001280 servo 07300 track 352.79 bank: -05.40 gy: -00.36
+00001284 servo 07300 track 352.79 bank: -05.40 gy: -00.34
+00001288 servo 07300 track 352.79 bank: -05.41 gy: -00.33
+00001292 servo 07300 track 352.79 bank: -05.41 gy: -00.31
+00001296 servo 07300 track 352.79 bank: -05.41 gy: -00.30
+00001300 servo 07300 track 352.79 bank: -05.42 gy: -00.28
+00001304 servo 07300 track 352.79 bank: -05.42 gy: -00.27
+00001308 servo 07300 track 352.79 bank: -05.42 gy: -00.25
+00001312 servo 07300 track 352.79 bank: -05.42 gy: -00.24
+00001316 servo 07300 track 352.79 bank: -05.43 gy: -00.22
+00001320 servo 07300 track 352.79 bank: -05.43 gy: -00.21
+00001324 servo 07300 track 352.79 bank: -05.43 gy: -00.19
+00001328 servo 07300 track 352.79 bank: -05.43 gy: -00.18
+00001332 servo 07300 track 352.79 bank: -05.43 gy: -00.16
+00001336 servo 07300 track 352.79 bank: -05.44 gy: -00.15
+00001340 servo 07300 track 352.79 bank: -05.44 gy: -00.13
+00001344 servo 07300 track 352.79 bank: -05.44 gy: -00.12
+00001348 servo 07300 track 352.79 bank: -05.44 gy: -00.10
+00001352 servo 07300 track 352.79 bank: -05.44 gy: -00.09
+00001356 servo 07300 track 352.79 bank: -05.44 gy: -00.07
+00001360 servo 07300 track 352.79 bank: -05.44 gy: -00.06
+00001364 servo 07300 track 352.79 bank: -05.44 gy: -00.04
+00001368 servo 07300 track 352.79 bank: -05.44 gy: -00.03
+00001373 servo 07293 track 352.79 bank: -05.44 gy: -00.01
+00001377 servo 07280 track 352.79 bank: -05.44 gy: +00.00
+00001381 servo 07274 track 352.79 bank: -05.44 gy: +00.02
+00001385 servo 07274 track 352.79 bank: -05.44 gy: +00.03
+00001389 servo 07284 track 352.79 bank: -05.44 gy: +00.05
+00001393 servo 07300 track 352.79 bank: -05.44 gy: +00.06
+00001397 servo 07300 track 352.79 bank: -05.44 gy: +00.08
+00001401 servo 07300 track 352.79 bank: -05.44 gy: +00.09
+00001405 servo 07231 track 352.79 bank: -05.44 gy: +00.10
+00001409 servo 07120 track 352.79 bank: -05.44 gy: +00.12
+00001413 servo 07025 track 352.79 bank: -05.44 gy: +00.13
+  RMC:000.0ROLL:+06.0                  
+00001417 servo 06949 track 352.79 bank: -05.43 gy: +00.15
+00001421 servo 06890 track 352.79 bank: -05.43 gy: +00.16
+00001425 servo 06756 track 352.79 bank: -05.43 gy: +00.18
+00001429 servo 06628 track 352.79 bank: -05.43 gy: +00.19
+00001433 servo 06514 track 352.79 bank: -05.43 gy: +00.20
+00001437 servo 06405 track 352.79 bank: -05.42 gy: +00.22
+00001441 servo 06307 track 352.79 bank: -05.42 gy: +00.23
+00001445 servo 06219 track 352.79 bank: -05.42 gy: +00.24
+00001449 servo 06140 track 352.79 bank: -05.42 gy: +00.25
+00001453 servo 06068 track 352.79 bank: -05.41 gy: +00.27
+00001457 servo 06006 track 352.79 bank: -05.41 gy: +00.28
+00001461 servo 05953 track 352.79 bank: -05.41 gy: +00.29
+00001465 servo 05911 track 352.79 bank: -05.41 gy: +00.30
+00001469 servo 05878 track 352.79 bank: -05.40 gy: +00.31
+00001474 servo 05852 track 352.79 bank: -05.40 gy: +00.33
+00001478 servo 05835 track 352.79 bank: -05.40 gy: +00.34
+00001482 servo 05829 track 352.79 bank: -05.39 gy: +00.35
+00001486 servo 05832 track 352.79 bank: -05.39 gy: +00.36
+00001490 servo 05842 track 352.79 bank: -05.39 gy: +00.37
+00001494 servo 05865 track 352.79 bank: -05.38 gy: +00.39
+00001498 servo 05894 track 352.79 bank: -05.38 gy: +00.40
+00001502 servo 05934 track 352.79 bank: -05.37 gy: +00.41
+00001506 servo 05806 track 352.79 bank: -05.37 gy: +00.42
+00001510 servo 05698 track 352.79 bank: -05.36 gy: +00.43
+00001514 servo 05609 track 352.79 bank: -05.36 gy: +00.44
+00001518 servo 05537 track 352.79 bank: -05.36 gy: +00.46
+00001522 servo 05485 track 352.79 bank: -05.35 gy: +00.47
+00001526 servo 05347 track 352.79 bank: -05.35 gy: +00.48
+00001530 servo 05219 track 352.79 bank: -05.34 gy: +00.49
+00001534 servo 05098 track 352.79 bank: -05.34 gy: +00.50
+00001538 servo 04990 track 352.79 bank: -05.33 gy: +00.51
+00001542 servo 04888 track 352.79 bank: -05.33 gy: +00.52
+00001546 servo 04797 track 352.79 bank: -05.32 gy: +00.53
+00001550 servo 04715 track 352.79 bank: -05.32 gy: +00.54
+00001554 servo 04643 track 352.79 bank: -05.31 gy: +00.55
+00001558 servo 04580 track 352.79 bank: -05.30 gy: +00.56
+00001562 servo 04525 track 352.79 bank: -05.30 gy: +00.57
+00001566 servo 04482 track 352.79 bank: -05.29 gy: +00.58
+00001570 servo 04446 track 352.79 bank: -05.29 gy: +00.58
+00001574 servo 04420 track 352.79 bank: -05.28 gy: +00.59
+00001579 servo 04403 track 352.79 bank: -05.28 gy: +00.60
+00001583 servo 04397 track 352.79 bank: -05.27 gy: +00.61
+00001587 servo 04400 track 352.79 bank: -05.26 gy: +00.62
+00001591 servo 04410 track 352.79 bank: -05.26 gy: +00.63
+00001595 servo 04433 track 352.79 bank: -05.25 gy: +00.64
+00001599 servo 04462 track 352.79 bank: -05.24 gy: +00.65
+00001603 servo 04502 track 352.79 bank: -05.24 gy: +00.66
+00001607 servo 04384 track 352.79 bank: -05.23 gy: +00.67
+00001611 servo 04282 track 352.79 bank: -05.22 gy: +00.67
+00001615 servo 04200 track 352.79 bank: -05.22 gy: +00.68
+  RMC:000.0ROLL:+12.8                  
+00001619 servo 04135 track 352.79 bank: -05.21 gy: +00.68
+00001623 servo 04089 track 352.79 bank: -05.20 gy: +00.67
+00001627 servo 03954 track 352.79 bank: -05.20 gy: +00.67
+00001631 servo 03830 track 352.79 bank: -05.19 gy: +00.66
+00001635 servo 03715 track 352.79 bank: -05.18 gy: +00.66
+00001639 servo 03607 track 352.79 bank: -05.18 gy: +00.65
+00001643 servo 03512 track 352.79 bank: -05.17 gy: +00.65
+00001647 servo 03424 track 352.79 bank: -05.16 gy: +00.64
+00001651 servo 03342 track 352.79 bank: -05.16 gy: +00.63
+00001655 servo 03273 track 352.79 bank: -05.15 gy: +00.63
+00001659 servo 03211 track 352.79 bank: -05.15 gy: +00.62
+00001663 servo 03158 track 352.79 bank: -05.14 gy: +00.62
+00001667 servo 03116 track 352.79 bank: -05.13 gy: +00.61
+00001671 servo 03083 track 352.79 bank: -05.13 gy: +00.60
+00001675 servo 03057 track 352.79 bank: -05.12 gy: +00.60
+00001680 servo 03040 track 352.79 bank: -05.12 gy: +00.59
+00001684 servo 03034 track 352.79 bank: -05.11 gy: +00.58
+00001688 servo 03037 track 352.79 bank: -05.10 gy: +00.58
+00001692 servo 03050 track 352.79 bank: -05.10 gy: +00.57
+00001696 servo 03070 track 352.79 bank: -05.09 gy: +00.56
+00001700 servo 03099 track 352.79 bank: -05.09 gy: +00.55
+00001704 servo 02985 track 352.79 bank: -05.08 gy: +00.55
+00001708 servo 02883 track 352.79 bank: -05.08 gy: +00.54
+00001712 servo 02804 track 352.79 bank: -05.07 gy: +00.53
+00001716 servo 02739 track 352.79 bank: -05.07 gy: +00.53
+00001720 servo 02693 track 352.79 bank: -05.06 gy: +00.52
+00001724 servo 02663 track 352.79 bank: -05.05 gy: +00.51
+00001728 servo 02549 track 352.79 bank: -05.05 gy: +00.50
+00001732 servo 02444 track 352.79 bank: -05.04 gy: +00.50
+00001736 servo 02346 track 352.79 bank: -05.04 gy: +00.49
+00001740 servo 02257 track 352.79 bank: -05.04 gy: +00.48
+00001744 servo 02175 track 352.79 bank: -05.03 gy: +00.47
+00001748 servo 02103 track 352.79 bank: -05.03 gy: +00.46
+00001752 servo 02038 track 352.79 bank: -05.02 gy: +00.45
+00001756 servo 01982 track 352.79 bank: -05.02 gy: +00.44
+00001760 servo 01933 track 352.79 bank: -05.01 gy: +00.44
+00001764 servo 01893 track 352.79 bank: -05.01 gy: +00.43
+00001768 servo 01864 track 352.79 bank: -05.00 gy: +00.42
+00001772 servo 01841 track 352.79 bank: -05.00 gy: +00.41
+00001776 servo 01828 track 352.79 bank: -05.00 gy: +00.40
+00001780 servo 01821 track 352.79 bank: -04.99 gy: +00.39
+00001785 servo 01821 track 352.79 bank: -04.99 gy: +00.38
+00001789 servo 01834 track 352.79 bank: -04.98 gy: +00.37
+00001793 servo 01851 track 352.79 bank: -04.98 gy: +00.36
+00001797 servo 01880 track 352.79 bank: -04.98 gy: +00.35
+00001801 servo 01916 track 352.79 bank: -04.97 gy: +00.34
+00001805 servo 01818 track 352.79 bank: -04.97 gy: +00.33
+00001809 servo 01739 track 352.79 bank: -04.97 gy: +00.33
+00001813 servo 01674 track 352.79 bank: -04.96 gy: +00.31
+00001817 servo 01625 track 352.79 bank: -04.96 gy: +00.30
+  RMC:000.0ROLL:+18.7                  
+00001821 servo 01592 track 352.79 bank: -04.96 gy: +00.29
+00001825 servo 01550 track 352.79 bank: -04.96 gy: +00.28
+00001829 servo 01550 track 352.79 bank: -04.95 gy: +00.27
+00001833 servo 01550 track 352.79 bank: -04.95 gy: +00.26
+00001837 servo 01550 track 352.79 bank: -04.95 gy: +00.24
+00001841 servo 01550 track 352.79 bank: -04.95 gy: +00.23
+00001845 servo 01550 track 352.79 bank: -04.94 gy: +00.22
+00001849 servo 01550 track 352.79 bank: -04.94 gy: +00.21
+00001853 servo 01550 track 352.79 bank: -04.94 gy: +00.20
+00001857 servo 01550 track 352.79 bank: -04.94 gy: +00.19
+00001861 servo 01550 track 352.79 bank: -04.94 gy: +00.17
+00001865 servo 01550 track 352.79 bank: -04.93 gy: +00.16
+00001869 servo 01550 track 352.79 bank: -04.93 gy: +00.15
+00001873 servo 01550 track 352.79 bank: -04.93 gy: +00.14
+00001877 servo 01550 track 352.79 bank: -04.93 gy: +00.13
+00001881 servo 01550 track 352.79 bank: -04.93 gy: +00.12
+00001886 servo 01550 track 352.79 bank: -04.93 gy: +00.10
+00001890 servo 01550 track 352.79 bank: -04.93 gy: +00.09
+00001894 servo 01550 track 352.79 bank: -04.93 gy: +00.08
+00001898 servo 01550 track 352.79 bank: -04.93 gy: +00.07
+00001902 servo 01550 track 352.79 bank: -04.92 gy: +00.06
+00001906 servo 01550 track 352.79 bank: -04.92 gy: +00.05
+00001910 servo 01550 track 352.79 bank: -04.92 gy: +00.03
+00001914 servo 01550 track 352.79 bank: -04.92 gy: +00.02
+00001918 servo 01550 track 352.79 bank: -04.92 gy: +00.01
+00001922 servo 01550 track 352.79 bank: -04.92 gy: -00.00
+00001926 servo 01550 track 352.79 bank: -04.92 gy: -00.01
+00001930 servo 01550 track 352.79 bank: -04.92 gy: -00.02
+00001934 servo 01550 track 352.79 bank: -04.92 gy: -00.04
+00001938 servo 01550 track 352.79 bank: -04.92 gy: -00.05
+00001942 servo 01550 track 352.79 bank: -04.93 gy: -00.06
+00001946 servo 01550 track 352.79 bank: -04.93 gy: -00.07
+00001950 servo 01550 track 352.79 bank: -04.93 gy: -00.08
+00001954 servo 01550 track 352.79 bank: -04.93 gy: -00.09
+00001958 servo 01550 track 352.79 bank: -04.93 gy: -00.11
+00001962 servo 01550 track 352.79 bank: -04.93 gy: -00.12
+00001966 servo 01550 track 352.79 bank: -04.93 gy: -00.13
+00001970 servo 01550 track 352.79 bank: -04.93 gy: -00.14
+00001974 servo 01550 track 352.79 bank: -04.93 gy: -00.15
+00001978 servo 01550 track 352.79 bank: -04.94 gy: -00.16
+00001982 servo 01550 track 352.79 bank: -04.94 gy: -00.18
+00001986 servo 01550 track 352.79 bank: -04.94 gy: -00.19
+00001991 servo 01550 track 352.79 bank: -04.94 gy: -00.20
+00001995 servo 01550 track 352.79 bank: -04.94 gy: -00.21
+00001999 servo 01550 track 352.79 bank: -04.95 gy: -00.22
+00002003 servo 01550 track 352.79 bank: -04.95 gy: -00.24
+roll +23.3 servo -074 buttons 1111 Loop time min/avg/max 13/4030/4043
+00002007 servo 01550 track 345.37 bank: -04.95 gy: -00.25
+00002011 servo 01550 track 345.37 bank: -04.95 gy: -00.26
+00002015 servo 01550 track 345.37 bank: -04.96 gy: -00.27
+00002019 servo 01550 track 345.37 bank: -04.96 gy: -00.28
+  DTK:270.0 TRK:345.4                  
+  GDL:345.4 VTG:000.0                  
+  RMC:000.0ROLL:+23.4                  
+00002023 servo 01550 track 345.37 bank: -04.96 gy: -00.29
+00002027 servo 01550 track 345.37 bank: -04.97 gy: -00.31
+00002031 servo 01550 track 345.37 bank: -04.97 gy: -00.32
+00002035 servo 01550 track 345.37 bank: -04.97 gy: -00.33
+00002039 servo 01550 track 345.37 bank: -04.97 gy: -00.34
+00002043 servo 01550 track 345.37 bank: -04.98 gy: -00.35
+00002047 servo 01550 track 345.37 bank: -04.98 gy: -00.36
+00002051 servo 01550 track 345.37 bank: -04.99 gy: -00.38
+00002055 servo 01550 track 345.37 bank: -04.99 gy: -00.39
+00002059 servo 01550 track 345.37 bank: -04.99 gy: -00.40
+00002063 servo 01550 track 345.37 bank: -05.00 gy: -00.41
+00002067 servo 01550 track 345.37 bank: -05.00 gy: -00.42
+00002071 servo 01550 track 345.37 bank: -05.01 gy: -00.43
+00002075 servo 01550 track 345.37 bank: -05.01 gy: -00.45
+00002079 servo 01550 track 345.37 bank: -05.02 gy: -00.46
+00002083 servo 01550 track 345.37 bank: -05.02 gy: -00.47
+00002087 servo 01550 track 345.37 bank: -05.02 gy: -00.48
+00002091 servo 01550 track 345.37 bank: -05.03 gy: -00.49
+00002096 servo 01550 track 345.37 bank: -05.03 gy: -00.50
+00002100 servo 01550 track 345.37 bank: -05.04 gy: -00.52
+00002104 servo 01550 track 345.37 bank: -05.05 gy: -00.53
+00002108 servo 01550 track 345.37 bank: -05.05 gy: -00.54
+00002112 servo 01550 track 345.37 bank: -05.06 gy: -00.55
+00002116 servo 01550 track 345.37 bank: -05.06 gy: -00.56
+00002120 servo 01550 track 345.37 bank: -05.07 gy: -00.57
+00002124 servo 01550 track 345.37 bank: -05.07 gy: -00.59
+00002128 servo 01550 track 345.37 bank: -05.08 gy: -00.60
+00002132 servo 01550 track 345.37 bank: -05.09 gy: -00.61
+00002136 servo 01550 track 345.37 bank: -05.09 gy: -00.62
+00002140 servo 01550 track 345.37 bank: -05.10 gy: -00.63
+00002144 servo 01550 track 345.37 bank: -05.10 gy: -00.64
+00002148 servo 01550 track 345.37 bank: -05.11 gy: -00.66
+00002152 servo 01550 track 345.37 bank: -05.12 gy: -00.67
+00002156 servo 01550 track 345.37 bank: -05.12 gy: -00.68
+00002160 servo 01550 track 345.37 bank: -05.13 gy: -00.69
+00002164 servo 01550 track 345.37 bank: -05.14 gy: -00.70
+00002168 servo 01550 track 345.37 bank: -05.15 gy: -00.71
+00002172 servo 01550 track 345.37 bank: -05.15 gy: -00.73
+00002176 servo 01550 track 345.37 bank: -05.16 gy: -00.74
+00002180 servo 01550 track 345.37 bank: -05.17 gy: -00.75
+00002184 servo 01550 track 345.37 bank: -05.18 gy: -00.76
+00002188 servo 01550 track 345.37 bank: -05.18 gy: -00.77
+00002192 servo 01550 track 345.37 bank: -05.19 gy: -00.78
+00002197 servo 01550 track 345.37 bank: -05.20 gy: -00.80
+00002201 servo 01550 track 345.37 bank: -05.21 gy: -00.81
+00002205 servo 01550 track 345.37 bank: -05.22 gy: -00.82
+00002209 servo 01550 track 345.37 bank: -05.22 gy: -00.83
+00002213 servo 01550 track 345.37 bank: -05.23 gy: -00.84
+00002217 servo 01550 track 345.37 bank: -05.24 gy: -00.85
+00002221 servo 01550 track 345.37 bank: -05.25 gy: -00.87
+  RMC:000.0ROLL:+27.1                  
+00002225 servo 01550 track 345.37 bank: -05.26 gy: -00.88
+00002229 servo 01550 track 345.37 bank: -05.27 gy: -00.89
+00002233 servo 01550 track 345.37 bank: -05.28 gy: -00.90
+00002237 servo 01550 track 345.37 bank: -05.28 gy: -00.91
+00002241 servo 01550 track 345.37 bank: -05.29 gy: -00.92
+00002245 servo 01550 track 345.37 bank: -05.30 gy: -00.93
+00002249 servo 01550 track 345.37 bank: -05.31 gy: -00.94
+00002253 servo 01550 track 345.37 bank: -05.32 gy: -00.95
+00002257 servo 01550 track 345.37 bank: -05.33 gy: -00.96
+00002261 servo 01550 track 345.37 bank: -05.34 gy: -00.97
+00002265 servo 01550 track 345.37 bank: -05.35 gy: -00.98
+00002269 servo 01550 track 345.37 bank: -05.36 gy: -00.98
+00002273 servo 01550 track 345.37 bank: -05.37 gy: -00.99
+00002277 servo 01550 track 345.37 bank: -05.38 gy: -01.00
+00002281 servo 01550 track 345.37 bank: -05.39 gy: -01.01
+00002285 servo 01550 track 345.37 bank: -05.40 gy: -01.02
+00002289 servo 01550 track 345.37 bank: -05.41 gy: -01.03
+00002293 servo 01550 track 345.37 bank: -05.42 gy: -01.04
+00002297 servo 01550 track 345.37 bank: -05.43 gy: -01.05
+00002302 servo 01550 track 345.37 bank: -05.44 gy: -01.05
+00002306 servo 01550 track 345.37 bank: -05.45 gy: -01.06
+00002310 servo 01550 track 345.37 bank: -05.46 gy: -01.07
+00002314 servo 01550 track 345.37 bank: -05.48 gy: -01.08
+00002318 servo 01550 track 345.37 bank: -05.49 gy: -01.09
+00002322 servo 01550 track 345.37 bank: -05.50 gy: -01.10
+00002326 servo 01550 track 345.37 bank: -05.51 gy: -01.11
+00002330 servo 01550 track 345.37 bank: -05.52 gy: -01.11
+00002334 servo 01550 track 345.37 bank: -05.53 gy: -01.12
+00002338 servo 01550 track 345.37 bank: -05.54 gy: -01.13
+00002342 servo 01550 track 345.37 bank: -05.55 gy: -01.14
+00002346 servo 01550 track 345.37 bank: -05.56 gy: -01.14
+00002350 servo 01550 track 345.37 bank: -05.58 gy: -01.15
+00002354 servo 01550 track 345.37 bank: -05.59 gy: -01.16
+00002358 servo 01550 track 345.37 bank: -05.60 gy: -01.16
+00002362 servo 01550 track 345.37 bank: -05.61 gy: -01.17
+00002366 servo 01550 track 345.37 bank: -05.62 gy: -01.18
+00002370 servo 01550 track 345.37 bank: -05.63 gy: -01.18
+00002374 servo 01550 track 345.37 bank: -05.65 gy: -01.19
+00002378 servo 01550 track 345.37 bank: -05.66 gy: -01.19
+00002382 servo 01550 track 345.37 bank: -05.67 gy: -01.20
+00002386 servo 01550 track 345.37 bank: -05.68 gy: -01.20
+00002390 servo 01550 track 345.37 bank: -05.69 gy: -01.21
+00002394 servo 01550 track 345.37 bank: -05.71 gy: -01.22
+00002398 servo 01550 track 345.37 bank: -05.72 gy: -01.22
+00002403 servo 01550 track 345.37 bank: -05.73 gy: -01.23
+00002407 servo 01550 track 345.37 bank: -05.74 gy: -01.23
+00002411 servo 01550 track 345.37 bank: -05.76 gy: -01.24
+00002415 servo 01550 track 345.37 bank: -05.77 gy: -01.25
+00002419 servo 01550 track 345.37 bank: -05.78 gy: -01.25
+00002423 servo 01550 track 345.37 bank: -05.79 gy: -01.26
+  RMC:000.0ROLL:+30.5                  
+00002427 servo 01550 track 345.37 bank: -05.81 gy: -01.26
+00002431 servo 01550 track 345.37 bank: -05.82 gy: -01.27
+00002435 servo 01550 track 345.37 bank: -05.83 gy: -01.27
+00002439 servo 01550 track 345.37 bank: -05.84 gy: -01.28
+00002443 servo 01550 track 345.37 bank: -05.86 gy: -01.28
+00002447 servo 01550 track 345.37 bank: -05.87 gy: -01.29
+00002451 servo 01550 track 345.37 bank: -05.88 gy: -01.29
+00002455 servo 01550 track 345.37 bank: -05.90 gy: -01.29
+00002459 servo 01550 track 345.37 bank: -05.91 gy: -01.30
+00002463 servo 01550 track 345.37 bank: -05.92 gy: -01.30
+00002467 servo 01550 track 345.37 bank: -05.93 gy: -01.30
+00002471 servo 01550 track 345.37 bank: -05.95 gy: -01.31
+00002475 servo 01550 track 345.37 bank: -05.96 gy: -01.31
+00002479 servo 01550 track 345.37 bank: -05.97 gy: -01.31
+00002483 servo 01550 track 345.37 bank: -05.99 gy: -01.32
+00002487 servo 01550 track 345.37 bank: -06.00 gy: -01.32
+00002491 servo 01550 track 345.37 bank: -06.01 gy: -01.32
+00002495 servo 01550 track 345.37 bank: -06.03 gy: -01.33
+00002499 servo 01550 track 345.37 bank: -06.04 gy: -01.33
+00002503 servo 01550 track 345.37 bank: -06.05 gy: -01.33
+00002508 servo 01550 track 345.37 bank: -06.07 gy: -01.33
+00002512 servo 01550 track 345.37 bank: -06.08 gy: -01.34
+00002516 servo 01550 track 345.37 bank: -06.09 gy: -01.34
+00002520 servo 01550 track 345.37 bank: -06.11 gy: -01.34
+00002524 servo 01550 track 345.37 bank: -06.12 gy: -01.35
+00002528 servo 01550 track 345.37 bank: -06.13 gy: -01.35
+00002532 servo 01550 track 345.37 bank: -06.15 gy: -01.35
+00002536 servo 01550 track 345.37 bank: -06.16 gy: -01.35
+00002540 servo 01550 track 345.37 bank: -06.17 gy: -01.35
+00002544 servo 01550 track 345.37 bank: -06.19 gy: -01.36
+00002548 servo 01550 track 345.37 bank: -06.20 gy: -01.36
+00002552 servo 01550 track 345.37 bank: -06.21 gy: -01.36
+00002556 servo 01550 track 345.37 bank: -06.23 gy: -01.36
+00002560 servo 01550 track 345.37 bank: -06.24 gy: -01.36
+00002564 servo 01550 track 345.37 bank: -06.26 gy: -01.36
+00002568 servo 01550 track 345.37 bank: -06.27 gy: -01.36
+00002572 servo 01550 track 345.37 bank: -06.28 gy: -01.36
+00002576 servo 01550 track 345.37 bank: -06.30 gy: -01.36
+00002580 servo 01550 track 345.37 bank: -06.31 gy: -01.36
+00002584 servo 01550 track 345.37 bank: -06.32 gy: -01.36
+00002588 servo 01550 track 345.37 bank: -06.34 gy: -01.36
+00002592 servo 01550 track 345.37 bank: -06.35 gy: -01.37
+00002596 servo 01550 track 345.37 bank: -06.36 gy: -01.37
+00002600 servo 01550 track 345.37 bank: -06.38 gy: -01.37
+00002604 servo 01550 track 345.37 bank: -06.39 gy: -01.37
+00002608 servo 01550 track 345.37 bank: -06.41 gy: -01.37
+00002613 servo 01550 track 345.37 bank: -06.42 gy: -01.37
+00002617 servo 01550 track 345.37 bank: -06.43 gy: -01.37
+00002621 servo 01550 track 345.37 bank: -06.45 gy: -01.37
+00002625 servo 01550 track 345.37 bank: -06.46 gy: -01.37
+  RMC:000.0ROLL:+33.6                  
+00002629 servo 01550 track 345.37 bank: -06.47 gy: -01.37
+00002633 servo 01550 track 345.37 bank: -06.49 gy: -01.37
+00002637 servo 01550 track 345.37 bank: -06.50 gy: -01.37
+00002641 servo 01550 track 345.37 bank: -06.52 gy: -01.37
+00002645 servo 01550 track 345.37 bank: -06.53 gy: -01.37
+00002649 servo 01550 track 345.37 bank: -06.54 gy: -01.37
+00002653 servo 01550 track 345.37 bank: -06.56 gy: -01.37
+00002657 servo 01550 track 345.37 bank: -06.57 gy: -01.37
+00002661 servo 01550 track 345.37 bank: -06.58 gy: -01.37
+00002665 servo 01550 track 345.37 bank: -06.60 gy: -01.37
+00002669 servo 01550 track 345.37 bank: -06.61 gy: -01.37
+00002673 servo 01550 track 345.37 bank: -06.62 gy: -01.37
+00002677 servo 01550 track 345.37 bank: -06.64 gy: -01.37
+00002681 servo 01550 track 345.37 bank: -06.65 gy: -01.37
+00002685 servo 01550 track 345.37 bank: -06.67 gy: -01.37
+00002689 servo 01550 track 345.37 bank: -06.68 gy: -01.37
+00002693 servo 01550 track 345.37 bank: -06.69 gy: -01.37
+00002697 servo 01550 track 345.37 bank: -06.71 gy: -01.37
+00002701 servo 01550 track 345.37 bank: -06.72 gy: -01.37
+00002705 servo 01550 track 345.37 bank: -06.73 gy: -01.37
+00002709 servo 01550 track 345.37 bank: -06.75 gy: -01.37
+00002714 servo 01550 track 345.37 bank: -06.76 gy: -01.37
+00002718 servo 01550 track 345.37 bank: -06.78 gy: -01.37
+00002722 servo 01550 track 345.37 bank: -06.79 gy: -01.37
+00002726 servo 01550 track 345.37 bank: -06.80 gy: -01.37
+00002730 servo 01550 track 345.37 bank: -06.82 gy: -01.37
+00002734 servo 01550 track 345.37 bank: -06.83 gy: -01.37
+00002738 servo 01550 track 345.37 bank: -06.84 gy: -01.37
+00002742 servo 01550 track 345.37 bank: -06.86 gy: -01.37
+00002746 servo 01550 track 345.37 bank: -06.87 gy: -01.37
+00002750 servo 01550 track 345.37 bank: -06.89 gy: -01.37
+00002754 servo 01550 track 345.37 bank: -06.90 gy: -01.37
+00002758 servo 01550 track 345.37 bank: -06.91 gy: -01.37
+00002762 servo 01550 track 345.37 bank: -06.93 gy: -01.37
+00002766 servo 01550 track 345.37 bank: -06.94 gy: -01.37
+00002770 servo 01550 track 345.37 bank: -06.95 gy: -01.37
+00002774 servo 01550 track 345.37 bank: -06.97 gy: -01.37
+00002778 servo 01550 track 345.37 bank: -06.98 gy: -01.37
+00002782 servo 01550 track 345.37 bank: -06.99 gy: -01.37
+00002786 servo 01550 track 345.37 bank: -07.01 gy: -01.37
+00002790 servo 01550 track 345.37 bank: -07.02 gy: -01.37
+00002794 servo 01550 track 345.37 bank: -07.04 gy: -01.37
+00002798 servo 01550 track 345.37 bank: -07.05 gy: -01.37
+00002802 servo 01550 track 345.37 bank: -07.06 gy: -01.37
+00002806 servo 01550 track 345.37 bank: -07.08 gy: -01.37
+00002810 servo 01550 track 345.37 bank: -07.09 gy: -01.37
+00002814 servo 01550 track 345.37 bank: -07.10 gy: -01.37
+00002819 servo 01550 track 345.37 bank: -07.12 gy: -01.37
+00002823 servo 01550 track 345.37 bank: -07.13 gy: -01.37
+00002827 servo 01550 track 345.37 bank: -07.15 gy: -01.37
+  RMC:000.0ROLL:+36.2                  
+00002831 servo 01550 track 345.37 bank: -07.16 gy: -01.37
+00002835 servo 01550 track 345.37 bank: -07.17 gy: -01.37
+00002839 servo 01550 track 345.37 bank: -07.19 gy: -01.37
+00002843 servo 01550 track 345.37 bank: -07.20 gy: -01.37
+00002847 servo 01550 track 345.37 bank: -07.21 gy: -01.37
+00002851 servo 01550 track 345.37 bank: -07.23 gy: -01.37
+00002855 servo 01550 track 345.37 bank: -07.24 gy: -01.37
+00002859 servo 01550 track 345.37 bank: -07.25 gy: -01.37
+00002863 servo 01550 track 345.37 bank: -07.27 gy: -01.37
+00002867 servo 01550 track 345.37 bank: -07.28 gy: -01.37
+00002871 servo 01550 track 345.37 bank: -07.30 gy: -01.37
+00002875 servo 01550 track 345.37 bank: -07.31 gy: -01.37
+00002879 servo 01550 track 345.37 bank: -07.32 gy: -01.37
+00002883 servo 01550 track 345.37 bank: -07.34 gy: -01.37
+00002887 servo 01550 track 345.37 bank: -07.35 gy: -01.37
+00002891 servo 01550 track 345.37 bank: -07.36 gy: -01.37
+00002895 servo 01550 track 345.37 bank: -07.38 gy: -01.37
+00002899 servo 01550 track 345.37 bank: -07.39 gy: -01.37
+00002903 servo 01550 track 345.37 bank: -07.41 gy: -01.37
+00002907 servo 01550 track 345.37 bank: -07.42 gy: -01.37
+00002911 servo 01550 track 345.37 bank: -07.43 gy: -01.37
+00002915 servo 01550 track 345.37 bank: -07.45 gy: -01.37
+00002920 servo 01550 track 345.37 bank: -07.46 gy: -01.37
+00002924 servo 01550 track 345.37 bank: -07.47 gy: -01.37
+00002928 servo 01550 track 345.37 bank: -07.49 gy: -01.37
+00002932 servo 01550 track 345.37 bank: -07.50 gy: -01.37
+00002936 servo 01550 track 345.37 bank: -07.51 gy: -01.37
+00002940 servo 01550 track 345.37 bank: -07.53 gy: -01.37
+00002944 servo 01550 track 345.37 bank: -07.54 gy: -01.37
+00002948 servo 01550 track 345.37 bank: -07.56 gy: -01.37
+00002952 servo 01550 track 345.37 bank: -07.57 gy: -01.37
+00002956 servo 01550 track 345.37 bank: -07.58 gy: -01.37
+00002960 servo 01550 track 345.37 bank: -07.60 gy: -01.37
+00002964 servo 01550 track 345.37 bank: -07.61 gy: -01.37
+00002968 servo 01550 track 345.37 bank: -07.62 gy: -01.37
+00002972 servo 01550 track 345.37 bank: -07.64 gy: -01.37
+00002976 servo 01550 track 345.37 bank: -07.65 gy: -01.37
+00002980 servo 01550 track 345.37 bank: -07.67 gy: -01.37
+00002984 servo 01550 track 345.37 bank: -07.68 gy: -01.37
+00002988 servo 01550 track 345.37 bank: -07.69 gy: -01.37
+00002992 servo 01550 track 345.37 bank: -07.71 gy: -01.37
+00002996 servo 01550 track 345.37 bank: -07.72 gy: -01.37
+00003000 servo 01550 track 345.37 bank: -07.73 gy: -01.37
+00003004 servo 01550 track 333.76 bank: -07.75 gy: -01.37
+roll +38.1 servo -2026 buttons 1111 Loop time min/avg/max 13/4033/4043
+00003008 servo 01550 track 333.76 bank: -07.76 gy: -01.37
+00003012 servo 01550 track 333.76 bank: -07.78 gy: -01.37
+00003016 servo 01550 track 333.76 bank: -07.79 gy: -01.37
+00003020 servo 01550 track 333.76 bank: -07.80 gy: -01.37
+00003025 servo 01550 track 333.76 bank: -07.82 gy: -01.37
+00003029 servo 01550 track 333.76 bank: -07.83 gy: -01.37
+  DTK:270.0 TRK:333.8                  
+  GDL:333.8 VTG:000.0                  
+  RMC:000.0ROLL:+38.2                  
+00003033 servo 01550 track 333.76 bank: -07.84 gy: -01.37
+00003037 servo 01550 track 333.76 bank: -07.86 gy: -01.37
+00003041 servo 01550 track 333.76 bank: -07.87 gy: -01.37
+00003045 servo 01550 track 333.76 bank: -07.88 gy: -01.37
+00003049 servo 01550 track 333.76 bank: -07.90 gy: -01.37
+00003053 servo 01550 track 333.76 bank: -07.91 gy: -01.37
+00003057 servo 01550 track 333.76 bank: -07.93 gy: -01.37
+00003061 servo 01550 track 333.76 bank: -07.94 gy: -01.37
+00003065 servo 01550 track 333.76 bank: -07.95 gy: -01.37
+00003069 servo 01550 track 333.76 bank: -07.97 gy: -01.37
+00003073 servo 01550 track 333.76 bank: -07.98 gy: -01.37
+00003077 servo 01550 track 333.76 bank: -07.99 gy: -01.37
+00003081 servo 01550 track 333.76 bank: -08.01 gy: -01.37
+00003085 servo 01550 track 333.76 bank: -08.02 gy: -01.37
+00003089 servo 01550 track 333.76 bank: -08.04 gy: -01.37
+00003093 servo 01550 track 333.76 bank: -08.05 gy: -01.37
+00003097 servo 01550 track 333.76 bank: -08.06 gy: -01.37
+00003101 servo 01550 track 333.76 bank: -08.08 gy: -01.37
+00003105 servo 01550 track 333.76 bank: -08.09 gy: -01.37
+00003109 servo 01550 track 333.76 bank: -08.10 gy: -01.37
+00003113 servo 01550 track 333.76 bank: -08.12 gy: -01.37
+00003117 servo 01550 track 333.76 bank: -08.13 gy: -01.37
+00003121 servo 01550 track 333.76 bank: -08.14 gy: -01.37
+00003125 servo 01550 track 333.76 bank: -08.16 gy: -01.37
+00003130 servo 01550 track 333.76 bank: -08.17 gy: -01.37
+00003134 servo 01550 track 333.76 bank: -08.19 gy: -01.37
+00003138 servo 01550 track 333.76 bank: -08.20 gy: -01.37
+00003142 servo 01550 track 333.76 bank: -08.21 gy: -01.37
+00003146 servo 01550 track 333.76 bank: -08.23 gy: -01.37
+00003150 servo 01550 track 333.76 bank: -08.24 gy: -01.37
+00003154 servo 01550 track 333.76 bank: -08.25 gy: -01.37
+00003158 servo 01550 track 333.76 bank: -08.27 gy: -01.37
+00003162 servo 01550 track 333.76 bank: -08.28 gy: -01.37
+00003166 servo 01550 track 333.76 bank: -08.30 gy: -01.37
+00003170 servo 01550 track 333.76 bank: -08.31 gy: -01.37
+00003174 servo 01550 track 333.76 bank: -08.32 gy: -01.37
+00003178 servo 01550 track 333.76 bank: -08.34 gy: -01.37
+00003182 servo 01550 track 333.76 bank: -08.35 gy: -01.37
+00003186 servo 01550 track 333.76 bank: -08.36 gy: -01.37
+00003190 servo 01550 track 333.76 bank: -08.38 gy: -01.37
+00003194 servo 01550 track 333.76 bank: -08.39 gy: -01.37
+00003198 servo 01550 track 333.76 bank: -08.40 gy: -01.37
+00003202 servo 01550 track 333.76 bank: -08.42 gy: -01.37
+00003206 servo 01550 track 333.76 bank: -08.43 gy: -01.37
+00003210 servo 01550 track 333.76 bank: -08.45 gy: -01.37
+00003214 servo 01550 track 333.76 bank: -08.46 gy: -01.37
+00003218 servo 01550 track 333.76 bank: -08.47 gy: -01.37
+00003222 servo 01550 track 333.76 bank: -08.49 gy: -01.37
+00003226 servo 01550 track 333.76 bank: -08.50 gy: -01.37
+00003231 servo 01550 track 333.76 bank: -08.51 gy: -01.37
+  RMC:000.0ROLL:+39.9                  
+00003235 servo 01550 track 333.76 bank: -08.53 gy: -01.37
+00003239 servo 01550 track 333.76 bank: -08.54 gy: -01.37
+00003243 servo 01550 track 333.76 bank: -08.56 gy: -01.37
+00003247 servo 01550 track 333.76 bank: -08.57 gy: -01.37
+00003251 servo 01550 track 333.76 bank: -08.58 gy: -01.37
+00003255 servo 01550 track 333.76 bank: -08.60 gy: -01.37
+00003259 servo 01550 track 333.76 bank: -08.61 gy: -01.37
+00003263 servo 01550 track 333.76 bank: -08.62 gy: -01.37
+00003267 servo 01550 track 333.76 bank: -08.64 gy: -01.37
+00003271 servo 01550 track 333.76 bank: -08.65 gy: -01.37
+00003275 servo 01550 track 333.76 bank: -08.67 gy: -01.37
+00003279 servo 01550 track 333.76 bank: -08.68 gy: -01.37
+00003283 servo 01550 track 333.76 bank: -08.69 gy: -01.37
+00003287 servo 01550 track 333.76 bank: -08.71 gy: -01.37
+00003291 servo 01550 track 333.76 bank: -08.72 gy: -01.37
+00003295 servo 01550 track 333.76 bank: -08.73 gy: -01.37
+00003299 servo 01550 track 333.76 bank: -08.75 gy: -01.37
+00003303 servo 01550 track 333.76 bank: -08.76 gy: -01.37
+00003307 servo 01550 track 333.76 bank: -08.77 gy: -01.37
+00003311 servo 01550 track 333.76 bank: -08.79 gy: -01.37
+00003315 servo 01550 track 333.76 bank: -08.80 gy: -01.37
+00003319 servo 01550 track 333.76 bank: -08.82 gy: -01.37
+00003323 servo 01550 track 333.76 bank: -08.83 gy: -01.37
+00003327 servo 01550 track 333.76 bank: -08.84 gy: -01.37
+00003331 servo 01550 track 333.76 bank: -08.86 gy: -01.37
+00003336 servo 01550 track 333.76 bank: -08.87 gy: -01.37
+00003340 servo 01550 track 333.76 bank: -08.88 gy: -01.37
+00003344 servo 01550 track 333.76 bank: -08.90 gy: -01.37
+00003348 servo 01550 track 333.76 bank: -08.91 gy: -01.37
+00003352 servo 01550 track 333.76 bank: -08.93 gy: -01.37
+00003356 servo 01550 track 333.76 bank: -08.94 gy: -01.37
+00003360 servo 01550 track 333.76 bank: -08.95 gy: -01.37
+00003364 servo 01550 track 333.76 bank: -08.97 gy: -01.37
+00003368 servo 01550 track 333.76 bank: -08.98 gy: -01.37
+00003372 servo 01550 track 333.76 bank: -08.99 gy: -01.37
+00003376 servo 01550 track 333.76 bank: -09.01 gy: -01.37
+00003380 servo 01550 track 333.76 bank: -09.02 gy: -01.37
+00003384 servo 01550 track 333.76 bank: -09.03 gy: -01.37
+00003388 servo 01550 track 333.76 bank: -09.05 gy: -01.37
+00003392 servo 01550 track 333.76 bank: -09.06 gy: -01.37
+00003396 servo 01550 track 333.76 bank: -09.08 gy: -01.37
+00003400 servo 01550 track 333.76 bank: -09.09 gy: -01.37
+00003404 servo 01550 track 333.76 bank: -09.10 gy: -01.37
+00003408 servo 01550 track 333.76 bank: -09.12 gy: -01.37
+00003412 servo 01550 track 333.76 bank: -09.13 gy: -01.37
+00003416 servo 01550 track 333.76 bank: -09.14 gy: -01.37
+00003420 servo 01550 track 333.76 bank: -09.16 gy: -01.37
+00003424 servo 01550 track 333.76 bank: -09.17 gy: -01.37
+00003428 servo 01550 track 333.76 bank: -09.19 gy: -01.37
+00003432 servo 01550 track 333.76 bank: -09.20 gy: -01.37
+  RMC:000.0ROLL:+41.8                  
+00003437 servo 01550 track 333.76 bank: -09.21 gy: -01.37
+00003441 servo 01550 track 333.76 bank: -09.23 gy: -01.37
+00003445 servo 01550 track 333.76 bank: -09.24 gy: -01.37
+00003449 servo 01550 track 333.76 bank: -09.25 gy: -01.37
+00003453 servo 01550 track 333.76 bank: -09.27 gy: -01.37
+00003457 servo 01550 track 333.76 bank: -09.28 gy: -01.37
+00003461 servo 01550 track 333.76 bank: -09.30 gy: -01.37
+00003465 servo 01550 track 333.76 bank: -09.31 gy: -01.37
+00003469 servo 01550 track 333.76 bank: -09.32 gy: -01.37
+00003473 servo 01550 track 333.76 bank: -09.34 gy: -01.37
+00003477 servo 01550 track 333.76 bank: -09.35 gy: -01.37
+00003481 servo 01550 track 333.76 bank: -09.36 gy: -01.37
+00003485 servo 01550 track 333.76 bank: -09.38 gy: -01.37
+00003489 servo 01550 track 333.76 bank: -09.39 gy: -01.37
+00003493 servo 01550 track 333.76 bank: -09.40 gy: -01.37
+00003497 servo 01550 track 333.76 bank: -09.42 gy: -01.37
+00003501 servo 01550 track 333.76 bank: -09.43 gy: -01.37
+00003505 servo 01550 track 333.76 bank: -09.45 gy: -01.37
+00003509 servo 01550 track 333.76 bank: -09.46 gy: -01.37
+00003513 servo 01550 track 333.76 bank: -09.47 gy: -01.37
+00003517 servo 01550 track 333.76 bank: -09.49 gy: -01.37
+00003521 servo 01550 track 333.76 bank: -09.50 gy: -01.37
+00003525 servo 01550 track 333.76 bank: -09.51 gy: -01.37
+00003529 servo 01550 track 333.76 bank: -09.53 gy: -01.37
+00003533 servo 01550 track 333.76 bank: -09.54 gy: -01.37
+00003537 servo 01550 track 333.76 bank: -09.56 gy: -01.37
+00003542 servo 01550 track 333.76 bank: -09.57 gy: -01.37
+00003546 servo 01550 track 333.76 bank: -09.58 gy: -01.37
+00003550 servo 01550 track 333.76 bank: -09.60 gy: -01.37
+00003554 servo 01550 track 333.76 bank: -09.61 gy: -01.37
+00003558 servo 01550 track 333.76 bank: -09.62 gy: -01.37
+00003562 servo 01550 track 333.76 bank: -09.64 gy: -01.37
+00003566 servo 01550 track 333.76 bank: -09.65 gy: -01.37
+00003570 servo 01550 track 333.76 bank: -09.66 gy: -01.37
+00003574 servo 01550 track 333.76 bank: -09.68 gy: -01.37
+00003578 servo 01550 track 333.76 bank: -09.69 gy: -01.37
+00003582 servo 01550 track 333.76 bank: -09.71 gy: -01.37
+00003586 servo 01550 track 333.76 bank: -09.72 gy: -01.37
+00003590 servo 01550 track 333.76 bank: -09.73 gy: -01.37
+00003594 servo 01550 track 333.76 bank: -09.75 gy: -01.37
+00003598 servo 01550 track 333.76 bank: -09.76 gy: -01.37
+00003602 servo 01550 track 333.76 bank: -09.77 gy: -01.37
+00003606 servo 01550 track 333.76 bank: -09.79 gy: -01.37
+00003610 servo 01550 track 333.76 bank: -09.80 gy: -01.37
+00003614 servo 01550 track 333.76 bank: -09.82 gy: -01.37
+00003618 servo 01550 track 333.76 bank: -09.83 gy: -01.37
+00003622 servo 01550 track 333.76 bank: -09.84 gy: -01.37
+00003626 servo 01550 track 333.76 bank: -09.86 gy: -01.37
+00003630 servo 01550 track 333.76 bank: -09.87 gy: -01.37
+00003634 servo 01550 track 333.76 bank: -09.88 gy: -01.37
+  RMC:000.0ROLL:+43.8                  
+00003638 servo 01550 track 333.76 bank: -09.90 gy: -01.37
+00003642 servo 01550 track 333.76 bank: -09.91 gy: -01.37
+00003647 servo 01550 track 333.76 bank: -09.92 gy: -01.37
+00003651 servo 01550 track 333.76 bank: -09.94 gy: -01.37
+00003655 servo 01550 track 333.76 bank: -09.95 gy: -01.37
+00003659 servo 01550 track 333.76 bank: -09.97 gy: -01.37
+00003663 servo 01550 track 333.76 bank: -09.98 gy: -01.37
+00003667 servo 01550 track 333.76 bank: -09.99 gy: -01.37
+00003671 servo 01550 track 333.76 bank: -10.01 gy: -01.37
+00003675 servo 01550 track 333.76 bank: -10.02 gy: -01.37
+00003679 servo 01550 track 333.76 bank: -10.03 gy: -01.37
+00003683 servo 01550 track 333.76 bank: -10.05 gy: -01.37
+00003687 servo 01550 track 333.76 bank: -10.06 gy: -01.37
+00003691 servo 01550 track 333.76 bank: -10.08 gy: -01.37
+00003695 servo 01550 track 333.76 bank: -10.09 gy: -01.37
+00003699 servo 01550 track 333.76 bank: -10.10 gy: -01.37
+00003703 servo 01550 track 333.76 bank: -10.12 gy: -01.37
+00003707 servo 01550 track 333.76 bank: -10.13 gy: -01.37
+00003711 servo 01550 track 333.76 bank: -10.14 gy: -01.37
+00003715 servo 01550 track 333.76 bank: -10.16 gy: -01.37
+00003719 servo 01550 track 333.76 bank: -10.17 gy: -01.37
+00003723 servo 01550 track 333.76 bank: -10.19 gy: -01.37
+00003727 servo 01550 track 333.76 bank: -10.20 gy: -01.37
+00003731 servo 01550 track 333.76 bank: -10.21 gy: -01.37
+00003735 servo 01550 track 333.76 bank: -10.23 gy: -01.37
+00003739 servo 01550 track 333.76 bank: -10.24 gy: -01.37
+00003743 servo 01550 track 333.76 bank: -10.25 gy: -01.37
+00003748 servo 01550 track 333.76 bank: -10.27 gy: -01.37
+00003752 servo 01550 track 333.76 bank: -10.28 gy: -01.37
+00003756 servo 01550 track 333.76 bank: -10.29 gy: -01.37
+00003760 servo 01550 track 333.76 bank: -10.31 gy: -01.37
+00003764 servo 01550 track 333.76 bank: -10.32 gy: -01.37
+00003768 servo 01550 track 333.76 bank: -10.34 gy: -01.37
+00003772 servo 01550 track 333.76 bank: -10.35 gy: -01.37
+00003776 servo 01550 track 333.76 bank: -10.36 gy: -01.37
+00003780 servo 01550 track 333.76 bank: -10.38 gy: -01.37
+00003784 servo 01550 track 333.76 bank: -10.39 gy: -01.37
+00003788 servo 01550 track 333.76 bank: -10.40 gy: -01.37
+00003792 servo 01550 track 333.76 bank: -10.42 gy: -01.37
+00003796 servo 01550 track 333.76 bank: -10.43 gy: -01.37
+00003800 servo 01550 track 333.76 bank: -10.45 gy: -01.37
+00003804 servo 01550 track 333.76 bank: -10.46 gy: -01.37
+00003808 servo 01550 track 333.76 bank: -10.47 gy: -01.37
+00003812 servo 01550 track 333.76 bank: -10.49 gy: -01.37
+00003816 servo 01550 track 333.76 bank: -10.50 gy: -01.37
+00003820 servo 01550 track 333.76 bank: -10.51 gy: -01.37
+00003824 servo 01550 track 333.76 bank: -10.53 gy: -01.37
+00003828 servo 01550 track 333.76 bank: -10.54 gy: -01.37
+00003832 servo 01550 track 333.76 bank: -10.55 gy: -01.37
+00003836 servo 01550 track 333.76 bank: -10.57 gy: -01.37
+  RMC:000.0ROLL:+45.7                  
+00003840 servo 01550 track 333.76 bank: -10.58 gy: -01.37
+00003844 servo 01550 track 333.76 bank: -10.60 gy: -01.37
+00003848 servo 01550 track 333.76 bank: -10.61 gy: -01.37
+00003853 servo 01550 track 333.76 bank: -10.62 gy: -01.37
+00003857 servo 01550 track 333.76 bank: -10.64 gy: -01.37
+00003861 servo 01550 track 333.76 bank: -10.65 gy: -01.37
+00003865 servo 01550 track 333.76 bank: -10.66 gy: -01.37
+00003869 servo 01550 track 333.76 bank: -10.68 gy: -01.37
+00003873 servo 01550 track 333.76 bank: -10.69 gy: -01.37
+00003877 servo 01550 track 333.76 bank: -10.71 gy: -01.37
+00003881 servo 01550 track 333.76 bank: -10.72 gy: -01.37
+00003885 servo 01550 track 333.76 bank: -10.73 gy: -01.37
+00003889 servo 01550 track 333.76 bank: -10.75 gy: -01.37
+00003893 servo 01550 track 333.76 bank: -10.76 gy: -01.37
+00003897 servo 01550 track 333.76 bank: -10.77 gy: -01.37
+00003901 servo 01550 track 333.76 bank: -10.79 gy: -01.37
+00003905 servo 01550 track 333.76 bank: -10.80 gy: -01.37
+00003909 servo 01550 track 333.76 bank: -10.81 gy: -01.37
+00003913 servo 01550 track 333.76 bank: -10.83 gy: -01.37
+00003917 servo 01550 track 333.76 bank: -10.84 gy: -01.37
+00003921 servo 01550 track 333.76 bank: -10.86 gy: -01.37
+00003925 servo 01550 track 333.76 bank: -10.87 gy: -01.37
+00003929 servo 01550 track 333.76 bank: -10.88 gy: -01.37
+00003933 servo 01550 track 333.76 bank: -10.90 gy: -01.37
+00003937 servo 01550 track 333.76 bank: -10.91 gy: -01.37
+00003941 servo 01550 track 333.76 bank: -10.92 gy: -01.37
+00003945 servo 01550 track 333.76 bank: -10.94 gy: -01.37
+00003949 servo 01550 track 333.76 bank: -10.95 gy: -01.37
+00003954 servo 01550 track 333.76 bank: -10.97 gy: -01.37
+00003958 servo 01550 track 333.76 bank: -10.98 gy: -01.37
+00003962 servo 01550 track 333.76 bank: -10.99 gy: -01.37
+00003966 servo 01550 track 333.76 bank: -11.01 gy: -01.37
+00003970 servo 01550 track 333.76 bank: -11.02 gy: -01.37
+00003974 servo 01550 track 333.76 bank: -11.03 gy: -01.37
+00003978 servo 01550 track 333.76 bank: -11.05 gy: -01.37
+00003982 servo 01550 track 333.76 bank: -11.06 gy: -01.37
+00003986 servo 01550 track 333.76 bank: -11.08 gy: -01.37
+00003990 servo 01550 track 333.76 bank: -11.09 gy: -01.37
+00003994 servo 01550 track 333.76 bank: -11.10 gy: -01.37
+00003998 servo 01550 track 333.76 bank: -11.12 gy: -01.37
+00004002 servo 01550 track 333.76 bank: -11.13 gy: -01.37
+00004006 servo 01550 track 317.07 bank: -11.14 gy: -01.37
+roll +47.2 servo -3183 buttons 1111 Loop time min/avg/max 13/4034/4043
+00004010 servo 01550 track 317.07 bank: -11.16 gy: -01.37
+00004014 servo 01550 track 317.07 bank: -11.17 gy: -01.37
+00004018 servo 01550 track 317.07 bank: -11.18 gy: -01.37
+00004022 servo 01550 track 317.07 bank: -11.20 gy: -01.37
+00004026 servo 01550 track 317.07 bank: -11.21 gy: -01.37
+00004030 servo 01550 track 317.07 bank: -11.23 gy: -01.37
+00004034 servo 01550 track 317.07 bank: -11.24 gy: -01.37
+00004038 servo 01550 track 317.07 bank: -11.25 gy: -01.37
+  DTK:270.0 TRK:317.1                  
+  GDL:317.1 VTG:000.0                  
+  RMC:000.0ROLL:+47.3                  
+00004042 servo 01550 track 317.07 bank: -11.27 gy: -01.37
+00004046 servo 01550 track 317.07 bank: -11.28 gy: -01.37
+00004050 servo 01550 track 317.07 bank: -11.29 gy: -01.37
+00004054 servo 01550 track 317.07 bank: -11.31 gy: -01.37
+00004059 servo 01550 track 317.07 bank: -11.32 gy: -01.37
+00004063 servo 01550 track 317.07 bank: -11.34 gy: -01.37
+00004067 servo 01550 track 317.07 bank: -11.35 gy: -01.37
+00004071 servo 01550 track 317.07 bank: -11.36 gy: -01.37
+00004075 servo 01550 track 317.07 bank: -11.38 gy: -01.37
+00004079 servo 01550 track 317.07 bank: -11.39 gy: -01.37
+00004083 servo 01550 track 317.07 bank: -11.40 gy: -01.37
+00004087 servo 01550 track 317.07 bank: -11.42 gy: -01.37
+00004091 servo 01550 track 317.07 bank: -11.43 gy: -01.37
+00004095 servo 01550 track 317.07 bank: -11.44 gy: -01.37
+00004099 servo 01550 track 317.07 bank: -11.46 gy: -01.37
+00004103 servo 01550 track 317.07 bank: -11.47 gy: -01.37
+00004107 servo 01550 track 317.07 bank: -11.49 gy: -01.37
+00004111 servo 01550 track 317.07 bank: -11.50 gy: -01.37
+00004115 servo 01550 track 317.07 bank: -11.51 gy: -01.37
+00004119 servo 01550 track 317.07 bank: -11.53 gy: -01.37
+00004123 servo 01550 track 317.07 bank: -11.54 gy: -01.37
+00004127 servo 01550 track 317.07 bank: -11.55 gy: -01.37
+00004131 servo 01550 track 317.07 bank: -11.57 gy: -01.37
+00004135 servo 01550 track 317.07 bank: -11.58 gy: -01.37
+00004139 servo 01550 track 317.07 bank: -11.60 gy: -01.37
+00004143 servo 01550 track 317.07 bank: -11.61 gy: -01.37
+00004147 servo 01550 track 317.07 bank: -11.62 gy: -01.37
+00004151 servo 01550 track 317.07 bank: -11.64 gy: -01.37
+00004155 servo 01550 track 317.07 bank: -11.65 gy: -01.37
+00004159 servo 01550 track 317.07 bank: -11.66 gy: -01.37
+00004164 servo 01550 track 317.07 bank: -11.68 gy: -01.37
+00004168 servo 01550 track 317.07 bank: -11.69 gy: -01.37
+00004172 servo 01550 track 317.07 bank: -11.70 gy: -01.37
+00004176 servo 01550 track 317.07 bank: -11.72 gy: -01.37
+00004180 servo 01550 track 317.07 bank: -11.73 gy: -01.37
+00004184 servo 01550 track 317.07 bank: -11.75 gy: -01.37
+00004188 servo 01550 track 317.07 bank: -11.76 gy: -01.37
+00004192 servo 01550 track 317.07 bank: -11.77 gy: -01.37
+00004196 servo 01550 track 317.07 bank: -11.79 gy: -01.37
+00004200 servo 01550 track 317.07 bank: -11.80 gy: -01.37
+00004204 servo 01550 track 317.07 bank: -11.81 gy: -01.37
+00004208 servo 01550 track 317.07 bank: -11.83 gy: -01.37
+00004212 servo 01550 track 317.07 bank: -11.84 gy: -01.37
+00004216 servo 01550 track 317.07 bank: -11.86 gy: -01.37
+00004220 servo 01550 track 317.07 bank: -11.87 gy: -01.37
+00004224 servo 01550 track 317.07 bank: -11.88 gy: -01.37
+00004228 servo 01550 track 317.07 bank: -11.90 gy: -01.37
+00004232 servo 01550 track 317.07 bank: -11.91 gy: -01.37
+00004236 servo 01550 track 317.07 bank: -11.92 gy: -01.37
+00004240 servo 01550 track 317.07 bank: -11.94 gy: -01.37
+  RMC:000.0ROLL:+49.0                  
+00004244 servo 01550 track 317.07 bank: -11.95 gy: -01.37
+00004248 servo 01550 track 317.07 bank: -11.97 gy: -01.37
+00004252 servo 01550 track 317.07 bank: -11.98 gy: -01.37
+00004256 servo 01550 track 317.07 bank: -11.99 gy: -01.37
+00004260 servo 01550 track 317.07 bank: -12.01 gy: -01.37
+00004265 servo 01550 track 317.07 bank: -12.02 gy: -01.37
+00004269 servo 01550 track 317.07 bank: -12.03 gy: -01.37
+00004273 servo 01550 track 317.07 bank: -12.05 gy: -01.37
+00004277 servo 01550 track 317.07 bank: -12.06 gy: -01.37
+00004281 servo 01550 track 317.07 bank: -12.07 gy: -01.37
+00004285 servo 01550 track 317.07 bank: -12.09 gy: -01.37
+00004289 servo 01550 track 317.07 bank: -12.10 gy: -01.37
+00004293 servo 01550 track 317.07 bank: -12.12 gy: -01.37
+00004297 servo 01550 track 317.07 bank: -12.13 gy: -01.37
+00004301 servo 01550 track 317.07 bank: -12.14 gy: -01.37
+00004305 servo 01550 track 317.07 bank: -12.16 gy: -01.37
+00004309 servo 01550 track 317.07 bank: -12.17 gy: -01.37
+00004313 servo 01550 track 317.07 bank: -12.18 gy: -01.37
+00004317 servo 01550 track 317.07 bank: -12.20 gy: -01.37
+00004321 servo 01550 track 317.07 bank: -12.21 gy: -01.37
+00004325 servo 01550 track 317.07 bank: -12.23 gy: -01.37
+00004329 servo 01550 track 317.07 bank: -12.24 gy: -01.37
+00004333 servo 01550 track 317.07 bank: -12.25 gy: -01.37
+00004337 servo 01550 track 317.07 bank: -12.27 gy: -01.37
+00004341 servo 01550 track 317.07 bank: -12.28 gy: -01.37
+00004345 servo 01550 track 317.07 bank: -12.29 gy: -01.37
+00004349 servo 01550 track 317.07 bank: -12.31 gy: -01.37
+00004353 servo 01550 track 317.07 bank: -12.32 gy: -01.37
+00004357 servo 01550 track 317.07 bank: -12.33 gy: -01.37
+00004361 servo 01550 track 317.07 bank: -12.35 gy: -01.37
+00004365 servo 01550 track 317.07 bank: -12.36 gy: -01.37
+00004370 servo 01550 track 317.07 bank: -12.38 gy: -01.37
+00004374 servo 01550 track 317.07 bank: -12.39 gy: -01.37
+00004378 servo 01550 track 317.07 bank: -12.40 gy: -01.37
+00004382 servo 01550 track 317.07 bank: -12.42 gy: -01.37
+00004386 servo 01550 track 317.07 bank: -12.43 gy: -01.37
+00004390 servo 01550 track 317.07 bank: -12.44 gy: -01.37
+00004394 servo 01550 track 317.07 bank: -12.46 gy: -01.37
+00004398 servo 01550 track 317.07 bank: -12.47 gy: -01.37
+00004402 servo 01550 track 317.07 bank: -12.49 gy: -01.37
+00004406 servo 01550 track 317.07 bank: -12.50 gy: -01.37
+00004410 servo 01550 track 317.07 bank: -12.51 gy: -01.37
+00004414 servo 01550 track 317.07 bank: -12.53 gy: -01.37
+00004418 servo 01550 track 317.07 bank: -12.54 gy: -01.37
+00004422 servo 01550 track 317.07 bank: -12.55 gy: -01.37
+00004426 servo 01550 track 317.07 bank: -12.57 gy: -01.37
+00004430 servo 01550 track 317.07 bank: -12.58 gy: -01.37
+00004434 servo 01550 track 317.07 bank: -12.59 gy: -01.37
+00004438 servo 01550 track 317.07 bank: -12.61 gy: -01.37
+00004442 servo 01550 track 317.07 bank: -12.62 gy: -01.37
+  RMC:000.0ROLL:+50.9                  
+00004446 servo 01550 track 317.07 bank: -12.64 gy: -01.37
+00004450 servo 01550 track 317.07 bank: -12.65 gy: -01.37
+00004454 servo 01550 track 317.07 bank: -12.66 gy: -01.37
+00004458 servo 01550 track 317.07 bank: -12.68 gy: -01.37
+00004462 servo 01550 track 317.07 bank: -12.69 gy: -01.37
+00004466 servo 01550 track 317.07 bank: -12.70 gy: -01.37
+00004471 servo 01550 track 317.07 bank: -12.72 gy: -01.37
+00004475 servo 01550 track 317.07 bank: -12.73 gy: -01.37
+00004479 servo 01550 track 317.07 bank: -12.75 gy: -01.37
+00004483 servo 01550 track 317.07 bank: -12.76 gy: -01.37
+00004487 servo 01550 track 317.07 bank: -12.77 gy: -01.37
+00004491 servo 01550 track 317.07 bank: -12.79 gy: -01.37
+00004495 servo 01550 track 317.07 bank: -12.80 gy: -01.37
+00004499 servo 01550 track 317.07 bank: -12.81 gy: -01.37
+00004503 servo 01550 track 317.07 bank: -12.83 gy: -01.37
+00004507 servo 01550 track 317.07 bank: -12.84 gy: -01.37
+00004511 servo 01550 track 317.07 bank: -12.86 gy: -01.37
+00004515 servo 01550 track 317.07 bank: -12.87 gy: -01.37
+00004519 servo 01550 track 317.07 bank: -12.88 gy: -01.37
+00004523 servo 01550 track 317.07 bank: -12.90 gy: -01.37
+00004527 servo 01550 track 317.07 bank: -12.91 gy: -01.37
+00004531 servo 01550 track 317.07 bank: -12.92 gy: -01.37
+00004535 servo 01550 track 317.07 bank: -12.94 gy: -01.37
+00004539 servo 01550 track 317.07 bank: -12.95 gy: -01.37
+00004543 servo 01550 track 317.07 bank: -12.96 gy: -01.37
+00004547 servo 01550 track 317.07 bank: -12.98 gy: -01.37
+00004551 servo 01550 track 317.07 bank: -12.99 gy: -01.37
+00004555 servo 01550 track 317.07 bank: -13.01 gy: -01.37
+00004559 servo 01550 track 317.07 bank: -13.02 gy: -01.37
+00004563 servo 01550 track 317.07 bank: -13.03 gy: -01.37
+00004567 servo 01550 track 317.07 bank: -13.05 gy: -01.37
+00004571 servo 01550 track 317.07 bank: -13.06 gy: -01.37
+00004576 servo 01550 track 317.07 bank: -13.07 gy: -01.37
+00004580 servo 01550 track 317.07 bank: -13.09 gy: -01.37
+00004584 servo 01550 track 317.07 bank: -13.10 gy: -01.37
+00004588 servo 01550 track 317.07 bank: -13.12 gy: -01.37
+00004592 servo 01550 track 317.07 bank: -13.13 gy: -01.37
+00004596 servo 01550 track 317.07 bank: -13.14 gy: -01.37
+00004600 servo 01550 track 317.07 bank: -13.16 gy: -01.37
+00004604 servo 01550 track 317.07 bank: -13.17 gy: -01.37
+00004608 servo 01550 track 317.07 bank: -13.18 gy: -01.37
+00004612 servo 01550 track 317.07 bank: -13.20 gy: -01.37
+00004616 servo 01550 track 317.07 bank: -13.21 gy: -01.37
+00004620 servo 01550 track 317.07 bank: -13.22 gy: -01.37
+00004624 servo 01550 track 317.07 bank: -13.24 gy: -01.37
+00004628 servo 01550 track 317.07 bank: -13.25 gy: -01.37
+00004632 servo 01550 track 317.07 bank: -13.27 gy: -01.37
+00004636 servo 01550 track 317.07 bank: -13.28 gy: -01.37
+00004640 servo 01550 track 317.07 bank: -13.29 gy: -01.37
+00004644 servo 01550 track 317.07 bank: -13.31 gy: -01.37
+  RMC:000.0ROLL:+52.9                  
+00004648 servo 01550 track 317.07 bank: -13.32 gy: -01.37
+00004652 servo 01550 track 317.07 bank: -13.33 gy: -01.37
+00004656 servo 01550 track 317.07 bank: -13.35 gy: -01.37
+00004660 servo 01550 track 317.07 bank: -13.36 gy: -01.37
+00004664 servo 01550 track 317.07 bank: -13.38 gy: -01.37
+00004668 servo 01550 track 317.07 bank: -13.39 gy: -01.37
+00004672 servo 01550 track 317.07 bank: -13.40 gy: -01.37
+00004677 servo 01550 track 317.07 bank: -13.42 gy: -01.37
+00004681 servo 01550 track 317.07 bank: -13.43 gy: -01.37
+00004685 servo 01550 track 317.07 bank: -13.44 gy: -01.37
+00004689 servo 01550 track 317.07 bank: -13.46 gy: -01.37
+00004693 servo 01550 track 317.07 bank: -13.47 gy: -01.37
+00004697 servo 01550 track 317.07 bank: -13.49 gy: -01.37
+00004701 servo 01550 track 317.07 bank: -13.50 gy: -01.37
+00004705 servo 01550 track 317.07 bank: -13.51 gy: -01.37
+00004709 servo 01550 track 317.07 bank: -13.53 gy: -01.37
+00004713 servo 01550 track 317.07 bank: -13.54 gy: -01.37
+00004717 servo 01550 track 317.07 bank: -13.55 gy: -01.37
+00004721 servo 01550 track 317.07 bank: -13.57 gy: -01.37
+00004725 servo 01550 track 317.07 bank: -13.58 gy: -01.37
+00004729 servo 01550 track 317.07 bank: -13.59 gy: -01.37
+00004733 servo 01550 track 317.07 bank: -13.61 gy: -01.37
+00004737 servo 01550 track 317.07 bank: -13.62 gy: -01.37
+00004741 servo 01550 track 317.07 bank: -13.64 gy: -01.37
+00004745 servo 01550 track 317.07 bank: -13.65 gy: -01.37
+00004749 servo 01550 track 317.07 bank: -13.66 gy: -01.37
+00004753 servo 01550 track 317.07 bank: -13.68 gy: -01.37
+00004757 servo 01550 track 317.07 bank: -13.69 gy: -01.37
+00004761 servo 01550 track 317.07 bank: -13.70 gy: -01.37
+00004765 servo 01550 track 317.07 bank: -13.72 gy: -01.37
+00004769 servo 01550 track 317.07 bank: -13.73 gy: -01.37
+00004773 servo 01550 track 317.07 bank: -13.75 gy: -01.37
+00004777 servo 01550 track 317.07 bank: -13.76 gy: -01.37
+00004782 servo 01550 track 317.07 bank: -13.77 gy: -01.37
+00004786 servo 01550 track 317.07 bank: -13.79 gy: -01.37
+00004790 servo 01550 track 317.07 bank: -13.80 gy: -01.37
+00004794 servo 01550 track 317.07 bank: -13.81 gy: -01.37
+00004798 servo 01550 track 317.07 bank: -13.83 gy: -01.37
+00004802 servo 01550 track 317.07 bank: -13.84 gy: -01.37
+00004806 servo 01550 track 317.07 bank: -13.85 gy: -01.37
+00004810 servo 01550 track 317.07 bank: -13.87 gy: -01.37
+00004814 servo 01550 track 317.07 bank: -13.88 gy: -01.37
+00004818 servo 01550 track 317.07 bank: -13.90 gy: -01.37
+00004822 servo 01550 track 317.07 bank: -13.91 gy: -01.37
+00004826 servo 01550 track 317.07 bank: -13.92 gy: -01.37
+00004830 servo 01550 track 317.07 bank: -13.94 gy: -01.37
+00004834 servo 01550 track 317.07 bank: -13.95 gy: -01.37
+00004838 servo 01550 track 317.07 bank: -13.96 gy: -01.37
+00004842 servo 01550 track 317.07 bank: -13.98 gy: -01.37
+00004846 servo 01550 track 317.07 bank: -13.99 gy: -01.37
+  RMC:000.0ROLL:+54.8                  
+00004850 servo 01550 track 317.07 bank: -14.01 gy: -01.37
+00004854 servo 01550 track 317.07 bank: -14.02 gy: -01.37
+00004858 servo 01550 track 317.07 bank: -14.03 gy: -01.37
+00004862 servo 01550 track 317.07 bank: -14.05 gy: -01.37
+00004866 servo 01550 track 317.07 bank: -14.06 gy: -01.37
+00004870 servo 01550 track 317.07 bank: -14.07 gy: -01.37
+00004874 servo 01550 track 317.07 bank: -14.09 gy: -01.37
+00004878 servo 01550 track 317.07 bank: -14.10 gy: -01.37
+00004882 servo 01550 track 317.07 bank: -14.11 gy: -01.37
+00004887 servo 01550 track 317.07 bank: -14.13 gy: -01.37
+00004891 servo 01550 track 317.07 bank: -14.14 gy: -01.37
+00004895 servo 01550 track 317.07 bank: -14.16 gy: -01.37
+00004899 servo 01550 track 317.07 bank: -14.17 gy: -01.37
+00004903 servo 01550 track 317.07 bank: -14.18 gy: -01.37
+00004907 servo 01550 track 317.07 bank: -14.20 gy: -01.37
+00004911 servo 01550 track 317.07 bank: -14.21 gy: -01.37
+00004915 servo 01550 track 317.07 bank: -14.22 gy: -01.37
+00004919 servo 01550 track 317.07 bank: -14.24 gy: -01.37
+00004923 servo 01550 track 317.07 bank: -14.25 gy: -01.37
+00004927 servo 01550 track 317.07 bank: -14.27 gy: -01.37
+00004931 servo 01550 track 317.07 bank: -14.28 gy: -01.37
+00004935 servo 01550 track 317.07 bank: -14.29 gy: -01.37
+00004939 servo 01550 track 317.07 bank: -14.31 gy: -01.37
+00004943 servo 01550 track 317.07 bank: -14.32 gy: -01.37
+00004947 servo 01550 track 317.07 bank: -14.33 gy: -01.37
+00004951 servo 01550 track 317.07 bank: -14.35 gy: -01.37
+00004955 servo 01550 track 317.07 bank: -14.36 gy: -01.37
+00004959 servo 01550 track 317.07 bank: -14.38 gy: -01.37
+00004963 servo 01550 track 317.07 bank: -14.39 gy: -01.37
+00004967 servo 01550 track 317.07 bank: -14.40 gy: -01.37
+00004971 servo 01550 track 317.07 bank: -14.42 gy: -01.37
+00004975 servo 01550 track 317.07 bank: -14.43 gy: -01.37
+00004979 servo 01550 track 317.07 bank: -14.44 gy: -01.37
+00004983 servo 01550 track 317.07 bank: -14.46 gy: -01.37
+00004988 servo 01550 track 317.07 bank: -14.47 gy: -01.37
+00004992 servo 01550 track 317.07 bank: -14.48 gy: -01.37
+00004996 servo 01550 track 317.07 bank: -14.50 gy: -01.37
+00005000 servo 01550 track 317.07 bank: -14.51 gy: -01.37
+00005004 servo 01550 track 295.30 bank: -14.53 gy: -01.37
+00005008 servo 01550 track 295.30 bank: -14.54 gy: -01.37
+roll +56.4 servo -4349 buttons 1111 Loop time min/avg/max 4038/4039/4042
+00005012 servo 01550 track 295.30 bank: -14.55 gy: -01.37
+00005016 servo 01550 track 295.30 bank: -14.57 gy: -01.37
+00005020 servo 01550 track 295.30 bank: -14.58 gy: -01.37
+00005024 servo 01550 track 295.30 bank: -14.59 gy: -01.37
+00005028 servo 01550 track 295.30 bank: -14.61 gy: -01.37
+00005032 servo 01550 track 295.30 bank: -14.62 gy: -01.37
+00005036 servo 01550 track 295.30 bank: -14.64 gy: -01.37
+00005040 servo 01550 track 295.30 bank: -14.65 gy: -01.37
+00005044 servo 01550 track 295.30 bank: -14.66 gy: -01.37
+00005048 servo 01550 track 295.30 bank: -14.68 gy: -01.37
+  DTK:270.0 TRK:295.3                  
+  GDL:295.3 VTG:000.0                  
+  GDL:295.3 VTG:-01.0                  
+  RMC:-01.0ROLL:+54.8                  
+  RMC:-01.0ROLL:+56.5                  
+00005052 servo 01550 track 295.30 bank: -14.69 gy: -01.37
+00005056 servo 01550 track 295.30 bank: -14.70 gy: -01.37
+00005060 servo 01550 track 295.30 bank: -14.72 gy: -01.37
+00005064 servo 01550 track 295.30 bank: -14.73 gy: -01.37
+00005068 servo 01550 track 295.30 bank: -14.74 gy: -01.37
+00005072 servo 01550 track 295.30 bank: -14.76 gy: -01.37
+00005076 servo 01550 track 295.30 bank: -14.77 gy: -01.37
+00005080 servo 01550 track 295.30 bank: -14.79 gy: -01.37
+00005084 servo 01550 track 295.30 bank: -14.80 gy: -01.37
+00005088 servo 01550 track 295.30 bank: -14.81 gy: -01.37
+00005093 servo 01550 track 295.30 bank: -14.83 gy: -01.37
+00005097 servo 01550 track 295.30 bank: -14.84 gy: -01.37
+00005101 servo 01550 track 295.30 bank: -14.85 gy: -01.37
+00005105 servo 01550 track 295.30 bank: -14.87 gy: -01.37
+00005109 servo 01550 track 295.30 bank: -14.88 gy: -01.37
+00005113 servo 01550 track 295.30 bank: -14.90 gy: -01.37
+00005117 servo 01550 track 295.30 bank: -14.91 gy: -01.37
+00005121 servo 01550 track 295.30 bank: -14.92 gy: -01.37
+00005125 servo 01550 track 295.30 bank: -14.94 gy: -01.37
+00005129 servo 01550 track 295.30 bank: -14.95 gy: -01.37
+00005133 servo 01550 track 295.30 bank: -14.96 gy: -01.37
+00005137 servo 01550 track 295.30 bank: -14.98 gy: -01.37
+00005141 servo 01550 track 295.30 bank: -14.99 gy: -01.37
+00005145 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005149 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005153 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005157 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005161 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005165 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005169 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005173 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005177 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005181 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005185 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005189 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005194 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005198 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005202 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005206 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005210 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005214 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005218 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005222 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005226 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005230 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005234 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005238 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005242 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005246 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005250 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+58.3                  
+00005254 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005258 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005262 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005266 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005270 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005274 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005278 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005282 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005286 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005290 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005294 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005299 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005303 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005307 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005311 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005315 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005319 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005323 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005327 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005331 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005335 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005339 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005343 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005347 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005351 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005355 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005359 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005363 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005367 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005371 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005375 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005379 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005383 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005387 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005391 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005395 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005399 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005404 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005408 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005412 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005416 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005420 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005424 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005428 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005432 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005436 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005440 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005444 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005448 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005452 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+60.2                  
+00005456 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005460 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005464 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005468 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005472 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005476 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005480 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005484 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005488 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005492 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005496 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005500 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005505 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005509 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005513 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005517 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005521 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005525 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005529 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005533 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005537 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005541 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005545 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005549 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005553 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005557 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005561 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005565 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005569 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005573 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005577 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005581 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005585 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005589 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005593 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005597 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005601 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005605 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005610 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005614 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005618 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005622 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005626 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005630 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005634 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005638 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005642 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005646 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005650 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005654 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+62.1                  
+00005658 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005662 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005666 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005670 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005674 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005678 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005682 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005686 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005690 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005694 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005698 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005702 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005706 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005711 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005715 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005719 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005723 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005727 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005731 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005735 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005739 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005743 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005747 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005751 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005755 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005759 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005763 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005767 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005771 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005775 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005779 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005783 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005787 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005791 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005795 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005799 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005803 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005807 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005811 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005816 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005820 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005824 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005828 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005832 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005836 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005840 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005844 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005848 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005852 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005856 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+63.9                  
+00005860 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005864 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005868 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005872 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005876 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005880 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005884 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005888 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005892 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005896 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005900 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005904 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005908 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005912 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005916 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005921 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005925 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005929 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005933 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005937 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005941 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005945 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005949 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005953 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005957 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005961 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005965 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005969 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005973 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005977 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005981 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005985 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005989 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005993 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00005997 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00006001 servo 01550 track 295.30 bank: -15.00 gy: -01.37
+00006005 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006009 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+roll +65.3 servo -5890 buttons 1111 Loop time min/avg/max 4039/4039/4042
+00006013 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006017 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006022 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006026 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006030 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006034 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006038 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006042 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006046 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006050 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006054 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006058 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+  DTK:270.0 TRK:272.8                  
+  GDL:272.8 VTG:-01.0                  
+  RMC:-01.0ROLL:+65.5                  
+00006062 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006066 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006070 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006074 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006078 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006082 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006086 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006090 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006094 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006098 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006102 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006106 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006110 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006114 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006118 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006122 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006127 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006131 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006135 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006139 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006143 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006147 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006151 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006155 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006159 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006163 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006167 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006171 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006175 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006179 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006183 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006187 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006191 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006195 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006199 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006203 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006207 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006211 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006215 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006219 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006223 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006228 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006232 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006236 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006240 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006244 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006248 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006252 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006256 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006260 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+67.2                  
+00006264 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006268 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006272 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006276 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006280 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006284 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006288 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006292 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006296 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006300 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006304 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006308 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006312 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006316 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006320 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006324 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006328 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006333 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006337 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006341 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006345 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006349 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006353 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006357 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006361 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006365 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006369 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006373 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006377 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006381 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006385 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006389 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006393 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006397 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006401 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006405 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006409 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006413 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006417 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006421 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006425 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006429 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006433 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006438 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006442 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006446 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006450 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006454 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006458 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006462 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+68.8                  
+00006466 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006470 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006474 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006478 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006482 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006486 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006490 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006494 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006498 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006502 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006506 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006510 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006514 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006518 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006522 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006526 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006530 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006534 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006539 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006543 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006547 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006551 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006555 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006559 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006563 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006567 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006571 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006575 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006579 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006583 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006587 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006591 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006595 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006599 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006603 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006607 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006611 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006615 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006619 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006623 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006627 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006631 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006635 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006639 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006644 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006648 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006652 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006656 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006660 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006664 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+70.4                  
+00006668 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006672 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006676 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006680 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006684 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006688 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006692 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006696 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006700 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006704 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006708 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006712 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006716 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006720 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006724 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006728 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006732 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006736 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006740 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006745 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006749 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006753 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006757 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006761 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006765 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006769 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006773 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006777 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006781 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006785 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006789 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006793 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006797 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006801 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006805 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006809 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006813 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006817 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006821 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006825 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006829 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006833 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006837 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006841 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006845 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006850 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006854 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006858 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006862 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006866 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+71.9                  
+00006870 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006874 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006878 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006882 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006886 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006890 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006894 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006898 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006902 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006906 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006910 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006914 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006918 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006922 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006926 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006930 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006934 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006938 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006942 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006946 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006950 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006955 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006959 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006963 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006967 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006971 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006975 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006979 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006983 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006987 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006991 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006995 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00006999 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00007003 servo 01550 track 272.80 bank: -15.00 gy: -01.37
+00007007 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007011 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+roll +73.0 servo -8267 buttons 1111 Loop time min/avg/max 4039/4039/4042
+00007015 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007019 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007023 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007027 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007031 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007035 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007039 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007043 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007047 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007051 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007056 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007060 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007064 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007068 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+  DTK:270.0 TRK:250.3                  
+  GDL:250.3 VTG:-01.0                  
+  RMC:-01.0ROLL:+73.2                  
+00007072 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007076 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007080 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007084 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007088 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007092 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007096 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007100 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007104 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007108 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007112 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007116 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007120 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007124 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007128 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007132 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007136 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007140 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007144 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007148 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007152 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007156 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007161 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007165 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007169 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007173 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007177 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007181 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007185 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007189 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007193 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007197 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007201 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007205 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007209 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007213 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007217 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007221 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007225 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007229 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007233 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007237 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007241 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007245 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007249 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007253 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007257 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007262 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007266 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007270 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+74.5                  
+00007274 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007278 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007282 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007286 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007290 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007294 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007298 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007302 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007306 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007310 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007314 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007318 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007322 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007326 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007330 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007334 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007338 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007342 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007346 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007350 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007354 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007358 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007362 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007367 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007371 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007375 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007379 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007383 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007387 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007391 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007395 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007399 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007403 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007407 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007411 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007415 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007419 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007423 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007427 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007431 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007435 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007439 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007443 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007447 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007451 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007455 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007459 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007463 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007467 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007472 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+75.8                  
+00007476 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007480 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007484 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007488 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007492 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007496 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007500 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007504 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007508 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007512 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007516 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007520 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007524 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007528 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007532 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007536 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007540 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007544 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007548 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007552 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007556 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007560 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007564 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007568 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007573 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007577 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007581 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007585 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007589 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007593 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007597 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007601 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007605 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007609 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007613 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007617 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007621 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007625 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007629 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007633 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007637 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007641 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007645 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007649 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007653 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007657 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007661 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007665 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007669 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007673 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+77.1                  
+00007678 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007682 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007686 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007690 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007694 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007698 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007702 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007706 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007710 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007714 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007718 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007722 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007726 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007730 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007734 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007738 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007742 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007746 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007750 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007754 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007758 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007762 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007766 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007770 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007774 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007779 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007783 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007787 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007791 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007795 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007799 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007803 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007807 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007811 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007815 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007819 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007823 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007827 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007831 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007835 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007839 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007843 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007847 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007851 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007855 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007859 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007863 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007867 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007871 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007875 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+78.2                  
+00007879 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007884 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007888 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007892 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007896 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007900 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007904 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007908 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007912 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007916 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007920 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007924 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007928 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007932 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007936 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007940 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007944 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007948 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007952 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007956 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007960 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007964 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007968 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007972 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007976 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007980 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007984 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007989 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007993 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00007997 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00008001 servo 01550 track 250.30 bank: -15.00 gy: -01.37
+00008005 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008009 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008013 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+roll +79.0 servo -9741 buttons 1111 Loop time min/avg/max 4039/4039/4042
+00008017 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008021 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008025 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008029 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008033 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008037 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008041 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008045 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008049 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008053 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008057 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008061 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008065 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008069 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008073 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008077 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+  DTK:270.0 TRK:227.8                  
+  GDL:227.8 VTG:-01.0                  
+  RMC:-01.0ROLL:+79.2                  
+00008081 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008085 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008090 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008094 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008098 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008102 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008106 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008110 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008114 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008118 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008122 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008126 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008130 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008134 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008138 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008142 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008146 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008150 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008154 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008158 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008162 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008166 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008170 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008174 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008178 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008182 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008186 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008190 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008195 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008199 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008203 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008207 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008211 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008215 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008219 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008223 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008227 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008231 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008235 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008239 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008243 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008247 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008251 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008255 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008259 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008263 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008267 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008271 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008275 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008279 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+80.1                  
+00008283 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008287 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008291 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008296 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008300 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008304 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008308 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008312 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008316 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008320 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008324 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008328 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008332 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008336 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008340 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008344 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008348 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008352 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008356 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008360 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008364 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008368 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008372 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008376 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008380 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008384 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008388 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008392 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008396 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008401 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008405 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008409 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008413 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008417 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008421 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008425 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008429 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008433 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008437 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008441 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008445 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008449 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008453 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008457 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008461 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008465 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008469 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008473 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008477 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008481 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+81.1                  
+00008485 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008489 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008493 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008497 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008502 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008506 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008510 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008514 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008518 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008522 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008526 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008530 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008534 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008538 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008542 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008546 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008550 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008554 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008558 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008562 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008566 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008570 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008574 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008578 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008582 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008586 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008590 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008594 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008598 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008602 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008607 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008611 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008615 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008619 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008623 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008627 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008631 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008635 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008639 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008643 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008647 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008651 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008655 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008659 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008663 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008667 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008671 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008675 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008679 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008683 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+82.1                  
+00008687 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008691 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008695 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008699 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008703 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008707 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008712 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008716 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008720 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008724 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008728 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008732 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008736 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008740 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008744 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008748 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008752 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008756 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008760 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008764 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008768 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008772 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008776 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008780 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008784 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008788 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008792 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008796 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008800 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008804 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008808 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008813 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008817 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008821 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008825 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008829 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008833 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008837 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008841 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008845 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008849 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008853 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008857 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008861 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008865 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008869 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008873 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008877 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008881 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008885 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+82.9                  
+00008889 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008893 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008897 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008901 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008905 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008909 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008913 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008918 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008922 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008926 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008930 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008934 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008938 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008942 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008946 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008950 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008954 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008958 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008962 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008966 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008970 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008974 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008978 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008982 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008986 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008990 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008994 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00008998 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00009002 servo 01550 track 227.80 bank: -15.00 gy: -01.37
+00009006 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009010 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009014 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+roll +83.4 servo -10300 buttons 1111 Loop time min/avg/max 4039/4039/4042
+00009019 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009023 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009027 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009031 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009035 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009039 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009043 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009047 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009051 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009055 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009059 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009063 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009067 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009071 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009075 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009079 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009083 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009087 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+  DTK:270.0 TRK:205.3                  
+  GDL:205.3 VTG:-01.0                  
+  RMC:-01.0ROLL:+83.6                  
+00009091 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009095 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009099 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009103 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009107 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009111 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009115 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009119 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009124 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009128 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009132 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009136 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009140 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009144 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009148 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009152 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009156 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009160 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009164 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009168 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009172 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009176 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009180 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009184 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009188 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009192 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009196 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009200 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009204 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009208 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009212 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009216 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009220 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009224 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009229 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009233 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009237 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009241 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009245 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009249 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009253 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009257 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009261 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009265 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009269 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009273 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009277 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009281 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009285 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009289 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+84.3                  
+00009293 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009297 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009301 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009305 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009309 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009313 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009317 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009321 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009325 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009330 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009334 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009338 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009342 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009346 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009350 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009354 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009358 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009362 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009366 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009370 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009374 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009378 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009382 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009386 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009390 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009394 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009398 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009402 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009406 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009410 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009414 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009418 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009422 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009426 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009430 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009435 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009439 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009443 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009447 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009451 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009455 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009459 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009463 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009467 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009471 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009475 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009479 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009483 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009487 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009491 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+85.0                  
+00009495 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009499 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009503 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009507 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009511 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009515 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009519 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009523 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009527 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009531 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009536 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009540 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009544 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009548 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009552 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009556 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009560 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009564 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009568 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009572 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009576 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009580 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009584 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009588 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009592 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009596 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009600 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009604 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009608 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009612 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009616 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009620 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009624 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009628 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009632 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009636 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009641 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009645 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009649 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009653 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009657 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009661 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009665 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009669 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009673 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009677 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009681 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009685 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009689 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009693 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+85.7                  
+00009697 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009701 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009705 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009709 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009713 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009717 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009721 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009725 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009729 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009733 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009737 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009741 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009746 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009750 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009754 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009758 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009762 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009766 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009770 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009774 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009778 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009782 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009786 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009790 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009794 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009798 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009802 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009806 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009810 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009814 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009818 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009822 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009826 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009830 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009834 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009838 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009842 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009847 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009851 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009855 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009859 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009863 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009867 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009871 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009875 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009879 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009883 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009887 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009891 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009895 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+  RMC:-01.0ROLL:+86.3                  
+00009899 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009903 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009907 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009911 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009915 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009919 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009923 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009927 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009931 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009935 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009939 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009943 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009947 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009952 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009956 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009960 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009964 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009968 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009972 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009976 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009980 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009984 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009988 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009992 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00009996 servo 01550 track 205.30 bank: -15.00 gy: -01.37
+00010000 servo 01550 track 205.30 bank: -15.00 gy: -01.37

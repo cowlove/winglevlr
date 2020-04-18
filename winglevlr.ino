@@ -281,7 +281,7 @@ void setup() {
 	ed.pidi.value = knobPID->gain.i;
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidg.value = knobPID->finalGain;
-	ed.maxb.value = 10;
+	ed.maxb.value = 16;
 	ed.navg.value = navPID.finalGain;
 	
 	pinMode(33, OUTPUT);
@@ -334,6 +334,17 @@ public:
 	T getValue() { return value; } 
 };
  
+static StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
+static float desiredTrk = -1;
+float desRoll = 0;		
+
+void ESP32sim_set_gpsTrackGDL90(float v) { 
+	gpsTrackGDL90 = v;
+}
+void ESP32sim_set_desiredTrk(float v) {
+	desiredTrk = v;
+}
+
 void loop() {
 	mavlink_message_t msg;
 	uint16_t len;
@@ -347,7 +358,6 @@ void loop() {
 	static char lastParam[64];
 	static int lastHdg;
 	static int mavHeartbeats;
-	static float desiredTrk = -1;
 	static int apMode = 1;
 	static int gpsUseGDL90 = 1; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
@@ -362,8 +372,6 @@ void loop() {
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
 	static String logFilename("none");
-	static StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
-	static float desRoll = 0;		
 	
 	delayMicroseconds(10);
 	uint64_t now = micros();
