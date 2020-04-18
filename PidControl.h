@@ -22,30 +22,6 @@ public:
 	//			pref, p, pref, i, pref, d, pref, j, pref, l); }
 };
 
-class GainChannel  {
-public:
-	double gain = 0.0;
-	double maxg = 0.0;
-	double limitToMax(double v) { 
-		if (maxg <= 0)
-			return v;
-			return min(maxg, max(-maxg, v));
-	}
-	double getCorrection(double v) {
-		double c = v; 
-		if (maxg > 0) { 
-			if (c < -maxg) c = -maxg;
-			if (c > maxg) c = maxg;
-		}
-		return c;
-	}	
-};
-
-class GainControl {
-public:
-	GainChannel p, i, d, j, l;
-};
-
 
 class PidControl {
 public:
@@ -61,10 +37,17 @@ public:
       	gain.j = gj;
       	gain.l = gl;
     }
-    PID err;
-    PID gain; 
+    PID err, gain, hiGain, hiGainTrans;
     double finalGain = 1.0;
     
+
+	float calcGain(float err, float loGain, float hiGain, float transition) {
+		float c =  err * loGain;
+		if (hiGain > 0 && (abs(err) > transition))
+			c += (abs(err) - transition) * (hiGain - loGain) * err/abs(err);
+		return c;
+	}
+
     // these values are set in reset() method
     double i;
     RunningLeastSquares histError, histMeasurement;
@@ -98,13 +81,12 @@ public:
         
 		histError.add(time, error);
 		histMeasurement.add(time, measurement);
-		i += error;
-        
-        err.p = gain.p * histError.predict(time);
- 	    err.i = gain.i * i;
- 	    err.d = gain.d * histMeasurement.slope(); // Derviative on Measurment
- 	    //err.d = gain.d * histError.slope(); // Derviative on Error
-		drms = histMeasurement.rmsError();
+        err.p = calcGain(histError.predict(time), gain.p, hiGain.p, hiGainTrans.p);
+        i += calcGain(histError.predict(time), gain.i, hiGain.i, hiGainTrans.i);
+ 	    err.i = i;
+ 	    err.d = calcGain(histMeasurement.slope(), gain.d, hiGain.d, hiGainTrans.d);
+ 	    //err.d = calcGain(histError.slope(), gain.d, hiGain.d, hiGainTrans.d);
+ 	    drms = histMeasurement.rmsError();
  	           
 	    corr = -(err.p + err.i + err.d) * finalGain;
 	    return corr;

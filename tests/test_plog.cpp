@@ -11,8 +11,6 @@
 #endif
 
 
-
-
 int main(int argc, char **argv) {
 	ifstream i(argv[1], ios_base::in | ios::binary);
 	RollAHRS ahrs;
@@ -31,9 +29,7 @@ int main(int argc, char **argv) {
 /*11*/	 << l.ai.mx << " " << l.ai.my << " " << ahrs.magHdgRawFit.averageY()  << " " << ahrs.magHdgFit.averageY()	 << " " << ahrs.bankCorrection << " "
 /*16*/	 << ahrs.gpsBankAngle << " " << ahrs.magBankAngle << " " << ahrs.dipBankAngle << " " << ahrs.bankFit.averageY() << " " 
 /*20*/	 << servo <<" "<< pid.err.p <<" "<< pid.err.d<<" " << ahrs.dipBankAngle2
-#ifdef LOGITEM_VERSION_C
-/*23*/	 << l.finalGain <<" "<< cmd
-#endif
+/*23*/	 << l.finalGain <<" "<< cmd << " " << ahrs.gyroDrift << " " 
 		 <<  endl;
 	}
 }
