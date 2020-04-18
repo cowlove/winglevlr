@@ -357,13 +357,14 @@ void loop() {
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
 	static RollingAverage<int,1000> loopTime;
-	static EggTimer serialReportTimer(500), navPIDTimer(50);
+	static EggTimer serialReportTimer(1000), navPIDTimer(50);
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
 	static String logFilename("none");
 	static StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 	static float desRoll = 0;		
+	
 	delayMicroseconds(10);
 	uint64_t now = micros();
 	loopTime.add(now - lastLoop);
@@ -477,14 +478,17 @@ void loop() {
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pwmOutput = 0;
-		if ((ahrs.valid() && desiredTrk != -1) || digitalRead(button4.pin) == 0) { // hold down button to override and make servo work  
-			double hdgErr = ahrsInput.gpsTrack - desiredTrk;
-			if(hdgErr < -180) hdgErr += 360;
-			if(hdgErr > 180) hdgErr -= 360;
-			if (navPIDTimer.tick()) {
-				desRoll = -navPID.add(hdgErr, ahrsInput.gpsTrack, ahrsInput.sec);
-				desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
-			}	
+		if (ahrs.valid() || digitalRead(button4.pin) == 0) { // hold down button to override and make servo work  
+			if (desiredTrk != -1) {
+				double hdgErr = ahrsInput.gpsTrack - desiredTrk;
+				if(hdgErr < -180) hdgErr += 360;
+				if(hdgErr > 180) hdgErr -= 360;
+				if (navPIDTimer.tick()) {
+					desRoll = -navPID.add(hdgErr, ahrsInput.gpsTrack, ahrsInput.sec);
+					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
+				}
+			}
+			// TODO: desRoll may be stale, but leave this bug so serial cmdline can set desRoll 
 			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 			//Serial.printf("%05.2f %05.2f %04d\n", desRoll, roll);
 			if (armServo) {  
@@ -697,10 +701,15 @@ void loop() {
 			if (buf[i] != '\r')
 				line[index++] = buf[i];
 			if (buf[i] == '\n' || buf[i] == '\r') {
+				line[index] = '\0';
+				Serial.printf("RECEIVED COMMAND: %s", line);
 				index = 0;
 				float f;
-				if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
-				if (sscanf(line, "knob=%f", &f) == 1) {
+				if (sscanf(line, "navhi=%f", &f) == 1) { navPID.hiGain.p = f; }
+				else if (sscanf(line, "navtr=%f", &f) == 1) { navPID.hiGainTrans.p = f; }
+				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
+				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
+				else if (sscanf(line, "knob=%f", &f) == 1) {
 					if (f == 1) {
 						knobPID = &rollPID;
 					} else if (f == 2) { 
@@ -710,6 +719,8 @@ void loop() {
 					ed.pidi.value = knobPID->gain.i;
 					ed.pidd.value = knobPID->gain.d;
 					ed.pidg.value = knobPID->finalGain;
+				} else {
+					Serial.printf("UNKNOWN COMMAND: %s", line);
 				}
 			}
 		}
