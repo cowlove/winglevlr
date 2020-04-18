@@ -45,9 +45,9 @@ class RollAHRS {
 public:
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, bankCorrection, bankAngle;
 
-	RunningLeastSquares 
+	RunningLeastSquares // all at about 200 HZ */
 		bankFit = RunningLeastSquares(100), 
-		gpsHdgFit = RunningLeastSquares(100), 
+		gpsHdgFit = RunningLeastSquares(1000),  // TODO run GPS histories at lower rate 
 		magHdgFit = RunningLeastSquares(50), 
 		magHdgRawFit = RunningLeastSquares(50), 
 		dipBankFit = RunningLeastSquares(100);
