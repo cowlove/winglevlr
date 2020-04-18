@@ -148,6 +148,7 @@ public:
 	float calcQuat(float) { return 0; }
 	float calcMag(float) { return 0; }
 	float ax,ay,az,gx,gy,gz,mx,my,mz,qw,qx,qy,qz,pitch,roll,yaw;
+	MPU9250_DMP() { bzero(this, sizeof(this)); } 
 };
 typedef char byte;
 
