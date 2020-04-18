@@ -97,6 +97,10 @@ namespace Display {
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f "); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f ");
 }
 
+void ESP32sim_JDisplay_forceUpdate() { 
+	Display::jd.forceUpdate();
+}
+
 MPU9250_DMP imu;
 #define IMU_INT_PIN 4
 
