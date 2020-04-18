@@ -9,7 +9,7 @@ plot:	winglevlr_ubuntu
 
 
 test.out:	winglevlr_ubuntu
-	./winglevlr_ubuntu --jdisplay --serial --seconds 10  | tee $@
+	./winglevlr_ubuntu --jdisplay --serial --seconds 500  | tee $@
 	
 winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
 	g++ -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
