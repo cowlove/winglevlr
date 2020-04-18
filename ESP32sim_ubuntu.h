@@ -149,6 +149,9 @@ void ESP32sim_set_gpsTrackGDL90(float v);
 void ESP32sim_set_desiredTrk(float v);
 extern float desRoll;
 
+
+void ESP32sim_JDisplay_forceUpdate();
+
 class MPU9250_DMP {
 	float bank = 0, track = 0;
 	RollingAverage<float,200> rollCmd;
@@ -170,20 +173,21 @@ public:
 		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			//printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, currentPwm, track, desRoll, bank, gy);
 		}
-		if (floor(lastMillis / 1000) != floor(millis() / 1000)) { // 1hz
+		uint64_t now = millis();
+		if (floor(lastMillis / 1000) != floor(now / 1000)) { // 1hz
 			track -= bank * 0.15;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;	
 			ESP32sim_set_gpsTrackGDL90(track);
+			ESP32sim_JDisplay_forceUpdate();	
 		}
-		int s = millis()/1000;
+		int s = now/1000;
 		if (s > 001) ESP32sim_set_desiredTrk(90);
 		if (s > 100) ESP32sim_set_desiredTrk(180);
-		if (s > 200) ESP32sim_set_desiredTrk(90);
-		if (s > 300) ESP32sim_set_desiredTrk(92);
+		if (s > 300) ESP32sim_set_desiredTrk(90);
+		if (s > 500) ESP32sim_set_desiredTrk(180);
 
-		
-		lastMillis = millis();
+		lastMillis = now;
 	}
 	void updateCompass() {}
 	float calcAccel(float x) { return x; }

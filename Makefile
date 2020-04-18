@@ -4,12 +4,12 @@
 VERBOSE=1
 
 plot:	winglevlr_ubuntu
-	./winglevlr_ubuntu --jdisplay --serial --seconds 500 | grep DTK | tr ':' ' ' > out.dat \
+	./winglevlr_ubuntu --jdisplay --serial --seconds 700 | grep DTK | tr ':' ' ' > out.dat \
 		&& echo "f='./out.dat'; p f u 2 w l ti 'DTK', f u 4 w l ti 'TRK'; pause 100"| gnuplot
 
 
 test.out:	winglevlr_ubuntu
-	./winglevlr_ubuntu --jdisplay --serial --seconds 500  | tee $@
+	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | tee $@
 	
 winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
 	g++ -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/

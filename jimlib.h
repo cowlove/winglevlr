@@ -483,8 +483,7 @@ public:
 	void addItem(JDisplayItemBase *i) { 
 		items.push_back(i);
 	}
-	inline void forceUpdate();
-	
+	inline void forceUpdate();	
 };
 
 bool JDisplay::displayToConsole = false;
