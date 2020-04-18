@@ -9,20 +9,30 @@
 #include <stdarg.h>
 #include <iostream>
 #include <fstream>
-
+#include "RunningLeastSquares.h"
 
 using namespace std;
+static int currentPwm = 0;
 static uint64_t _micros = 0;
 uint64_t micros() { return ++_micros; }
 uint64_t millis() { return micros() / 1000; }
 void pinMode(int, int) {}
-int digitalRead(int) { return 1; }
+int digitalRead(int p) {
+	// HACK simple proof-of-concept to simulate button push and arm
+	// the servos  
+	if (p == 35 && millis() > 100 && millis() < 200)
+		return 0;
+	return 1; 
+}
+void ledcWrite(int chan, int val) { 
+	currentPwm = val;
+	//printf("pwm %d\n", val);
+} 
 int digitalPinToInterrupt(int) { return 0; }
 void digitalWrite(int, int) {};
 void attachInterrupt(int, void (*)(), int) {} 
 void ledcSetup(int, int, int) {}
 void ledcAttachPin(int, int) {}
-void ledcWrite(int, int) {} 
 void delayMicroseconds(int m) { _micros += m; }
 void delay(int m) { delayMicroseconds(m*1000); }
 void yield() {}
@@ -135,18 +145,24 @@ public:
 #define INV_XYZ_COMPASS 0
 
 class MPU9250_DMP {
+	float bank = 0;
+	RollingAverage<float,200> rollCmd;
 public:
 	int begin(){ return true; }
 	void setGyroFSR(int) {};
     void setAccelFSR(int) {};
     void setSensors(int) {}
 	void updateAccel() {}
-	void updateGyro() {}
+	void updateGyro() {
+		rollCmd.add((currentPwm - 4915.0) / 4915.0);
+		gy = rollCmd.average() * 2.0;
+		//printf("%f\n", gy);
+	}
 	void updateCompass() {}
-	float calcAccel(float) { return 0; }
-	float calcGyro(float) { return 0; }
-	float calcQuat(float) { return 0; }
-	float calcMag(float) { return 0; }
+	float calcAccel(float x) { return x; }
+	float calcGyro(float x) { return x; }
+	float calcQuat(float x) { return x; }
+	float calcMag(float x) { return x; }
 	float ax,ay,az,gx,gy,gz,mx,my,mz,qw,qx,qy,qz,pitch,roll,yaw;
 	MPU9250_DMP() { bzero(this, sizeof(this)); } 
 };

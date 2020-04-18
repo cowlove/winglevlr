@@ -231,41 +231,6 @@ class DigitalButtonLongShort {
 };
 
 
-template <class T, int SIZE>
-class RollingAverage {
-	T values[SIZE];
-	T sum = 0;
-	int count = 0;
-	int index = 0;
-public:
-	RollingAverage() {}
-	void add(const T &v) { 
-		if (count == SIZE) 
-			sum -= values[index];
-		else 
-			count++;
-		values[index++] = v;
-		sum += v;
-		if (index >= SIZE)
-			index = 0;
-	}
-	T average() { 
-		return count > 0 ? sum/count : 0;
-	}
-	T min() { 
-		T m = values[0];
-		for (int n = 0; n < count; n++)
-			if (values[n] < m) m = values[n];
-		return m;
-	}
-	T max() { 
-		T m = values[0];
-		for (int n = 0; n < count; n++)
-			if (values[n] > m) m = values[n];
-		return m;
-	}
-};
-
 void open_TTGOTS_SD() { 
 	for (int retries = 0; retries < 2; retries++) { 	
 		Serial.print("Initializing SD card...");
