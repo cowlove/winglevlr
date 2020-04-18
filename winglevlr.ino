@@ -349,6 +349,7 @@ void ESP32sim_set_desiredTrk(float v) {
 	desiredTrk = v;
 }
 
+static int servoOverride = 0;
 void loop() {
 	mavlink_message_t msg;
 	uint16_t len;
@@ -490,7 +491,7 @@ void loop() {
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pwmOutput = 0;
-		if (ahrs.valid() || digitalRead(button4.pin) == 0) { // hold down button to override and make servo work  
+		if (ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0) { // hold down button to override and make servo work  
 			if (desiredTrk != -1) {
 				double hdgErr = ahrsInput.gpsTrack - desiredTrk;
 				if(hdgErr < -180) hdgErr += 360;
@@ -505,7 +506,10 @@ void loop() {
 			//Serial.printf("%05.2f %05.2f %04d\n", desRoll, roll);
 			if (armServo) {  
 				servoOutput = servoTrim + rollPID.corr;
-				pwmOutput = max(1550, min(7300, servoOutput * 4915 / 1500));
+				if (servoOverride > 0)
+					servoOutput = servoOverride;
+				servoOutput = max(550, min(2100, servoOutput));
+				pwmOutput = servoOutput * 4915 / 1500;
 			}
 		}
 		
@@ -722,6 +726,7 @@ void loop() {
 				else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
 				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
+				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
 				else if (sscanf(line, "knob=%f", &f) == 1) {
 					if (f == 1) {
 						knobPID = &rollPID;
