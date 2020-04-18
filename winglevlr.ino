@@ -707,6 +707,7 @@ void loop() {
 				float f;
 				if (sscanf(line, "navhi=%f", &f) == 1) { navPID.hiGain.p = f; }
 				else if (sscanf(line, "navtr=%f", &f) == 1) { navPID.hiGainTrans.p = f; }
+				else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
 				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 				else if (sscanf(line, "knob=%f", &f) == 1) {
