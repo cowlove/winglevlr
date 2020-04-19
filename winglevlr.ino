@@ -270,10 +270,11 @@ void setup() {
 	mavlink_open();
 	mavRemoteIp.fromString("192.168.43.166");
 
-	rollPID.setGains(7.52, 0, 0.11);
+	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
+	rollPID.maxerr.i = 20;
 	navPID.setGains(0.5, 0, 0.1);
-	navPID.finalGain = 0.9;
+	navPID.finalGain = 2.2;
 	navPID.hiGain.p = 0; 
 	navPID.hiGainTrans.p = 0;
 	
@@ -285,7 +286,7 @@ void setup() {
 	ed.pidi.value = knobPID->gain.i;
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidg.value = knobPID->finalGain;
-	ed.maxb.value = 16;
+	ed.maxb.value = 17;
 	ed.navg.value = navPID.finalGain;
 	
 	pinMode(33, OUTPUT);
