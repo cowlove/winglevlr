@@ -37,7 +37,7 @@ public:
       	gain.j = gj;
       	gain.l = gl;
     }
-    PID err, gain, hiGain, hiGainTrans;
+    PID err, gain, maxerr, hiGain, hiGainTrans;
     double finalGain = 1.0;
     
 
@@ -72,17 +72,21 @@ public:
     	histMeasurement.rebaseX();
     }
     
-    double lastVal, drms;
+    double lastVal, drms, lastTime = 0;
     int count = 0;
     double add(double error, double measurement, double time) {
 		if (count++ % 2000 == 0) 
 			rebase();
         lastVal = error;
         
+        float dt = (count > 0) ? time - lastTime : 0.0;
+        lastTime = time;
 		histError.add(time, error);
 		histMeasurement.add(time, measurement);
         err.p = calcGain(histError.predict(time), gain.p, hiGain.p, hiGainTrans.p);
-        i += calcGain(histError.predict(time), gain.i, hiGain.i, hiGainTrans.i);
+        i += calcGain(histError.predict(time), gain.i, hiGain.i, hiGainTrans.i) * dt;
+ 	    if (maxerr.i > 0) 
+			i = min(maxerr.i, max(-maxerr.i, i));
  	    err.i = i;
  	    err.d = calcGain(histMeasurement.slope(), gain.d, hiGain.d, hiGainTrans.d);
  	    //err.d = calcGain(histError.slope(), gain.d, hiGain.d, hiGainTrans.d);

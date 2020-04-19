@@ -15,7 +15,7 @@ test_plog_0: test_plog.cpp ../RollAHRS.h
 test_plog_B:	test_plog.cpp  ../RollAHRS.h
 	g++ -DUBUNTU -I.. -DLOGITEM_VERSION=LogItemB -I/home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src $< -o $@ -g
 
-test_plog_C:	test_plog.cpp  ../RollAHRS.h
+test_plog_C:	test_plog.cpp  ../RollAHRS.h ../PidControl.h
 	g++ -DUBUNTU -I.. -DLOGITEM_VERSION=LogItemC -I/home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src $< -o $@ -g
 
 %.plog:	 %.DAT test_plog_C
