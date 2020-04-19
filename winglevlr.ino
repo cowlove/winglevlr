@@ -42,7 +42,7 @@ GDL90Parser::State state;
 RollAHRS ahrs;
 PidControl rollPID(30) /*200Hz*/, navPID(50); /*20Hz*/
 PidControl *knobPID = &rollPID;
-static int servoTrim = 1500;
+static int servoTrim = 1325;
 
 #define MAVLINK_PORT 14450
 void mavlink_open();
