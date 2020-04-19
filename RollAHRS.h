@@ -40,7 +40,7 @@ class RollAHRS {
 		  magOffZ = (-80 + 20) / 2; // + is up
 		  
 	float gyrOffX = -3.1592, 
-		  gyrOffY = -0.2906,
+		  gyrOffY = -0.2906 + 304.0/790.0,
 		  gyrOffZ = -1.7086;
 public:
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, bankCorrection, bankAngle;
