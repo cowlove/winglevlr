@@ -137,7 +137,7 @@ public:
 			magHdgFit.rebaseX();
 		}
 
-		float tas = 120 * .51444; // true airspeed in m/sec.  Units in bank angle may be wrong, why need 140Kts?  
+		float tas = 90 * .51444; // true airspeed in m/sec.  Units in bank angle may be wrong, why need 140Kts?  
 		
 		gpsBankAngle = -atan((2*M_PI*tas)/(9.81*360 / gpsHdgFit.slope()))*180/M_PI;
 		magBankAngle = -atan((2*M_PI*tas)/(9.81*360 / magHdgFit.slope()))*180/M_PI;
@@ -148,7 +148,7 @@ public:
 						  (isnan(dipBankAngle) ? 0 : (0.0 * dipBankAngle));
 		bankFit.add(l.sec, bankAngle);
 		float compRatio = .0006; // will depend on sample rate, this works for 50Hz 
-		compR = (compR + l.gy * 1.20 /*gyroGain*/ * dt) * (1-compRatio) + (bankAngle * compRatio);
+		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio) + (bankAngle * compRatio);
 		rollG  += l.gy * dt;
 		if (tick10HZ) { 
 			gyroDriftFit.add(l.sec, compR - rollG);

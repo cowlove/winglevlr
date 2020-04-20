@@ -30,11 +30,14 @@ set y2tic
 set ytic nomirror
 p ${XRANGE} \
 	f2 u (\$2-F2_min_x):7 w l tit "Calc Roll",\
-	f2 u (\$2-F2_min_x):(\$20) w l ax x1y2 tit "Act Servo Output", \
+	f2 u (\$2-F2_min_x):(\$25) w l ax x1y2 tit "Gyro Drift", \
 	
 $WAIT
 
 EOF
+	f2 u (\$2-F2_min_x):(\$25) w l ax x1y2 tit "Gyro Drift", \
+	f2 u (\$2-F2_min_x):(\$16) w l tit "GPS Bank", \
+	f2 u (\$2-F2_min_x):10 w l tit "Ground Speed" ax x1y2, \
 	f2 u (\$2-F2_min_x):(\$21) w l ax x1y2 tit "Sim Servo Output", \
 	f1 u (\$1-F1_min_x):(-\$4) w l tit "ArduPilot Roll", \
 	f2 u (\$2-F2_min_x):(\$16) w l tit "GPS Bank", \
@@ -92,7 +95,6 @@ exit
 
 
 	, f2 u (\$2-F2_min_x):7 w l tit "Roll Comp Filter" \
-	, f2 u (\$2-F2_min_x):10 w l tit "Ground Speed" ax x1y2  \
 	, f2 u (\$2-F2_min_x):10 w l tit "GPS Hdg Bank Angle"   \
 	, f2 u (\$2-F2_min_x):9 w l tit "Drift Correction" ax x1y2  \
 	, f2 u (\$2-F2_min_x):6 w l tit "Drift Compensated" \

@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 /*11*/	 << l.ai.mx << " " << l.ai.my << " " << ahrs.magHdgRawFit.averageY()  << " " << ahrs.magHdgFit.averageY()	 << " " << ahrs.bankCorrection << " "
 /*16*/	 << ahrs.gpsBankAngle << " " << ahrs.magBankAngle << " " << ahrs.dipBankAngle << " " << ahrs.bankFit.averageY() << " " 
 /*20*/	 << (l.pwmOutput*1500/4915) <<" "<< servo <<" "<< pid.err.d<<" " << ahrs.dipBankAngle2
-/*23*/	 << l.finalGain <<" "<< cmd << " " << ahrs.gyroDrift << " " 
+/*24*/	 << l.finalGain <<" "<< cmd << " " << ahrs.gyroDrift << " " 
 		 <<  endl;
 	}
 }
