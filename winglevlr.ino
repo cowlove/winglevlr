@@ -350,6 +350,16 @@ void ESP32sim_set_desiredTrk(float v) {
 	desiredTrk = v;
 }
 
+
+void pitchTrimRelay(int relay, int ms) { 
+	char l[256];
+	logItem.flags |= ((1 << relay) | (ms << 8));
+	snprintf(l, sizeof(l), "pin %d 0 %d\n", relay, ms);
+	udpG90.beginPacket("255.255.255.255", 7892);
+	udpG90.write((uint8_t *)l, strlen(l));
+	udpG90.endPacket();
+}
+
 static int servoOverride = 0;
 void loop() {
 	mavlink_message_t msg;
@@ -377,6 +387,7 @@ void loop() {
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
+	static int relayMs = 30;
 	static String logFilename("none");
 	
 	delayMicroseconds(10);
@@ -412,7 +423,7 @@ void loop() {
 		
 	}
 	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
-		if (butFilt2.wasCount == 1) {
+		if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
 			armServo = !armServo; 
 			rollPID.reset();
 			navPID.reset();
@@ -422,25 +433,36 @@ void loop() {
 			len = mavlink_msg_to_send_buffer(buf, &msg);
 			mavlink_send(buf, len); 
 		}
+		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
+			pitchTrimRelay(1, relayMs);
+		}
+		
+/*
+ * 		TODO move this into mavlink cookbook
 		if (butFilt2.wasLong && butFilt2.wasCount == 2)  {
-			mavlink_msg_command_long_pack(1, 2, &msg, 0, 0, MAV_CMD_PREFLIGHT_CALIBRATION, 0, 0, 0, 0, 0, 4/*param5*/, 0, 0);
+			mavlink_msg_command_long_pack(1, 2, &msg, 0, 0, MAV_CMD_PREFLIGHT_CALIBRATION, 0, 0, 0, 0, 0, 4, 0, 0); // 4 == param5
 			len = mavlink_msg_to_send_buffer(buf, &msg);
 			mavlink_send(buf, len);
-		}	
+*/
+		
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
-		phSafetySwitch = !phSafetySwitch;
-		if (phSafetySwitch == false) {
-			screenEnabled = false;
-			Display::jd.clear();
-		} else {
-			screenEnabled = true;
-			Display::jd.begin();
-			Display::jd.forceUpdate();
+		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
+			pitchTrimRelay(0, relayMs);
 		}
-		mavTimer.alarmNow();
+		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
+			phSafetySwitch = !phSafetySwitch;
+			if (phSafetySwitch == false) {
+				screenEnabled = false;
+				Display::jd.clear();
+			} else {
+				screenEnabled = true;
+				Display::jd.begin();
+				Display::jd.forceUpdate();
+			}
+			mavTimer.alarmNow();
+		}
 	}
-	
 	if (butFilt4.newEvent()) { 	// main knob button
 		if (butFilt4.wasCount == 1) { 
 			ed.buttonPress(butFilt4.wasLong);
@@ -523,13 +545,13 @@ void loop() {
 		logItem.gainI = rollPID.gain.i;
 		logItem.gainD = rollPID.gain.d;
 		logItem.pwmOutput = pwmOutput;
-		logItem.servoTrim = servoTrim;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
 		logItem.dtk = desiredTrk;
 		if (logFile != NULL) {
 			sdLog();
 		}
+		logItem.flags = 0;
 	}
 
 	if (screenEnabled) { 
@@ -722,12 +744,17 @@ void loop() {
 				Serial.printf("RECEIVED COMMAND: %s", line);
 				index = 0;
 				float f;
+				int relay, ms;
 				if (sscanf(line, "navhi=%f", &f) == 1) { navPID.hiGain.p = f; }
 				else if (sscanf(line, "navtr=%f", &f) == 1) { navPID.hiGainTrans.p = f; }
 				else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
 				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
+				else if (sscanf(line, "relay=%d %d", &relay, &ms) == 2) { 
+					pitchTrimRelay(relay, ms);
+					relayMs = ms;
+				}
 				else if (sscanf(line, "knob=%f", &f) == 1) {
 					if (f == 1) {
 						knobPID = &rollPID;

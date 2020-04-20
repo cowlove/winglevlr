@@ -129,6 +129,7 @@ public:
 		delay = 500;
 	}
 	void beginPacket(IPAddress, int) {}
+	void beginPacket(const char *, int) {}
 	void write(uint8_t *, int) {}
 	void endPacket() {}
 	int parsePacket() { return i.good() &&  _micros > nextPacket; } ;
