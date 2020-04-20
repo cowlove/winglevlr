@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 /*6*/	<< ahrs.rollG << " " << (ahrs.compYH) << " "	<< ahrs.bankAngle  << " " << l.roll << " " << l.ai.gspeed  << " " 
 /*11*/	 << l.ai.mx << " " << l.ai.my << " " << ahrs.magHdgRawFit.averageY()  << " " << ahrs.magHdgFit.averageY()	 << " " << ahrs.bankCorrection << " "
 /*16*/	 << ahrs.gpsBankAngle << " " << ahrs.magBankAngle << " " << ahrs.dipBankAngle << " " << ahrs.bankFit.averageY() << " " 
-/*20*/	 << (l.pwmOutput*1500/4915) <<" "<< servo <<" "<< pid.err.d<<" " << hex << l.flags << dec << " " 
+/*20*/	 << (l.pwmOutput*1500/4915) <<" "<< servo <<" "<< pid.err.d<<" " << hex << "0x" << l.flags << dec << " " 
 /*24*/	 << l.finalGain <<" "<< cmd << " " << ahrs.gyroDrift << " " 
 		 <<  endl;
 	}
