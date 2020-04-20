@@ -197,7 +197,7 @@ struct LogItemB {
 };
 
 struct LogItemC {
-	short pwmOutput, servoTrim;
+	short pwmOutput, flags;
 	float pidP, pidI, pidD;
 	float gainP, gainI, gainD, finalGain;
 	float desRoll, dtk, roll;
