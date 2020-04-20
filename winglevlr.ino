@@ -286,7 +286,7 @@ void setup() {
 	ed.pidi.value = knobPID->gain.i;
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidg.value = knobPID->finalGain;
-	ed.maxb.value = 17;
+	ed.maxb.value = 12;
 	ed.navg.value = navPID.finalGain;
 	
 	pinMode(33, OUTPUT);
