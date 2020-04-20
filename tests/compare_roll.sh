@@ -24,17 +24,24 @@ set title "${F2} Roll Analysis"
 f2="$F2"
 f1="$F1"
 stats f1 u 1:4 name "F1"
-stats f2 u 2:20 name "F2"
+stats f2 u 2:7 name "F2"
 set grid
 set y2tic
 set ytic nomirror
+
+print "**********************************************"
+stats ${XRANGE} f2 u (\$2-F2_min_x):7 
+
 p ${XRANGE} \
 	f2 u (\$2-F2_min_x):7 w l tit "Calc Roll",\
 	f2 u (\$2-F2_min_x):(\$25) w l ax x1y2 tit "Gyro Drift", \
+
 	
 $WAIT
 
 EOF
+exit
+
 	f2 u (\$2-F2_min_x):(\$25) w l ax x1y2 tit "Gyro Drift", \
 	f2 u (\$2-F2_min_x):(\$16) w l tit "GPS Bank", \
 	f2 u (\$2-F2_min_x):10 w l tit "Ground Speed" ax x1y2, \

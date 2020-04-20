@@ -1,0 +1,14 @@
+
+
+AHRSD0037 	4/19	constant bank turns, at this point the plane had large servo trim and no PID-I correction
+AHRSD0038	4/19	orbit.sh 
+AHRSD0039	4/19 	two long straight stretches 
+AHRSD0042	4/20	manual bank 0, started with large mechanical trim offset, let PID-I controller tune it in
+AHRSD0043		manual bank 0, but with mechanical trim tuned in
+AHRSD0044		manual bank circles, 12 degrees
+AHRSD0045		manual bank circles, 25 degrees
+47		straight NAV GDL90
+48		straight nav fused
+49		straight nav gdl90 again 
+
+
