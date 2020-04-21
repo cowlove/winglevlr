@@ -40,8 +40,8 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, navPID(50); /*20Hz*/
-PidControl *knobPID = &rollPID;
+PidControl rollPID(30) /*200Hz*/, pitchPID(40), navPID(50); /*20Hz*/
+PidControl *knobPID = &pitchPID;
 static int servoTrim = 1325;
 
 #define MAVLINK_PORT 14450
@@ -94,7 +94,7 @@ namespace Display {
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f ");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f "); JDisplayItem<float> rely(&jd,70,y,    "RELY:", "%03f ");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f "); JDisplayItem<float> rely(&jd,70,y,    "RELY:", "%03.1f ");
 }
 
 void ESP32sim_JDisplay_forceUpdate() { 
@@ -198,7 +198,7 @@ public:
 	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
 	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, 1);
-	JDisplayEditableItem rely = JDisplayEditableItem(Display::rely, 1);
+	JDisplayEditableItem rely = JDisplayEditableItem(Display::rely, .1);
 	
 	MyEditor() : JDisplayEditor(0, 27) {
 		add(&pidp);	
@@ -275,9 +275,10 @@ void setup() {
 	rollPID.maxerr.i = 20;
 	navPID.setGains(0.5, 0, 0.1);
 	navPID.finalGain = 2.2;
-	navPID.hiGain.p = 0; 
-	navPID.hiGainTrans.p = 0;
-	
+	pitchPID.setGains(0.5, 0.005, 1.0);
+	pitchPID.finalGain = 1.0;
+	pitchPID.maxerr.i = .5;
+
 	ed.begin();
 #ifndef UBUNTU
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
@@ -286,8 +287,8 @@ void setup() {
 	ed.pidi.value = knobPID->gain.i;
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidg.value = knobPID->finalGain;
-	ed.maxb.value = 12;
-	ed.rely.value = 50; // ms relay activation
+	ed.maxb.value = 9;
+	ed.rely.value = 3; // period for relay activation, in seconds
 	
 	pinMode(33, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
@@ -353,18 +354,23 @@ void ESP32sim_set_desiredTrk(float v) {
 
 void pitchTrimRelay(int relay, int ms) { 
 	char l[256];
+	Serial.printf("Relay %d for %d ms\n", relay, ms);
 	static int seq = 0;
 	logItem.flags |= ((1 << relay) | (ms << 8));
 	snprintf(l, sizeof(l), "pin %d 0 %d %d\n", relay, ms, seq);
 	seq++;
-	for (int n = 100; n < 106; n++) { 
-		char ip[32];
-		snprintf(ip, sizeof(ip), "192.168.4.%d", n);
-		for (int repeat = 0; repeat < 5; repeat++) { 
+	for (int repeat = 0; repeat < 3; repeat++) { 
+		udpG90.beginPacket("255.255.255.255", 7892);
+		udpG90.write((uint8_t *)l, strlen(l));
+		udpG90.endPacket();
+		/*for (int n = 100; n < 106; n++) { 
+			char ip[32];
+			snprintf(ip, sizeof(ip), "192.168.4.%d", n);
 			udpG90.beginPacket(ip, 7892);
 			udpG90.write((uint8_t *)l, strlen(l));
 			udpG90.endPacket();
 		}
+		*/
 	}
 }
 
@@ -383,7 +389,7 @@ void loop() {
 	static int lastHdg;
 	static int mavHeartbeats;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 1; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
+	static int gpsUseGDL90 = 2; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
@@ -394,15 +400,16 @@ void loop() {
 	static EggTimer serialReportTimer(1000), navPIDTimer(50);
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
-	static float roll = 0;
+	static float roll = 0, pitch = 0;
 	static String logFilename("none");
+	static AhrsInput lastAhrsInput; 
 	
 	delayMicroseconds(10);
 	uint64_t now = micros();
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("roll %+05.1f servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", roll, servoOutput, 
+		Serial.printf("roll %+05.1f pit %+05.1f servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", roll, pitch, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		loopTime.min(), loopTime.average(), loopTime.max());
 	}
@@ -434,6 +441,8 @@ void loop() {
 			armServo = !armServo; 
 			rollPID.reset();
 			navPID.reset();
+			pitchPID.reset();
+			
 			// send mavlink message for use in debuggin mavlink connections 
 			int new_mode = armServo;
 			mavlink_msg_set_mode_pack(1, 200, &msg, 1, 1, new_mode); 
@@ -441,7 +450,7 @@ void loop() {
 			mavlink_send(buf, len); 
 		}
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
-			pitchTrimRelay(1, ed.rely.value);
+			pitchTrimRelay(1, 60);
 		}
 		
 /*
@@ -455,7 +464,7 @@ void loop() {
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
-			pitchTrimRelay(0, ed.rely.value);
+			pitchTrimRelay(0, 60);
 		}
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
 			phSafetySwitch = !phSafetySwitch;
@@ -520,6 +529,7 @@ void loop() {
 	
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
+		pitch = ahrs.pitchCompDriftCorrected;
 		pwmOutput = 0;
 		if (ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0) { // hold down button to override and make servo work  
 			if (desiredTrk != -1) {
@@ -541,16 +551,26 @@ void loop() {
 				servoOutput = max(550, min(2100, servoOutput));
 				pwmOutput = servoOutput * 4915 / 1500;
 			}
+			
+			if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
+				float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
+				if (floor(ahrsInput.sec / ed.rely.value) != floor(lastAhrsInput.sec / ed.rely.value)) { // .33 Hz
+					if (abs(pCmd) > 0.5) { 
+						float pulse = min(120.0, 50 + (abs(pCmd) - 0.5) * 70 / 1.5);
+						pitchTrimRelay(pCmd > 0 ? 0 : 1, (int)pulse);
+					}
+				}
+			}
 		}
 		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
-		logItem.pidP = rollPID.err.p;
-		logItem.pidI = rollPID.err.i;
-		logItem.pidD = rollPID.err.d;
-		logItem.finalGain = rollPID.finalGain;
-		logItem.gainP = rollPID.gain.p;
-		logItem.gainI = rollPID.gain.i;
-		logItem.gainD = rollPID.gain.d;
+		logItem.pidP = pitchPID.err.p;
+		logItem.pidI = pitchPID.err.i;
+		logItem.pidD = pitchPID.err.d;
+		logItem.finalGain = pitchPID.finalGain;
+		logItem.gainP = pitchPID.gain.p;
+		logItem.gainI = pitchPID.gain.i;
+		logItem.gainD = pitchPID.gain.d;
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
@@ -559,6 +579,7 @@ void loop() {
 			sdLog();
 		}
 		logItem.flags = 0;
+		lastAhrsInput = ahrsInput;
 	}
 
 	if (screenEnabled) { 
@@ -763,8 +784,10 @@ void loop() {
 				}
 				else if (sscanf(line, "knob=%f", &f) == 1) {
 					if (f == 1) {
-						knobPID = &rollPID;
+						knobPID = &pitchPID;
 					} else if (f == 2) { 
+						knobPID = &rollPID;
+					} else if (f == 3) { 
 						knobPID = &navPID;
 					}
 					ed.pidp.value = knobPID->gain.p;

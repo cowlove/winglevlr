@@ -45,13 +45,16 @@ class RollAHRS {
 public:
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, bankCorrection, bankAngle;
 
+	float pitchComp = 0, pitchRaw = 0, pitchDrift = 0, pitchCompDriftCorrected = 0;
 	RunningLeastSquares // all at about 200 HZ */
 		bankFit = RunningLeastSquares(100), 
+		altFit = RunningLeastSquares(200), // 10Hz
 		gpsHdgFit = RunningLeastSquares(500),  // TODO run GPS histories at lower rate 
 		magHdgFit = RunningLeastSquares(50), 
 		magHdgRawFit = RunningLeastSquares(50), 
 		dipBankFit = RunningLeastSquares(100),
-		gyroDriftFit = RunningLeastSquares(300); 
+		gyroDriftFit = RunningLeastSquares(300), // 10HZ 
+		pitchDriftFit = RunningLeastSquares(300);  // 10HZ
 		
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
 	int count = 0;
@@ -59,7 +62,8 @@ public:
 	float lastMagHdg = 0;
 	float compR = 0, compYH =0, rollG = 0;
 	float gyroDrift = 0;
-	
+	float gpsPitch = 0;
+		
 	bool valid() { 
 		return prev.gpsTrack != -1;
 	}
@@ -155,6 +159,23 @@ public:
 			gyroDrift = gyroDriftFit.slope();
 		}
 		compYH = compR + gyroDrift * 8.8;
+		
+	
+		if (tick10HZ) { 
+			altFit.add(l.sec, l.alt);
+		}
+		gpsPitch = asin((altFit.slope() / .5144) / 90) * 180  / M_PI; 
+		
+		pitchRaw += l.gx * dt;
+		pitchComp = (pitchComp + l.gx * dt) * (1-compRatio) + (gpsPitch  * compRatio);
+		
+		if (tick10HZ) { 
+			pitchDriftFit.add(l.sec, pitchComp - pitchRaw);
+			pitchDrift = pitchDriftFit.slope();
+		}
+		pitchCompDriftCorrected = pitchComp + pitchDrift * 8.8;
+		
+		
 		count++;
 		prev = l;
 		return compYH;
