@@ -94,7 +94,7 @@ namespace Display {
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f ");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f "); JDisplayItem<float> navg(&jd,70,y,    "NAVG:", "%05.1f ");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f "); JDisplayItem<float> rely(&jd,70,y,    "RELY:", "%03f ");
 }
 
 void ESP32sim_JDisplay_forceUpdate() { 
@@ -198,7 +198,7 @@ public:
 	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
 	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, 1);
-	JDisplayEditableItem navg = JDisplayEditableItem(Display::navg, .1);
+	JDisplayEditableItem rely = JDisplayEditableItem(Display::rely, 1);
 	
 	MyEditor() : JDisplayEditor(0, 27) {
 		add(&pidp);	
@@ -206,7 +206,7 @@ public:
 		add(&pidd);	
 		add(&pidg);	
 		add(&maxb);
-		add(&navg);
+		add(&rely);
 	}
 } ed;
 
@@ -287,7 +287,7 @@ void setup() {
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 12;
-	ed.navg.value = navPID.finalGain;
+	ed.rely.value = 50; // ms relay activation
 	
 	pinMode(33, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
@@ -353,11 +353,19 @@ void ESP32sim_set_desiredTrk(float v) {
 
 void pitchTrimRelay(int relay, int ms) { 
 	char l[256];
+	static int seq = 0;
 	logItem.flags |= ((1 << relay) | (ms << 8));
-	snprintf(l, sizeof(l), "pin %d 0 %d\n", relay, ms);
-	udpG90.beginPacket("255.255.255.255", 7892);
-	udpG90.write((uint8_t *)l, strlen(l));
-	udpG90.endPacket();
+	snprintf(l, sizeof(l), "pin %d 0 %d %d\n", relay, ms, seq);
+	seq++;
+	for (int n = 100; n < 106; n++) { 
+		char ip[32];
+		snprintf(ip, sizeof(ip), "192.168.4.%d", n);
+		for (int repeat = 0; repeat < 5; repeat++) { 
+			udpG90.beginPacket(ip, 7892);
+			udpG90.write((uint8_t *)l, strlen(l));
+			udpG90.endPacket();
+		}
+	}
 }
 
 static int servoOverride = 0;
@@ -387,7 +395,6 @@ void loop() {
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0;
-	static int relayMs = 30;
 	static String logFilename("none");
 	
 	delayMicroseconds(10);
@@ -434,7 +441,7 @@ void loop() {
 			mavlink_send(buf, len); 
 		}
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
-			pitchTrimRelay(1, relayMs);
+			pitchTrimRelay(1, ed.rely.value);
 		}
 		
 /*
@@ -448,7 +455,7 @@ void loop() {
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
-			pitchTrimRelay(0, relayMs);
+			pitchTrimRelay(0, ed.rely.value);
 		}
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
 			phSafetySwitch = !phSafetySwitch;
@@ -560,7 +567,6 @@ void loop() {
 		knobPID->gain.i = ed.pidi.value;
 		knobPID->gain.d = ed.pidd.value;
 		knobPID->finalGain = ed.pidg.value;
-		navPID.finalGain = ed.navg.value;
 	}
 	
 	if (screenEnabled && screenTimer.tick()) {
@@ -753,7 +759,6 @@ void loop() {
 				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
 				else if (sscanf(line, "relay=%d %d", &relay, &ms) == 2) { 
 					pitchTrimRelay(relay, ms);
-					relayMs = ms;
 				}
 				else if (sscanf(line, "knob=%f", &f) == 1) {
 					if (f == 1) {
