@@ -43,8 +43,14 @@ int main(int argc, char **argv) {
 			}
 		}
 		 
-		cout << ahrs.count << " " << l.ai.sec << " " << l.ai.gpsTrackGDL90 << " " << l.ai.gpsTrackVTG << " " << l.ai.gpsTrack <<" "
-/*6*/	<< ahrs.rollG << " " << (ahrs.compYH) << " "	<< ahrs.bankAngle  << " " << l.roll << " " << l.ai.gspeed  << " " 
+		cout << l.toString() <<" "<<
+/*36*/	ahrs.compYH <<" "<< servo <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<< pCmd  << " " << pulse  / 100 <<
+	    endl;
+	    
+	    
+#if 0
+			
+			<< l.ai.gpsTrack << " " << (ahrs.compYH) << " "	<< ahrs.bankAngle  << " " << l.roll << " " << l.ai.gspeed  << " " 
 /*11*/	 << l.ai.mx << " " << l.ai.my << " " << ahrs.magHdgRawFit.averageY()  << " " << ahrs.magHdgFit.averageY()	 << " " << ahrs.bankCorrection << " "
 /*16*/	 << ahrs.gpsBankAngle << " " << ahrs.magBankAngle << " " << ahrs.dipBankAngle << " " << ahrs.bankFit.averageY() << " " 
 /*20*/	 << (l.pwmOutput*1500/4915) <<" "<< servo <<" "<< pidR.err.d <<" "<< l.flags  << " " 
@@ -52,6 +58,7 @@ int main(int argc, char **argv) {
 /*27*/   << l.ai.gx <<" " << l.ai.alt <<" "<< l.ai.palt <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<< pCmd  << " " << pulse  / 100 
 		 <<  endl;
 		 
+#endif
 		 prev = l;
 	}
 }
