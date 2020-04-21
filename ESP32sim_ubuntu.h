@@ -79,8 +79,10 @@ class String {
 	public:
 	std::string st;
 	String(const char *s) : st(s) {}
+	String(std::string s) : st(s) {}
 	String() {}
 	bool operator!=(const String& x) { return st != x.st; } 
+	String &operator+(const String& x) { st = st + x.st; return *this; } 
 	const char *c_str(void) { return st.c_str(); }
 };
 class IPAddress {
