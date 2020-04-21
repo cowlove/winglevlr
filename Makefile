@@ -7,6 +7,12 @@ plot:	winglevlr_ubuntu
 	./winglevlr_ubuntu --jdisplay --serial --seconds 700 | grep DTK | tr ':' ' ' > out.dat \
 		&& echo "f='./out.dat'; p f u 2 w l ti 'DTK', f u 4 w l ti 'TRK'; pause 100"| gnuplot
 
+test:
+	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | tee test.out
+	(cd tests && ./regress.sh 052 -html && ./regress.sh 068 -html)
+	google-chrome logs/regression/*.html
+	
+
 
 test.out:	winglevlr_ubuntu
 	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | tee $@
