@@ -162,7 +162,7 @@ bool imuRead() {
 		x.q1 = imu.calcQuat(imu.qw);
 		x.q2 = imu.calcQuat(imu.qx);
 		x.q3 = imu.calcQuat(imu.qy);
-		x.q4 = imu.calcQuat(imu.qz);
+		//x.q4 = imu.calcQuat(imu.qz);
 		x.p = imu.pitch;
 		x.r = imu.roll;
 		x.y = imu.yaw;
@@ -727,6 +727,7 @@ void loop() {
 					if (gpsUseGDL90 == 1 || gpsUseGDL90 == 2) {
 						gpsFixes++;
 						ahrsInput.alt = s.alt;
+						ahrsInput.palt = s.palt;
 						ahrsInput.gspeed = s.hvel;
 						mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
 					}
