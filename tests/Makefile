@@ -1,4 +1,4 @@
-all:	test_plog test_tinygps parsed_vtg.txt
+all:	test_plog_C test_tinygps parsed_vtg.txt
 
 clean:
 	rm test_plog test_tinygps parsed_vtg.txt

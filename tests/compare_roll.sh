@@ -7,7 +7,7 @@ make $F1
 make $F2
 #XRANGE='[100:400]' #'[100:*]'
 #XRANGE='[100:1000]'
-XRANGE='[0:*]'
+XRANGE='[30:*]'
 
 if [ "$2" = "html" ]; then 
 	TERMSPEC="set term canvas size 1400,600;set output '${F2}.gnuplot.html'"
@@ -33,14 +33,21 @@ print "**********************************************"
 stats ${XRANGE} f2 u (\$2-F2_min_x):7 
 
 p ${XRANGE} \
-	f2 u (\$2-F2_min_x):7 w l tit "Calc Roll",\
-	f2 u (\$2-F2_min_x):(\$25) w l ax x1y2 tit "Gyro Drift", \
-
+	f2 u (\$2-F2_min_x):(\$30) w l  tit "Pitch", \
+	f2 u (\$2-F2_min_x):(\$28) w l ax x1y2 tit "GPS Alt", \
+	f2 u (\$2-F2_min_x):(\$33) tit "Pulse", \
+	f2 u (\$2-F2_min_x):(((int(\$23) & 3) == 0) ? 1/0 : (int(\$23) & 3))  tit "FLAGS", \
 	
 $WAIT
 
 EOF
 exit
+	f2 u (\$2-F2_min_x):(\$31) w l tit "GPS Pitch", \
+	f2 u (\$2-F2_min_x):(\$29) w l ax x1y2  tit "P Alt", \
+
+	f2 u (\$2-F2_min_x):(\$27) w l  tit "Gyro X", \
+	f2 u (\$2-F2_min_x):7 w l tit "Calc Roll",\
+	f2 u (\$2-F2_min_x):(\$25) w l ax x1y2 tit "Gyro Drift", \
 
 	f2 u (\$2-F2_min_x):(\$25) w l ax x1y2 tit "Gyro Drift", \
 	f2 u (\$2-F2_min_x):(\$16) w l tit "GPS Bank", \
