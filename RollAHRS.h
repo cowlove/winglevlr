@@ -39,7 +39,7 @@ class RollAHRS {
 		  magOffY = (-5.0 + 93) / 2, //  + is left
 		  magOffZ = (-80 + 20) / 2; // + is up
 		  
-	float gyrOffX = -3.1592, 
+	float gyrOffX = -3.3592, 
 		  gyrOffY = -0.2906 + 304.0/790.0,
 		  gyrOffZ = -1.7086;
 public:
