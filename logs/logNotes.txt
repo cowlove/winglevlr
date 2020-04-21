@@ -11,6 +11,8 @@ AHRSD0045		manual bank circles, 25 degrees
 48		straight nav fused
 49		straight nav gdl90 again 
 
+52		orbit.sh at 12 and 22 deg 
+
 
 55		100ms	  ./roll.sh 055 -galt -gpspitch -calcpitch -pitcherr -pulse -relay
 57		120ms 
@@ -21,5 +23,6 @@ AHRSD0045		manual bank circles, 25 degrees
 64		40ms
 67 		spotty GPS, lost its mind (found hdg 0/360 discontinuouty bug)  ./roll.sh 067 -roll -hdgGPS -dtk -desroll
 68  	iFly GPS enabled, comparison of GDL90, VTG and RMC gps sources:  ./roll.sh 068 -hdgGDL90 -hdgVTG -hdgRMC
+		or use as regression ./loglook.sh 068 -calcroll -calcservo -calcpitch -pulse
 
 
