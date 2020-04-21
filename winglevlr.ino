@@ -537,7 +537,7 @@ void loop() {
 				if(hdgErr < -180) hdgErr += 360;
 				if(hdgErr > 180) hdgErr -= 360;
 				if (navPIDTimer.tick()) {
-					desRoll = -navPID.add(hdgErr, ahrsInput.gpsTrack, ahrsInput.sec);
+					desRoll = -navPID.add(hdgErr, hdgErr /*ahrsInput.gpsTrack TODO: not continuous */, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
 				}
 			}
