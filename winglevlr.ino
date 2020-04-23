@@ -80,16 +80,17 @@ namespace Display {
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
 	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
-	JDisplayItem<int>   knob(&jd,10,y+=10,"KNOB:", "%03d ");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
+	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
-	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");   JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
+	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pidg(&jd,70,y,    "GAIN:", "%04.1f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%05.2f "); JDisplayItem<float> rely(&jd,70,y,    "RELY:", "%03.1f ");
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%04.1f "); JDisplayItem<float> mnrl(&jd,70,y,    "MNRL:", "%03.0f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> rlhz(&jd,70,y,    "RLHZ:", "%03.1f ");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pmin(&jd,70,y,    "PMIN:", "%03.1f ");
+	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.1f "); JDisplayItem<float> pmax(&jd,70,y,    "PMAX:", "%03.1f ");
 }
 
 void ESP32sim_JDisplay_forceUpdate() { 
@@ -188,20 +189,25 @@ void printMag() {
 
 class MyEditor : public JDisplayEditor {
 public:
-	JDisplayEditableItem pidp = JDisplayEditableItem(Display::pidp, .01);
-	JDisplayEditableItem pidi = JDisplayEditableItem(Display::pidi, .001);
-	JDisplayEditableItem pidd = JDisplayEditableItem(Display::pidd, .01);
-	JDisplayEditableItem pidg = JDisplayEditableItem(Display::pidg, .1);
-	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, 1);
-	JDisplayEditableItem rely = JDisplayEditableItem(Display::rely, .1);
+	JDisplayEditableItem pidp = JDisplayEditableItem(&Display::pidp, .01);
+	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
+	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
+	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
+	JDisplayEditableItem maxb = JDisplayEditableItem(NULL, 1);
+	JDisplayEditableItem mnrl = JDisplayEditableItem(&Display::mnrl, 1);
+	JDisplayEditableItem rlhz = JDisplayEditableItem(&Display::rlhz, .1);
+	JDisplayEditableItem pmin = JDisplayEditableItem(&Display::pmin, .1);
+	JDisplayEditableItem pmax = JDisplayEditableItem(&Display::pmax, .1);
 	
 	MyEditor() : JDisplayEditor(26, 27) {
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
 		add(&pidg);	
-		add(&maxb);
-		add(&rely);
+		add(&mnrl);
+		add(&rlhz);
+		add(&pmin);
+		add(&pmax);
 	}
 } ed;
 
@@ -280,8 +286,10 @@ void setup() {
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 9;
-	ed.rely.value = 3; // period for relay activation, in seconds
-	
+	ed.rlhz.value = 3; // period for relay activation, in seconds
+	ed.mnrl.value = 70;
+	ed.pmin.value = 0.5; // PID total error that triggers relay minimum actuation
+	ed.pmax.value = 2.5; // PID total error that triggers relay maximum actuation 
 	pinMode(33, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
@@ -316,11 +324,14 @@ void ESP32sim_set_desiredTrk(float v) {
 }
 
 
+static int serialLogFlags = 0;
+
 void pitchTrimRelay(int relay, int ms) { 
 	char l[256];
-	Serial.printf("Relay %d for %d ms\n", relay, ms);
-	static int seq = 0;
+	//Serial.printf("Relay %d for %d ms\n", relay, ms);
+	static int seq = 5;
 	logItem.flags |= ((1 << relay) | (ms << 8));
+	serialLogFlags |= ((1 << relay) | (ms << 8));
 	snprintf(l, sizeof(l), "pin %d 0 %d %d\n", relay, ms, seq);
 	seq++;
 	for (int repeat = 0; repeat < 3; repeat++) { 
@@ -341,8 +352,8 @@ void pitchTrimRelay(int relay, int ms) {
 static int servoOverride = 0;
 void loop() {
 	uint16_t len;
-	static float mavRoll = 0;
 	static int ledOn = 0;
+	static int manualRelayMs = 60;
 	static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 	static int buildNumber = 12;
 	static int mavBytesIn = 0;
@@ -357,7 +368,7 @@ void loop() {
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
 	static RollingAverage<int,1000> loopTime;
-	static EggTimer serialReportTimer(1000), navPIDTimer(50);
+	static EggTimer serialReportTimer(200), navPIDTimer(50);
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0, pitch = 0;
@@ -369,9 +380,11 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("roll %+05.1f pit %+05.1f servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", roll, pitch, servoOutput, 
+		Serial.printf("roll %+05.1f pit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f flags %04x servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
+			roll, pitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, serialLogFlags, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		loopTime.min(), loopTime.average(), loopTime.max());
+		serialLogFlags = 0;
 	}
 	
 	//Serial.printf("%d\n", (int)(micros() - lastLoop));
@@ -405,14 +418,14 @@ void loop() {
 			
 		}
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
-			pitchTrimRelay(1, 60);
+			pitchTrimRelay(1, manualRelayMs);
 		}
 		
 		
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
-			pitchTrimRelay(0, 60);
+			pitchTrimRelay(0, manualRelayMs);
 		}
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
 			phSafetySwitch = !phSafetySwitch;
@@ -501,10 +514,12 @@ void loop() {
 			
 			if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 				float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
-				if (floor(ahrsInput.sec / ed.rely.value) != floor(lastAhrsInput.sec / ed.rely.value)) { // .33 Hz
-					if (abs(pCmd) > 0.5) { 
-						float pulse = min(120.0, 50 + (abs(pCmd) - 0.5) * 70 / 1.5);
-						pitchTrimRelay(pCmd > 0 ? 0 : 1, (int)pulse);
+				if (floor(ahrsInput.sec / ed.rlhz.value) != floor(lastAhrsInput.sec / ed.rlhz.value)) { // .33 Hz
+					if (abs(pCmd) > ed.pmin.value) {
+						static const float minPulse = 50, maxPulse = 150; 
+						float pulse = minPulse + (abs(pCmd) - ed.pmin.value) * (maxPulse - minPulse) / (ed.pmax.value - ed.pmin.value);
+						pulse = min(pulse, maxPulse);
+						pitchTrimRelay(pCmd > 0 ? 1 : 0, (int)pulse);
 					}
 				}
 			}
@@ -541,18 +556,20 @@ void loop() {
 		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
 		Display::mode.color.vf = ST7735_BLACK;
 		Display::roll.color.vf = ST7735_RED;
+		Display::pitc.color.vf = ST7735_RED;
 
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = desiredTrk; 
 		Display::trk = ahrsInput.gpsTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
-		Display::knob = ed.re.value; 
 		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::vtg = (float)gpsTrackVTG;
 		Display::rmc = (float)gpsTrackRMC; 
-		Display::roll = roll; Display::log = logFilename.c_str();
+		Display::roll = roll; 
+		Display::pitc = pitch; 
+		Display::log = logFilename.c_str();
 		Display::roll.setInverse(false, (logFile != NULL));
 		
 		//Display::pidc = pid.corr;
@@ -611,9 +628,6 @@ void loop() {
 				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
-				else if (sscanf(line, "relay=%d %d", &relay, &ms) == 2) { 
-					pitchTrimRelay(relay, ms);
-				}
 				else if (sscanf(line, "knob=%f", &f) == 1) {
 					if (f == 1) {
 						knobPID = &pitchPID;
