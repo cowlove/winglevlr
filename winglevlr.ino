@@ -26,7 +26,6 @@
 #include "jimlib.h"
 #include "RollAHRS.h"
 #include "PidControl.h"
-#include "mavlink.h"
 #include "TinyGPS++.h"
 #include "G90Parser.h"
 
@@ -43,10 +42,6 @@ RollAHRS ahrs;
 PidControl rollPID(30) /*200Hz*/, pitchPID(40), navPID(50); /*20Hz*/
 PidControl *knobPID = &pitchPID;
 static int servoTrim = 1325;
-
-#define MAVLINK_PORT 14450
-void mavlink_open();
-void mavlink_send(const uint8_t *, int);
 
 WiFiUDP udpSL30;
 WiFiUDP udpNMEA;
@@ -262,13 +257,10 @@ void setup() {
 		
 		udpSL30.begin(7891);
 		udpG90.begin(4000);
-		udpMAV.begin(MAVLINK_PORT);
 		udpNMEA.begin(7892);
 	}
 	
 	//SCREENLINE.println("WiFi connected");
-	mavlink_open();
-	mavRemoteIp.fromString("192.168.43.166");
 
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
@@ -295,34 +287,6 @@ void setup() {
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
 }
 
-void mav_gps_msg(float lat, float lon, float crs, float speed, float alt, float hdop, float vdop) {
-	uint64_t time_usec = 0;
-	uint8_t gps_id = 12;
-	uint16_t ignore_flags = 0; 
-	uint32_t time_week_ms = 0; 
-	uint16_t time_week = 0;
-	uint8_t fix_type = 4;
-	uint8_t system_type = MAV_TYPE_GENERIC;
-	uint8_t autopilot_type = MAV_AUTOPILOT_INVALID;
-	uint8_t targetSysId = 1;
-
-	float vn = cos(radians(crs)) * speed;
-	float ve = sin(radians(crs)) * speed;
-	float vd = 0;
-	float speed_accuracy = 10.321; 
-	float horiz_accuracy = 10.210; 
-	float vert_accuracy = 10.321;
-	uint8_t satellites_visible = 11;
-
-	mavlink_message_t msg;
-	mavlink_msg_gps_input_pack(1, 100, &msg, time_usec, 
-	gps_id, ignore_flags, time_week_ms, time_week,  fix_type, lat * 10000000, lon * 10000000,  alt, hdop, vdop, vn, ve, vd,
-	speed_accuracy,  horiz_accuracy, vert_accuracy, satellites_visible);
-	
-	uint8_t mavbuf[1028];
-	int len = mavlink_msg_to_send_buffer(mavbuf, &msg);
-	mavlink_send(mavbuf, len);
-}	
 
 template<class T> 
 class StaleData {
@@ -376,18 +340,14 @@ void pitchTrimRelay(int relay, int ms) {
 
 static int servoOverride = 0;
 void loop() {
-	mavlink_message_t msg;
 	uint16_t len;
 	static float mavRoll = 0;
 	static int ledOn = 0;
 	static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 	static int buildNumber = 12;
 	static int mavBytesIn = 0;
-	static mavlink_message_t mavMsgIn;
-	static mavlink_status_t mavStatusIn;
 	static char lastParam[64];
 	static int lastHdg;
-	static int mavHeartbeats;
 	static int apMode = 1;
 	static int gpsUseGDL90 = 2; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
@@ -443,23 +403,11 @@ void loop() {
 			navPID.reset();
 			pitchPID.reset();
 			
-			// send mavlink message for use in debuggin mavlink connections 
-			int new_mode = armServo;
-			mavlink_msg_set_mode_pack(1, 200, &msg, 1, 1, new_mode); 
-			len = mavlink_msg_to_send_buffer(buf, &msg);
-			mavlink_send(buf, len); 
 		}
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
 			pitchTrimRelay(1, 60);
 		}
 		
-/*
- * 		TODO move this into mavlink cookbook
-		if (butFilt2.wasLong && butFilt2.wasCount == 2)  {
-			mavlink_msg_command_long_pack(1, 2, &msg, 0, 0, MAV_CMD_PREFLIGHT_CALIBRATION, 0, 0, 0, 0, 0, 4, 0, 0); // 4 == param5
-			len = mavlink_msg_to_send_buffer(buf, &msg);
-			mavlink_send(buf, len);
-*/
 		
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
@@ -476,7 +424,6 @@ void loop() {
 				Display::jd.begin();
 				Display::jd.forceUpdate();
 			}
-			mavTimer.alarmNow();
 		}
 	}
 	if (butFilt4.newEvent()) { 	// main knob button
@@ -615,121 +562,7 @@ void loop() {
 	if (blinkTimer.tick()) 
 		ledOn ^= 1;
 	digitalWrite(LED_PIN, (ledOn & 0x1) ^ (gpsFixes & 0x1) ^ (serBytes & 0x1));
-	
-	if (false && Serial1.available()) {
-		int l = Serial1.readBytes(buf, sizeof(buf));
-		serBytes += l;// + random(0,2);
-		if (WiFi.status() == WL_CONNECTED) { 
-			udpMAV.beginPacket(mavRemoteIp ,MAVLINK_PORT); // todo - could send to the last ip we received from instead of bcast addr 
-			udpMAV.write((uint8_t *)buf, l);
-			udpMAV.endPacket();
-		}
-		for (int n = 0; n < l; n++) {
-			if (mavlink_parse_char(0, buf[n], &mavMsgIn, &mavStatusIn)) {
-				switch(mavMsgIn.msgid) { 
-				case MAVLINK_MSG_ID_ATTITUDE:
-					mavlink_attitude_t attitude;
-					mavlink_msg_attitude_decode(&mavMsgIn, &attitude);
-					mavRoll = attitude.roll * 180 / 3.1415;
-					break;
-				case MAVLINK_MSG_ID_VFR_HUD:
-					mavlink_vfr_hud_t vfr_hud;
-					mavlink_msg_vfr_hud_decode(&mavMsgIn, &vfr_hud);
-					lastHdg = vfr_hud.heading;
-					// Debug - make stupid fake GPS signal that follows magnetic heading
-					//mav_gps_msg(47.2, 121.1, lastHdg, 50.0, 666);
-					break;
-				case MAVLINK_MSG_ID_HEARTBEAT:
-					mavHeartbeats++;
-					break;
-				case MAVLINK_MSG_ID_PARAM_VALUE:
-					mavlink_param_value_t packet;
-					mavlink_msg_param_value_decode(&mavMsgIn, &packet);
-					if (strcmp("CRUISE_HEADING", packet.param_id) == 0) { 
-						//lastHdg = packet.param_value;
-					}
-					break;
-				}
-			}
-		}
-	}
-	
-	int avail = udpMAV.parsePacket();
-	while (avail > 0) { 
-		mavRemoteIp = udpMAV.remoteIP();	
-		int n = udpMAV.read(buf, min(avail,(int)sizeof(buf)));
-		mavBytesIn += n;// + random(0,2);
-		if (n > 0) {
-			Serial1.write(buf, n);
-			avail -= n;
-		} else { 
-			break;
-		}
-	}
-
-	if (mavTimer.tick()) {
-		uint8_t system_type = MAV_TYPE_GENERIC;
-		uint8_t autopilot_type = MAV_AUTOPILOT_INVALID;
-		uint8_t targetSysId = 1;
-
-		mavlink_msg_sys_status_pack(1, 200, &msg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-		mavlink_send(buf, len);
 		
-		mavlink_msg_param_request_read_pack(1, 200, &msg, 0, 0, "CRUISE_HEADING", -1);
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-		mavlink_send(buf, len);
-
-		mavlink_msg_request_data_stream_pack(1, 200, &msg , 0, 0, MAVLINK_MSG_ID_VFR_HUD , 1 , 1 );
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-		mavlink_send(buf, len);
-
-		mavlink_msg_request_data_stream_pack(1, 200, &msg , 0, 0, MAVLINK_MSG_ID_ATTITUDE , 1 , 1 );
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-		mavlink_send(buf, len);
- 
-		mavlink_msg_command_long_pack(1, 2, &msg, 0, 0, MAV_CMD_COMPONENT_ARM_DISARM, 0, 1, 0, 0, 0, 0, 0, 0);
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-		mavlink_send(buf, len);
-
-		mavlink_msg_set_mode_pack(1, 2, &msg, 0, MAV_MODE_FLAG_DECODE_POSITION_SAFETY, (int)(phSafetySwitch));
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-		mavlink_send(buf, len);
-	 
-/*		if (apMode == 1) { 
-			int new_mode = 0; // 0 == MANUAL  
-			desiredTrk = -1;
-			mavlink_msg_set_mode_pack(1, 200, &msg, targetSysId, 1, new_mode); 
-			len = mavlink_msg_to_send_buffer(buf, &msg);
-			mavlink_send(buf, len); 
-
-		} else if (apMode == 2) {
-			int new_mode = 2;  //2 == STABILIZE
-			desiredTrk = -1;
-			mavlink_msg_set_mode_pack(1, 200, &msg, targetSysId, 1, new_mode); 
-			len = mavlink_msg_to_send_buffer(buf, &msg);
-			mavlink_send(buf, len); 
-
-		} else if (apMode == 3 || apMode == 4 || apMode == 5) {
-			int new_mode = 7; // 7 = CRUISE
-			mavlink_msg_set_mode_pack(1, 200, &msg, targetSysId, 1, new_mode); 
-			len = mavlink_msg_to_send_buffer(buf, &msg);
-			mavlink_send(buf, len); 
-
-			if (apMode == 3) 
-				desiredTrk = (int)re.value;
-			if (apMode == 4) 
-				desiredTrk = (int)(obs + 15.5  + 360) % 360;
-			if (apMode == 5) 
-				desiredTrk = navDTK;
-
-			mavlink_msg_param_set_pack(1, 200, &msg, 0, 0, "CRUISE_HEADING", desiredTrk, MAV_VAR_FLOAT);
-			len = mavlink_msg_to_send_buffer(buf, &msg);
-			mavlink_send(buf, len);
-		}
-		*/
-	}
-
 	int recsize = 0;
 	do {
 		recsize = 0;
@@ -750,7 +583,6 @@ void loop() {
 						ahrsInput.alt = s.alt;
 						ahrsInput.palt = s.palt;
 						ahrsInput.gspeed = s.hvel;
-						mav_gps_msg(s.lat, s.lon, s.track, s.hvel * 0.51444, s.alt, 1.23, 2.34);
 					}
 				}
 			}
@@ -801,7 +633,7 @@ void loop() {
 		}
 	}
 
-	avail = udpSL30.parsePacket();
+	int avail = udpSL30.parsePacket();
 	while(avail > 0) { 
 		static char line[128];
 		static int index;
@@ -835,7 +667,6 @@ void loop() {
 				gpsTrackRMC = gps.course.deg();
 			}
 			if (gps.location.isUpdated() && gpsUseGDL90 == 2) {
-				//mav_gps_msg(gps.location.lat(), gps.location.lng(), gps.altitude.meters(), gps.course.deg(), gps.speed.mps(), gps.hdop.hdop(), 2.34);
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
 				ahrsInput.gspeed = gps.speed.knots();
 				gpsFixes++;
@@ -850,10 +681,3 @@ void loop() {
 	}
 }
 
-void mavlink_open() {}
-void mavlink_send(const uint8_t *buf, int len) { Serial1.write(buf, len); }
-
-
-// TODO:
-// add min/max/avg loop cycle time monitoring
-// 
