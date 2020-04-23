@@ -57,7 +57,7 @@ WiFiUDP udpMAV;
 DigitalButton button(34); // middle
 DigitalButton button2(35); // left
 DigitalButton button3(39); // top
-DigitalButton button4(21); // knob press
+DigitalButton button4(32); // knob press
 
 static IPAddress mavRemoteIp;
 #define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
@@ -200,7 +200,7 @@ public:
 	JDisplayEditableItem maxb = JDisplayEditableItem(Display::maxb, 1);
 	JDisplayEditableItem rely = JDisplayEditableItem(Display::rely, .1);
 	
-	MyEditor() : JDisplayEditor(0, 27) {
+	MyEditor() : JDisplayEditor(26, 27) {
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
@@ -214,10 +214,10 @@ void setup() {
 	pinMode(LED_PIN, OUTPUT);
 	digitalWrite(LED_PIN, 1);
 
-	pinMode(32, INPUT);
-	pinMode(26, OUTPUT);
-	Serial1.begin(57600, SERIAL_8N1, 32, 26);
-	Serial1.setTimeout(1);
+//	pinMode(32, INPUT);
+//	pinMode(26, OUTPUT);
+//	Serial1.begin(57600, SERIAL_8N1, 32, 26);
+//	Serial1.setTimeout(1);
 	Serial.begin(57600, SERIAL_8N1);
 	Serial.setTimeout(1);
 
@@ -616,7 +616,7 @@ void loop() {
 		ledOn ^= 1;
 	digitalWrite(LED_PIN, (ledOn & 0x1) ^ (gpsFixes & 0x1) ^ (serBytes & 0x1));
 	
-	if (Serial1.available()) {
+	if (false && Serial1.available()) {
 		int l = Serial1.readBytes(buf, sizeof(buf));
 		serBytes += l;// + random(0,2);
 		if (WiFi.status() == WL_CONNECTED) { 
