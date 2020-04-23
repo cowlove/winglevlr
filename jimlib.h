@@ -589,21 +589,23 @@ public:
 
 class JDisplayEditableItem { 
 protected:
-	JDisplayItemBase &di; 
+	JDisplayItemBase *di; 
 public:
 	float value, newValue, increment;
 	enum { UNSELECTED, SELECTED, EDITING } state;
-	JDisplayEditableItem(JDisplayItemBase &i, float inc) : di(i), increment(inc) {
+	JDisplayEditableItem(JDisplayItemBase *i, float inc) : di(i), increment(inc) {
 	}
-	void update() { 
+	void update() {
+		if (di == NULL)
+			return;
 		if (state == EDITING) {
-			di.setValue(newValue);
-			di.setInverse(false, true);
+			di->setValue(newValue);
+			di->setInverse(false, true);
 		} else { 
-			di.setValue(value);
-			di.setInverse(state == SELECTED, false);
+			di->setValue(value);
+			di->setInverse(state == SELECTED, false);
 		}
-		di.update(false);
+		di->update(false);
 	};
 };
 
