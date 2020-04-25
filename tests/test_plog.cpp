@@ -45,21 +45,10 @@ int main(int argc, char **argv) {
 		 
 		cout << l.toString() <<" "<<
 /*36*/	ahrs.compYH <<" "<< servo <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<< pCmd  << " " << pulse  / 100 <<" "<< 
-/*42*/  ahrs.pitchDrift <<" "<< 
-	    endl;
+/*42*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
+    endl;
 	    
 	    
-#if 0
-			
-			<< l.ai.gpsTrack << " " << (ahrs.compYH) << " "	<< ahrs.bankAngle  << " " << l.roll << " " << l.ai.gspeed  << " " 
-/*11*/	 << l.ai.mx << " " << l.ai.my << " " << ahrs.magHdgRawFit.averageY()  << " " << ahrs.magHdgFit.averageY()	 << " " << ahrs.bankCorrection << " "
-/*16*/	 << ahrs.gpsBankAngle << " " << ahrs.magBankAngle << " " << ahrs.dipBankAngle << " " << ahrs.bankFit.averageY() << " " 
-/*20*/	 << (l.pwmOutput*1500/4915) <<" "<< servo <<" "<< pidR.err.d <<" "<< l.flags  << " " 
-/*24*/	 << l.finalGain <<" "<< cmd << " " << ahrs.gyroDrift << " " 
-/*27*/   << l.ai.gx <<" " << l.ai.alt <<" "<< l.ai.palt <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<< pCmd  << " " << pulse  / 100 
-		 <<  endl;
-		 
-#endif
 		 prev = l;
 	}
 }

@@ -87,10 +87,10 @@ namespace Display {
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%04.1f "); JDisplayItem<float> mnrl(&jd,70,y,    "MNRL:", "%03.0f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> rlhz(&jd,70,y,    "RLHZ:", "%03.1f ");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pmin(&jd,70,y,    "PMIN:", "%03.1f ");
-	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.1f "); JDisplayItem<float> pmax(&jd,70,y,    "PMAX:", "%03.1f ");
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%04.1f "); JDisplayItem<float> pset(&jd,70,y,    "PSET:", "%+05.1f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> tzer(&jd,70,y,    "TZER:", "%04.0f ");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); //JDisplayItem<float> pmin(&jd,70,y,    "XXXX:", "%03.1f ");
+	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.1f "); //JDisplayItem<float> pmax(&jd,70,y,    "XXXX:", "%03.1f ");
 }
 
 void ESP32sim_JDisplay_forceUpdate() { 
@@ -194,20 +194,20 @@ public:
 	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
 	JDisplayEditableItem maxb = JDisplayEditableItem(NULL, 1);
-	JDisplayEditableItem mnrl = JDisplayEditableItem(&Display::mnrl, 1);
-	JDisplayEditableItem rlhz = JDisplayEditableItem(&Display::rlhz, .1);
-	JDisplayEditableItem pmin = JDisplayEditableItem(&Display::pmin, .1);
-	JDisplayEditableItem pmax = JDisplayEditableItem(&Display::pmax, .1);
+	JDisplayEditableItem pset = JDisplayEditableItem(&Display::pset, .1);
+	JDisplayEditableItem tzer = JDisplayEditableItem(&Display::tzer, 1);
+	//JDisplayEditableItem pmin = JDisplayEditableItem(&Display::pmin, .1);
+	//JDisplayEditableItem pmax = JDisplayEditableItem(&Display::pmax, .1);
 	
 	MyEditor() : JDisplayEditor(26, 27) {
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
 		add(&pidg);	
-		add(&mnrl);
-		add(&rlhz);
-		add(&pmin);
-		add(&pmax);
+		add(&pset);
+		add(&tzer);
+		//add(&pmin);
+		//add(&pmax);
 	}
 } ed;
 
@@ -286,10 +286,13 @@ void setup() {
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 9;
-	ed.rlhz.value = 3; // period for relay activation, in seconds
-	ed.mnrl.value = 70;
-	ed.pmin.value = 0.5; // PID total error that triggers relay minimum actuation
-	ed.pmax.value = 2.5; // PID total error that triggers relay maximum actuation 
+	ed.pset.value = +1.0;
+	ed.tzer.value = 1000;
+	
+	//ed.rlhz.value = 3; // period for relay activation, in seconds
+	//ed.mnrl.value = 70;
+	//ed.pmin.value = 0.5; // PID total error that triggers relay minimum actuation
+	//ed.pmax.value = 2.5; // PID total error that triggers relay maximum actuation 
 	pinMode(33, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
@@ -326,27 +329,38 @@ void ESP32sim_set_desiredTrk(float v) {
 
 static int serialLogFlags = 0;
 
+
+void udpSendString(const char *b) { 
+	for (int repeat = 0; repeat < 3; repeat++) { 
+		udpG90.beginPacket("255.255.255.255", 7892);
+		udpG90.write((uint8_t *)b, strlen(b));
+		udpG90.endPacket();
+		for (int n = 100; n < 103; n++) { 
+			char ip[32];
+			snprintf(ip, sizeof(ip), "192.168.4.%d", n);
+			udpG90.beginPacket(ip, 7892);
+			udpG90.write((const uint8_t *)b, strlen(b));
+			udpG90.endPacket();
+		}
+	}
+}
+	
+void pitchTrimSet(float t) { 
+	char l[256];
+	//Serial.printf("Relay %d for %d ms\n", relay, ms);
+	static int seq = 5;
+	snprintf(l, sizeof(l), "trim %d %d\n", (int)t, seq++);
+	udpSendString(l);
+}
+
 void pitchTrimRelay(int relay, int ms) { 
 	char l[256];
 	//Serial.printf("Relay %d for %d ms\n", relay, ms);
 	static int seq = 5;
 	logItem.flags |= ((1 << relay) | (ms << 8));
 	serialLogFlags |= ((1 << relay) | (ms << 8));
-	snprintf(l, sizeof(l), "pin %d 0 %d %d\n", relay, ms, seq);
-	seq++;
-	for (int repeat = 0; repeat < 3; repeat++) { 
-		udpG90.beginPacket("255.255.255.255", 7892);
-		udpG90.write((uint8_t *)l, strlen(l));
-		udpG90.endPacket();
-		/*for (int n = 100; n < 106; n++) { 
-			char ip[32];
-			snprintf(ip, sizeof(ip), "192.168.4.%d", n);
-			udpG90.beginPacket(ip, 7892);
-			udpG90.write((uint8_t *)l, strlen(l));
-			udpG90.endPacket();
-		}
-		*/
-	}
+	snprintf(l, sizeof(l), "pin %d 0 %d %d\n", relay, ms, seq++);
+	udpSendString(l);
 }
 
 static int servoOverride = 0;
@@ -380,8 +394,8 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("roll %+05.1f pit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f flags %04x servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
-			roll, pitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, serialLogFlags, servoOutput, 
+		Serial.printf("roll %+05.1f pit %+05.1f gpspit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f flags %04x servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
+			roll, pitch, ahrs.gpsPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, serialLogFlags, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		loopTime.min(), loopTime.average(), loopTime.max());
 		serialLogFlags = 0;
@@ -415,6 +429,7 @@ void loop() {
 			rollPID.reset();
 			navPID.reset();
 			pitchPID.reset();
+			ahrs.reset();
 			
 		}
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
@@ -513,15 +528,9 @@ void loop() {
 			}
 			
 			if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
-				float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
-				if (floor(ahrsInput.sec / ed.rlhz.value) != floor(lastAhrsInput.sec / ed.rlhz.value)) { // .33 Hz
-					if (abs(pCmd) > ed.pmin.value) {
-						static const float minPulse = 50, maxPulse = 150; 
-						float pulse = minPulse + (abs(pCmd) - ed.pmin.value) * (maxPulse - minPulse) / (ed.pmax.value - ed.pmin.value);
-						pulse = min(pulse, maxPulse);
-						pitchTrimRelay(pCmd > 0 ? 1 : 0, (int)pulse);
-					}
-				}
+				float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - ed.pset.value, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
+				pitchTrimSet(ed.tzer.value + pCmd);
+				logItem.pitchTrim = ed.tzer.value + pCmd;
 			}
 		}
 		
@@ -536,7 +545,6 @@ void loop() {
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
-		logItem.dtk = desiredTrk;
 		if (logFile != NULL) {
 			sdLog();
 		}

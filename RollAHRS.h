@@ -44,15 +44,17 @@ class RollAHRS {
 		  gyrOffZ = -1.7086;
 public:
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, bankCorrection, bankAngle;
-
+	float gyroTurnBank, pG;
 	float pitchComp = 0, pitchRaw = 0, pitchDrift = 0, pitchCompDriftCorrected = 0;
 	RunningLeastSquares // all at about 200 HZ */
 		bankFit = RunningLeastSquares(100), 
+		accelPitchFit = RunningLeastSquares(400), 
 		altFit = RunningLeastSquares(200), // 10Hz
 		gpsHdgFit = RunningLeastSquares(500),  // TODO run GPS histories at lower rate 
 		magHdgFit = RunningLeastSquares(50), 
 		magHdgRawFit = RunningLeastSquares(50), 
 		dipBankFit = RunningLeastSquares(100),
+		gyroTurnBankFit = RunningLeastSquares(1000),
 		gyroDriftFit = RunningLeastSquares(300), // 10HZ 
 		pitchDriftFit = RunningLeastSquares(300);  // 10HZ
 		
@@ -62,7 +64,7 @@ public:
 	float lastMagHdg = 0;
 	float compR = 0, compYH =0, rollG = 0;
 	float gyroDrift = 0;
-	float gpsPitch = 0;
+	float gpsPitch = 0, accelPitch = 0;
 		
 	bool valid() { 
 		return prev.gpsTrack != -1;
@@ -151,8 +153,8 @@ public:
 						  (isnan(magBankAngle) ? 0 : (0.0 * magBankAngle)) + 
 						  (isnan(dipBankAngle) ? 0 : (0.0 * dipBankAngle));
 		bankFit.add(l.sec, bankAngle);
-		float compRatio = .0006; // will depend on sample rate, this works for 50Hz 
-		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio) + (bankAngle * compRatio);
+		float compRatio1 = .0006; // will depend on sample rate, this works for 50Hz 
+		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio1) + (bankAngle * compRatio1);
 		rollG  += l.gy * dt;
 		if (tick10HZ) { 
 			gyroDriftFit.add(l.sec, compR - rollG);
@@ -164,21 +166,39 @@ public:
 		if (tick10HZ) { 
 			altFit.add(l.sec, l.alt);
 		}
-		gpsPitch = asin((altFit.slope() / .5144) / 90) * 180  / M_PI; 
+		//accelPitch = atan(-l.ax / sqrt(l.ay * l.ay + l.az * l.az)) * 180 / M_PI;
+		float ap = atan(-l.ay / sqrt(l.ax * l.ax + l.az * l.az)) * 180 / M_PI;
+		//float ap = atan(l.ay / l.az) * 180 / M_PI;
+		accelPitchFit.add(l.sec, ap);
+		accelPitch = accelPitchFit.predict(l.sec) + 3.63;
 		
-		pitchRaw += l.gx * dt;
-		pitchComp = (pitchComp + l.gx * dt) * (1-compRatio) + (gpsPitch  * compRatio);
+		gpsPitch = asin((altFit.slope() / .5144) / 90) * 180  / M_PI; 
+		if (isnan(gpsPitch)) gpsPitch = 0;
+		gpsPitch = min(5.0, max(-5.0, (double)gpsPitch));
+	
+		float gyroTurnBank = atan(-l.gx/l.gz) * 180 / M_PI;
+		float gtmag = sqrt(l.gx * l.gx + l.gz * l.gz);
+		pG = sin((gyroTurnBank - compYH) * M_PI / 180) * gtmag;
+		
+		const float compRatio2 = 0.0007	;
+		const float driftCorrCoeff = pow(1 - compRatio2, 200) * 7;
+		pitchRaw += pG * dt;
+		pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2/2) + (gpsPitch  * compRatio2/2);
 		
 		if (tick10HZ) { 
 			pitchDriftFit.add(l.sec, pitchComp - pitchRaw);
 			pitchDrift = pitchDriftFit.slope();
 		}
-		pitchCompDriftCorrected = pitchComp + pitchDrift * 8.8;
-		
+		pitchCompDriftCorrected = pitchComp;
+		pitchCompDriftCorrected += pitchDrift * driftCorrCoeff;
 		
 		count++;
 		prev = l;
 		return compYH;
+	}
+	
+	void reset() {
+		pitchComp = 0;
 	}
 };
 
@@ -221,12 +241,12 @@ struct LogItemC {
 	short pwmOutput, flags;  // 23 24
 	float pidP, pidI, pidD;  // 25 26 27 
 	float gainP, gainI, gainD, finalGain; // 28 29 30 31 
-	float desRoll, dtk, roll; // 32 33 34
+	float desRoll, pitchTrim, roll; // 32 33 34
 	AhrsInput ai;
 	String toString() {
 		char buf[1024];
 		snprintf(buf, sizeof(buf), " %d %d %f %f %f %f %f %f %f %f %f %f", (int)pwmOutput, (int)flags, pidP, pidI, pidD, gainP, gainI, gainD, finalGain,
-			desRoll, dtk, roll);
+			desRoll, pitchTrim, roll);
 		return ai.toString() +  String(buf);
 	} 
 	LogItemC fromString(const char *s) { 
