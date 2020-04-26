@@ -1,7 +1,7 @@
 #BOARD=esp32doit-devkit-v1
 #BOARD=heltec_wifi_kit_32
 #BOARD=nodemcu-32s
-VERBOSE=1
+#VERBOSE=1
 
 plot:	winglevlr_ubuntu
 	./winglevlr_ubuntu --jdisplay --serial --seconds 700 | grep DTK | tr ':' ' ' > out.dat \
