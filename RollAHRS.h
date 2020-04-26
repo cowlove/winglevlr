@@ -229,10 +229,10 @@ struct LogItemA {
 };
 
 struct LogItemB {
-	short pwmOutput, servoTrim;
+	short pwmOutput, flags;
 	float pidP, pidI, pidD;
 	float gainP, gainI, gainD, finalGain;
-	float desRoll, dtk;
+	float desRoll, pitchCmd;
 	AhrsInput ai;
 	String toString() { return ai.toString(); } 
 	LogItemB fromString(const char *s) { 
@@ -245,12 +245,12 @@ struct LogItemC {
 	short pwmOutput, flags;  // 23 24
 	float pidP, pidI, pidD;  // 25 26 27 
 	float gainP, gainI, gainD, finalGain; // 28 29 30 31 
-	float desRoll, pitchTrim, roll; // 32 33 34
+	float desRoll, pitchCmd, roll; // 32 33 34
 	AhrsInput ai;
 	String toString() {
 		char buf[1024];
 		snprintf(buf, sizeof(buf), " %d %d %f %f %f %f %f %f %f %f %f %f", (int)pwmOutput, (int)flags, pidP, pidI, pidD, gainP, gainI, gainD, finalGain,
-			desRoll, pitchTrim, roll);
+			desRoll, pitchCmd, roll);
 		return ai.toString() +  String(buf);
 	} 
 	LogItemC fromString(const char *s) { 
