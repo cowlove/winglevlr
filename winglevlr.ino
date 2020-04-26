@@ -273,7 +273,7 @@ void setup() {
 	rollPID.maxerr.i = 20;
 	navPID.setGains(0.5, 0, 0.1);
 	navPID.finalGain = 2.2;
-	pitchPID.setGains(2.0, 0.0, 1.0);
+	pitchPID.setGains(20.0, 0.0, 8.0);
 	pitchPID.finalGain = 1.0;
 	pitchPID.maxerr.i = .5;
 
@@ -378,7 +378,7 @@ void loop() {
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
-	static bool screenEnabled = true;
+	static bool screenEnabled = false;
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
 	static RollingAverage<int,1000> loopTime;
@@ -638,6 +638,9 @@ void loop() {
 				else if (sscanf(line, "navtr=%f", &f) == 1) { navPID.hiGainTrans.p = f; }
 				else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
 				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
+				else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
+				else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
+				else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
 				else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
@@ -657,6 +660,8 @@ void loop() {
 				} else {
 					Serial.printf("UNKNOWN COMMAND: %s", line);
 				}
+				Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
+				
 			}
 		}
 	}

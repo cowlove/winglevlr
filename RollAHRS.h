@@ -193,7 +193,7 @@ public:
 			pitchDrift = pitchDriftFit.slope();
 		}
 		pitchCompDriftCorrected = pitchComp;
-		pitchCompDriftCorrected += pitchDrift * driftCorrCoeff;
+		//pitchCompDriftCorrected += pitchDrift * driftCorrCoeff;
 		
 		count++;
 		prev = l;
