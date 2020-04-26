@@ -39,7 +39,7 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(40), navPID(50); /*20Hz*/
+PidControl rollPID(30) /*200Hz*/, pitchPID(10), navPID(50); /*20Hz*/
 PidControl *knobPID = &pitchPID;
 static int servoTrim = 1325;
 
@@ -273,7 +273,7 @@ void setup() {
 	rollPID.maxerr.i = 20;
 	navPID.setGains(0.5, 0, 0.1);
 	navPID.finalGain = 2.2;
-	pitchPID.setGains(0.5, 0.005, 1.0);
+	pitchPID.setGains(2, 0.005, 1.0);
 	pitchPID.finalGain = 1.0;
 	pitchPID.maxerr.i = .5;
 
@@ -286,8 +286,8 @@ void setup() {
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 9;
-	ed.pset.value = +1.0;
-	ed.tzer.value = 1000;
+	ed.pset.value = +0.0;
+	ed.tzer.value = 940;
 	
 	//ed.rlhz.value = 3; // period for relay activation, in seconds
 	//ed.mnrl.value = 70;
@@ -394,8 +394,8 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("roll %+05.1f pit %+05.1f gpspit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f flags %04x servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
-			roll, pitch, ahrs.gpsPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, serialLogFlags, servoOutput, 
+		Serial.printf("roll %+05.1f pit %+05.1f accpit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f flags %04d servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
+			roll, pitch, ahrs.accelPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, (int)logItem.pitchTrim, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		loopTime.min(), loopTime.average(), loopTime.max());
 		serialLogFlags = 0;
@@ -529,8 +529,9 @@ void loop() {
 			
 			if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 				float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - ed.pset.value, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
-				pitchTrimSet(ed.tzer.value + pCmd);
-				logItem.pitchTrim = ed.tzer.value + pCmd;
+				int trimCmd = ed.tzer.value - pCmd;
+				pitchTrimSet(trimCmd);
+				logItem.pitchTrim = trimCmd;
 			}
 		}
 		
