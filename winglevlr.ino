@@ -219,7 +219,7 @@ void setup() {
 //	pinMode(26, OUTPUT);
 //	Serial1.begin(57600, SERIAL_8N1, 32, 26);
 //	Serial1.setTimeout(1);
-	Serial.begin(57600, SERIAL_8N1);
+	Serial.begin(115200, SERIAL_8N1);
 	Serial.setTimeout(1);
 
 	Display::jd.begin();
@@ -397,7 +397,7 @@ void loop() {
 		Serial.printf("roll %+05.1f pit %+05.1f accpit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f flags %04d servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
 			roll, pitch, ahrs.accelPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, (int)logItem.pitchTrim, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
-		loopTime.min(), loopTime.average(), loopTime.max());
+		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max());
 		serialLogFlags = 0;
 	}
 	
@@ -505,6 +505,16 @@ void loop() {
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
+		
+		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
+			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - ed.pset.value, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
+			int trimCmd = ed.tzer.value - pCmd;
+			if (armServo) { 
+				pitchTrimSet(trimCmd); 
+			}
+			logItem.pitchTrim = trimCmd;
+		}
+
 		pwmOutput = 0;
 		if (ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0) { // hold down button to override and make servo work  
 			if (desiredTrk != -1) {
@@ -525,14 +535,7 @@ void loop() {
 					servoOutput = servoOverride;
 				servoOutput = max(550, min(2100, servoOutput));
 				pwmOutput = servoOutput * 4915 / 1500;
-			}
-			
-			if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
-				float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - ed.pset.value, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
-				int trimCmd = ed.tzer.value - pCmd;
-				pitchTrimSet(trimCmd);
-				logItem.pitchTrim = trimCmd;
-			}
+			}			
 		}
 		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
