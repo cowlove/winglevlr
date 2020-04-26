@@ -132,7 +132,7 @@ public:
 	}
 	void beginPacket(IPAddress, int) {}
 	void beginPacket(const char *, int) {}
-	void write(uint8_t *, int) {}
+	void write(const uint8_t *, int) {}
 	void endPacket() {}
 	int parsePacket() { return i.good() &&  _micros > nextPacket; } ;
 	int read(uint8_t *buf, int buflen) {

@@ -345,12 +345,12 @@ void udpSendString(const char *b) {
 	}
 }
 	
-void pitchTrimSet(float t) { 
+void pitchTrimSet(float p) { 
 	char l[256];
-	//Serial.printf("Relay %d for %d ms\n", relay, ms);
 	static int seq = 5;
-	snprintf(l, sizeof(l), "trim %d %d\n", (int)t, seq++);
+	snprintf(l, sizeof(l), "trim %f %d\n", p, seq++);
 	udpSendString(l);
+	logItem.pitchCmd = p;
 }
 
 void pitchTrimRelay(int relay, int ms) { 
@@ -394,8 +394,8 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("roll %+05.1f pit %+05.1f accpit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f flags %04d servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
-			roll, pitch, ahrs.accelPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, (int)logItem.pitchTrim, servoOutput, 
+		Serial.printf("roll %+05.1f pit %+05.1f accpit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
+			roll, pitch, ahrs.accelPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, logItem.pitchCmd, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max());
 		serialLogFlags = 0;
@@ -508,11 +508,11 @@ void loop() {
 		
 		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - ed.pset.value, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
-			int trimCmd = ed.tzer.value - pCmd;
+			float trimCmd = ed.tzer.value - pCmd;
 			if (armServo) { 
 				pitchTrimSet(trimCmd); 
 			}
-			logItem.pitchTrim = trimCmd;
+			logItem.pitchCmd = trimCmd;
 		}
 
 		pwmOutput = 0;
