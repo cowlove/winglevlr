@@ -54,7 +54,7 @@
 template <class T, int SIZE>
 class RollingAverage {
 	T values[SIZE];
-	T sum = 0;
+	float sum = 0;
 	int count = 0;
 	int index = 0;
 public:
@@ -69,8 +69,8 @@ public:
 		if (index >= SIZE)
 			index = 0;
 	}
-	T average() { 
-		return count > 0 ? sum/count : 0;
+	float average() { 
+		return count > 0 ? ((float)sum)/count : 0;
 	}
 	T min() { 
 		T m = values[0];

@@ -39,9 +39,9 @@ class RollAHRS {
 		  magOffY = (-5.0 + 93) / 2, //  + is left
 		  magOffZ = (-80 + 20) / 2; // + is up
 		  
-	float gyrOffX = -3.3592, 
-		  gyrOffY = -0.2906 + 304.0/790.0,
-		  gyrOffZ = -1.7086;
+	float gyrOffX = -4.2, 
+		  gyrOffY = +1.0,
+		  gyrOffZ = -0.2;
 public:
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, bankCorrection, bankAngle;
 	float gyroTurnBank, pG;
@@ -83,6 +83,7 @@ public:
 		l.mx = -l.mx + magOffX;
 		l.my = -l.my + magOffY;
 		l.mz = -l.mz + magOffZ;
+		
 		
 		l.gx -= gyrOffX;
 		l.gy -= gyrOffY;
@@ -167,23 +168,25 @@ public:
 			altFit.add(l.sec, l.alt);
 		}
 		//accelPitch = atan(-l.ax / sqrt(l.ay * l.ay + l.az * l.az)) * 180 / M_PI;
-		float ap = atan(-l.ay / sqrt(l.ax * l.ax + l.az * l.az)) * 180 / M_PI;
-		//float ap = atan(l.ay / l.az) * 180 / M_PI;
+		//float ap = atan(-l.ay / sqrt(l.ax * l.ax + l.az * l.az)) * 180 / M_PI;
+		float ap = atan(l.ay / l.az) * 180 / M_PI;
 		accelPitchFit.add(l.sec, ap);
-		accelPitch = accelPitchFit.predict(l.sec) + 3.63;
+		accelPitch = accelPitchFit.predict(l.sec);
 		
 		gpsPitch = asin((altFit.slope() / .5144) / 90) * 180  / M_PI; 
 		if (isnan(gpsPitch)) gpsPitch = 0;
 		gpsPitch = min(5.0, max(-5.0, (double)gpsPitch));
 	
-		float gyroTurnBank = atan(-l.gx/l.gz) * 180 / M_PI;
+		float gyroTurnBank = atan(l.gx/l.gz) * 180 / M_PI;
 		float gtmag = sqrt(l.gx * l.gx + l.gz * l.gz);
-		pG = sin((gyroTurnBank - compYH) * M_PI / 180) * gtmag;
+		//pG = sin(abs(compYH) * M_PI / 180) * gtmag;
+		pG = l.gx - sin(abs(compYH) * M_PI / 180) * gtmag;
 		
-		const float compRatio2 = 0.0007	;
+		const float compRatio2 = 0.0015	;
 		const float driftCorrCoeff = pow(1 - compRatio2, 200) * 7;
 		pitchRaw += pG * dt;
-		pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2/2) + (gpsPitch  * compRatio2/2);
+		//pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2/2) + (gpsPitch  * compRatio2/2);
+		pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2) ;
 		
 		if (tick10HZ) { 
 			pitchDriftFit.add(l.sec, pitchComp - pitchRaw);
@@ -198,7 +201,8 @@ public:
 	}
 	
 	void reset() {
-		pitchComp = 0;
+		pitchRaw = pitchComp = 0;
+		pitchDriftFit.reset();
 	}
 };
 
