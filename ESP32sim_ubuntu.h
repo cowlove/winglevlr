@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <vector>
+#include <queue>
 #include <cstring>
 #include <string>
 #include <stdio.h>
@@ -16,6 +17,8 @@ uint64_t micros() { return ++_micros; }
 uint64_t millis() { return micros() / 1000; }
 void pinMode(int, int) {}
 static int ESP32sim_currentPwm = 0;
+float ESP32sim_getPitchCmd();
+
 int digitalRead(int p) {
 	// HACK simple proof-of-concept to simulate button push and arm
 	// the servos  
@@ -155,8 +158,9 @@ extern float desRoll;
 
 void ESP32sim_JDisplay_forceUpdate();
 
+
 class MPU9250_DMP {
-	float bank = 0, track = 0;
+	float bank = 0, track = 0, simPitch = 0;
 	RollingAverage<float,200> rollCmd;
 	uint64_t lastMillis = 0;
 public:
@@ -164,8 +168,30 @@ public:
 	void setGyroFSR(int) {};
     void setAccelFSR(int) {};
     void setSensors(int) {}
-	void updateAccel() { az = 1.0; }
+	void updateAccel() { 
+		while(gxDelay.size() > 8) {
+			gxDelay.pop();
+			pitchDelay.pop();
+			gx = gxDelay.front();
+			pitch = pitchDelay.front();
+		}
+		az = cos(pitch * M_PI / 180) * 1.0;
+		ay = sin(pitch * M_PI / 180) * 1.0;
+		ax = 0;
+	}
+
+	std::queue<float> gxDelay, pitchDelay;
+	
 	void updateGyro() {
+		if (millis() /10 != lastMillis / 10) {
+			float rawCmd = ESP32sim_getPitchCmd();
+			float cmdPitch = rawCmd > 0 ? (940 - rawCmd) / 13 : 0;
+			float ngx = (cmdPitch - simPitch) * .2;
+			simPitch += (cmdPitch - simPitch) * .2;
+			gxDelay.push(ngx);
+			pitchDelay.push(simPitch);
+		}
+				
 		// Simulate simply airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm; 
 		_micros += 3500;
