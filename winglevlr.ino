@@ -82,7 +82,7 @@ namespace Display {
 	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
 	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
-	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    "ROLL:", "%+05.1f ");
+	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
@@ -273,7 +273,7 @@ void setup() {
 	rollPID.maxerr.i = 20;
 	navPID.setGains(0.5, 0, 0.1);
 	navPID.finalGain = 2.2;
-	pitchPID.setGains(20.0, 0.0, 8.0);
+	pitchPID.setGains(15.0, 0.0, 5.0);
 	pitchPID.finalGain = 1.0;
 	pitchPID.maxerr.i = .5;
 
@@ -355,7 +355,6 @@ void pitchTrimSet(float p) {
 
 void pitchTrimRelay(int relay, int ms) { 
 	char l[256];
-	//Serial.printf("Relay %d for %d ms\n", relay, ms);
 	static int seq = 5;
 	logItem.flags |= ((1 << relay) | (ms << 8));
 	serialLogFlags |= ((1 << relay) | (ms << 8));
@@ -394,8 +393,8 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("roll %+05.1f pit %+05.1f accpit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
-			roll, pitch, ahrs.accelPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, logItem.pitchCmd, servoOutput, 
+		Serial.printf("%06.3f roll %+05.1f pit %+05.1f accpit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
+			millis()/1000.0, roll, pitch, ahrs.accelPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, logItem.pitchCmd, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max());
 		serialLogFlags = 0;
@@ -716,3 +715,6 @@ void loop() {
 	}
 }
 
+float ESP32sim_getPitchCmd() { 
+	return logItem.pitchCmd;
+}
