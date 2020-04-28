@@ -50,7 +50,7 @@ public:
 
     // these values are set in reset() method
     double i;
-    RunningLeastSquares histError, histMeasurement;
+    RunningLeastSquares histError, histMeasurement, histCorrection;
 	   
     long starttime = 0;
 	double corr = 0;
@@ -62,7 +62,7 @@ public:
         corr = 0;
     }
     
-    PidControl(int histSize, String name = "") : histError(histSize), histMeasurement(histSize) { 
+    PidControl(int histSize, int cSize = 1, String name = "") : histError(histSize), histMeasurement(histSize), histCorrection(cSize) { 
     	reset();
     	description = name;
     }
@@ -88,11 +88,13 @@ public:
  	    if (maxerr.i > 0) 
 			i = min(maxerr.i, max(-maxerr.i, i));
  	    err.i = i;
+ 	    err.l = calcGain(histCorrection.averageY(), gain.l, hiGain.l, hiGainTrans.l);
  	    err.d = calcGain(histMeasurement.slope(), gain.d, hiGain.d, hiGainTrans.d);
  	    //err.d = calcGain(histError.slope(), gain.d, hiGain.d, hiGainTrans.d);
  	    drms = histMeasurement.rmsError();
  	           
-	    corr = -(err.p + err.i + err.d) * finalGain;
+	    corr = -(err.p + err.i + err.d + err.l) * finalGain;
+	    histCorrection.add(time, corr / finalGain);
 	    return corr;
     }
 };

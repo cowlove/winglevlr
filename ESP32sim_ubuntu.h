@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <vector>
+#include <queue>
 #include <cstring>
 #include <string>
 #include <stdio.h>
@@ -16,10 +17,12 @@ uint64_t micros() { return ++_micros; }
 uint64_t millis() { return micros() / 1000; }
 void pinMode(int, int) {}
 static int ESP32sim_currentPwm = 0;
+float ESP32sim_getPitchCmd();
+
 int digitalRead(int p) {
 	// HACK simple proof-of-concept to simulate button push and arm
 	// the servos  
-	if (p == 35 && millis() > 100 && millis() < 200)
+	if (p == 35 && millis() > 1000 && millis() < 3100)
 		return 0;
 	return 1; 
 }
@@ -75,6 +78,7 @@ class FakeSerial {
 } Serial, Serial1;
 
 #define WL_CONNECTED 0
+#define WIFI_STA 0
 class String {
 	public:
 	std::string st;
@@ -94,6 +98,9 @@ class FakeWiFi {
 	public:
 	int status() { return WL_CONNECTED; } 
 	IPAddress localIP() { return IPAddress(); } 
+	void setSleep(bool) {}
+	void mode(int) {}
+	void disconnect(bool) {}
 } WiFi;
 
 class msdFile {
@@ -117,12 +124,17 @@ public:
 	void run() {}
 };
 
+
+float ESP32sim_pitchCmd = 940.0;
+
 class WiFiUDP {
 	ifstream i;
 	int delay;
 	int nextPacket;
+	int port, txPort;
 public:
 	void begin(int p) {
+		port = p;
 		char fname[256];
 		snprintf(fname, sizeof(fname), "udp%04d.dat", p);
 		// TMP HACK - don't read GDL data, let sim do it below 
@@ -130,9 +142,14 @@ public:
 		nextPacket = _micros;
 		delay = 500;
 	}
-	void beginPacket(IPAddress, int) {}
-	void beginPacket(const char *, int) {}
-	void write(const uint8_t *, int) {}
+	void beginPacket(IPAddress, int p) { beginPacket(NULL, p); }
+	void beginPacket(const char *, int p) { txPort = p; }
+	void write(const uint8_t *b, int len) {
+		float f;
+		if (txPort == 7892 && sscanf((const char *)b, "trim %f", &f) == 1) {
+			ESP32sim_pitchCmd = f;
+		}
+	}
 	void endPacket() {}
 	int parsePacket() { return i.good() &&  _micros > nextPacket; } ;
 	int read(uint8_t *buf, int buflen) {
@@ -155,22 +172,61 @@ extern float desRoll;
 
 void ESP32sim_JDisplay_forceUpdate();
 
+
 class MPU9250_DMP {
-	float bank = 0, track = 0;
+	float bank = 0, track = 0, simPitch = 0;
 	RollingAverage<float,200> rollCmd;
 	uint64_t lastMillis = 0;
+	float cmdPitch;
+
+	float magOffX = (-19.0 + 80) / 2,  // + is to the rear  
+		  magOffY = (-5.0 + 93) / 2, //  + is left
+		  magOffZ = (-80 + 20) / 2; // + is up
+		  
+	float gyrOffX = -2.96, 
+		  gyrOffY = -.61, 
+		  gyrOffZ = - 1.6;
+		  
+	float accOffX = .017,
+		  accOffY = -.029,
+		  accOffZ = -.06;
+
+
 public:
+	
 	int begin(){ return true; }
 	void setGyroFSR(int) {};
     void setAccelFSR(int) {};
     void setSensors(int) {}
-	void updateAccel() {}
+	void updateAccel() { 
+		while(gxDelay.size() > 400) {
+			gxDelay.pop();
+			pitchDelay.pop();
+			gx = gxDelay.front() + gyrOffX;
+			pitch = pitchDelay.front();
+		}
+		printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
+		az = cos(pitch * M_PI / 180) * 1.0;
+		ay = sin(pitch * M_PI / 180) * 1.0;
+		ax = 0;
+	}
+
+	std::queue<float> gxDelay, pitchDelay;
+	
 	void updateGyro() {
+		float rawCmd = ESP32sim_pitchCmd;
+		cmdPitch = rawCmd > 0 ? (940 - rawCmd) / 13 : 0;
+		float ngx = (cmdPitch - simPitch) * 1.3;
+		ngx = max((float)-5.0,min((float)5.0, ngx));
+		simPitch += (cmdPitch - simPitch) * .0015;
+		gxDelay.push(ngx);
+		pitchDelay.push(simPitch);
+				
 		// Simulate simply airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm; 
 		_micros += 3500;
 		rollCmd.add((ESP32sim_currentPwm - 4915.0) / 4915.0);
-		gy = rollCmd.average() * 2.0;
+		gy = rollCmd.average() * 2.0 + gyrOffY;
 		bank += gy * .01;
 		bank = max(-15.0, min(15.0, (double)bank));
 		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
