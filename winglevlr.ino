@@ -363,7 +363,7 @@ void pitchTrimRelay(int relay, int ms) {
 	udpSendString(l);
 }
 
-static int servoOverride = 0;
+static int servoOverride = 0, pitchTrimOverride = -1;
 void loop() {
 	uint16_t len;
 	static int ledOn = 0;
@@ -432,15 +432,15 @@ void loop() {
 			ahrs.reset();
 			
 		}
-		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
-			pitchTrimRelay(1, manualRelayMs);
+		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false && pitchTrimOverride != -1) {
+			pitchTrimOverride -= 10;
 		}
 		
 		
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
-		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
-			pitchTrimRelay(0, manualRelayMs);
+		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false && pitchTrimOverride != -1) {
+			pitchTrimOverride += 10;
 		}
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
 			phSafetySwitch = !phSafetySwitch;
@@ -509,6 +509,7 @@ void loop() {
 		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - ed.pset.value, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
 			float trimCmd = ed.tzer.value - pCmd;
+			trimCmd = pitchTrimOverride != -1 ? pitchTrimOverride : trimCmd;
 			if (armServo) { 
 				pitchTrimSet(trimCmd); 
 			}
@@ -643,6 +644,7 @@ void loop() {
 				else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
 				else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
+				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
 				else if (sscanf(line, "knob=%f", &f) == 1) {
