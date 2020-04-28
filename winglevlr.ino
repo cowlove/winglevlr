@@ -378,7 +378,7 @@ void loop() {
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool phSafetySwitch = true;
-	static bool screenEnabled = false;
+	static bool screenEnabled = true;
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
 	static RollingAverage<int,1000> loopTime;
@@ -653,13 +653,15 @@ void loop() {
 					} else if (f == 3) { 
 						knobPID = &navPID;
 					}
-					ed.pidp.value = knobPID->gain.p;
-					ed.pidi.value = knobPID->gain.i;
-					ed.pidd.value = knobPID->gain.d;
-					ed.pidg.value = knobPID->finalGain;
 				} else {
 					Serial.printf("UNKNOWN COMMAND: %s", line);
 				}
+				// in case we changed the PID values or the knob selection 
+				ed.pidp.value = knobPID->gain.p;
+				ed.pidi.value = knobPID->gain.i;
+				ed.pidd.value = knobPID->gain.d;
+				ed.pidg.value = knobPID->finalGain;
+
 				Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
 				
 			}

@@ -19,7 +19,7 @@ static int ESP32sim_currentPwm = 0;
 int digitalRead(int p) {
 	// HACK simple proof-of-concept to simulate button push and arm
 	// the servos  
-	if (p == 35 && millis() > 100 && millis() < 200)
+	if (p == 35 && millis() > 1000 && millis() < 3100)
 		return 0;
 	return 1; 
 }
@@ -164,7 +164,7 @@ public:
 	void setGyroFSR(int) {};
     void setAccelFSR(int) {};
     void setSensors(int) {}
-	void updateAccel() {}
+	void updateAccel() { az = 1.0; }
 	void updateGyro() {
 		// Simulate simply airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm; 
