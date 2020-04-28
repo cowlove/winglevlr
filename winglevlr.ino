@@ -39,7 +39,7 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(10), navPID(50); /*20Hz*/
+PidControl rollPID(30) /*200Hz*/, pitchPID(10,20), navPID(50); /*20Hz*/
 PidControl *knobPID = &pitchPID;
 static int servoTrim = 1325;
 
@@ -270,7 +270,7 @@ void setup() {
 	rollPID.maxerr.i = 20;
 	navPID.setGains(0.5, 0, 0.1);
 	navPID.finalGain = 2.2;
-	pitchPID.setGains(15.0, 0.0, 5.0);
+	pitchPID.setGains(20.0, 0.0, 2.0, 0, .7);
 	pitchPID.finalGain = 1.0;
 	pitchPID.maxerr.i = .5;
 
