@@ -39,7 +39,7 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(10,20), navPID(50); /*20Hz*/
+PidControl rollPID(30) /*200Hz*/, pitchPID(10,15), navPID(50); /*20Hz*/
 PidControl *knobPID = &pitchPID;
 static int servoTrim = 1325;
 
@@ -136,6 +136,7 @@ void imuInit() {
 }
 
 static AhrsInput ahrsInput;
+
 bool imuRead() { 
 	
 	//if (imu.fifoAvailable() && imu.updateFifo() == INV_SUCCESS) { // FIFO is slow
@@ -641,6 +642,7 @@ void loop() {
 				else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
+				else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
 				else if (sscanf(line, "knob=%f", &f) == 1) {
