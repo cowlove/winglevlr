@@ -48,6 +48,12 @@ class RollAHRS {
 		  accOffZ = -.06;
 		  
 public:
+	struct { 
+		RollingAverage<float,1000> ax,ay,az,gx,gy,gz;
+	} zeroAverages;
+
+
+
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, bankCorrection, bankAngle;
 	float gyroTurnBank, pG;
 	float pitchComp = 0, pitchRaw = 0, pitchDrift = 0, pitchCompDriftCorrected = 0;
@@ -75,6 +81,16 @@ public:
 		return prev.gpsTrack != -1;
 	}
 	
+	
+	void zeroSensors() { 
+		gyrOffX = zeroAverages.gx.average(); 
+		gyrOffY = zeroAverages.gy.average();
+		gyrOffZ = zeroAverages.gz.average();
+		accOffX = zeroAverages.ax.average();
+		accOffY = zeroAverages.ay.average();
+		accOffZ = zeroAverages.az.average() - 1.0;
+	}
+	
 	float add(const AhrsInput &i) {
 		AhrsInput l(i);
 		float dt = 0;
@@ -84,6 +100,13 @@ public:
 			dt = l.sec - prev.sec;
 		
 		bool tick10HZ = (floor(l.sec / .1) != floor(prev.sec / .1));
+
+		zeroAverages.ax.add(l.ax);
+		zeroAverages.ay.add(l.ay);
+		zeroAverages.az.add(l.az);
+		zeroAverages.gx.add(l.gx);
+		zeroAverages.gy.add(l.gy);
+		zeroAverages.gz.add(l.gz);
 		
 		l.mx = -l.mx + magOffX;
 		l.my = -l.my + magOffY;

@@ -54,9 +54,26 @@ void yield() {}
 #define ST7735_BLACK 0 
 #define ST7735_WHITE 0 
 #define ST7735_YELLOW 0 
+class String {
+	public:
+	std::string st;
+	String(const char *s) : st(s) {}
+	String(std::string s) : st(s) {}
+	String() {}
+	int length() { return st.length(); } 
+	bool operator!=(const String& x) { return st != x.st; } 
+	String &operator+(const String& x) { st = st + x.st; return *this; } 
+	const char *c_str(void) { return st.c_str(); }
+};
+class IPAddress {
+public:
+	void fromString(const char *) {}
+	String toString() { return String(); }	
+};
 
 class FakeSerial { 
 	public:
+	String inputLine;
 	bool toConsole = false;
 	void begin() {}
 	void begin(int, int, int, int) {}
@@ -72,28 +89,18 @@ class FakeSerial {
 		va_end (args);
 	}
 	void setTimeout(int) {} 
-	int available() { return 0; }
-	int readBytes(uint8_t *, int) { return 0; } 
+	int available() { return inputLine.length(); }
+	int readBytes(uint8_t *b, int l) {
+		int rval =  min(inputLine.length(), l);
+		strncpy((char *)b, inputLine.c_str(), rval);
+		inputLine = String();
+		return rval;
+	} 
 	int write(const uint8_t *, int) { return 0; }
 } Serial, Serial1;
 
 #define WL_CONNECTED 0
 #define WIFI_STA 0
-class String {
-	public:
-	std::string st;
-	String(const char *s) : st(s) {}
-	String(std::string s) : st(s) {}
-	String() {}
-	bool operator!=(const String& x) { return st != x.st; } 
-	String &operator+(const String& x) { st = st + x.st; return *this; } 
-	const char *c_str(void) { return st.c_str(); }
-};
-class IPAddress {
-public:
-	void fromString(const char *) {}
-	String toString() { return String(); }	
-};
 class FakeWiFi {
 	public:
 	int status() { return WL_CONNECTED; } 
@@ -169,6 +176,15 @@ void ESP32sim_set_gpsTrackGDL90(float v);
 void ESP32sim_set_desiredTrk(float v);
 extern float desRoll;
 
+void ESP32sim_run() { 
+	static float lastTime = 0;
+	float now = micros() / 1000000.0;
+	
+	if (now >= 100 && lastTime < 100) {	Serial.inputLine = "pitch=10\n"; }
+	if (now >= 400 && lastTime < 400) {	Serial.inputLine = "zeroimu\n"; }
+
+	lastTime = now;
+}
 
 void ESP32sim_JDisplay_forceUpdate();
 
@@ -178,20 +194,6 @@ class MPU9250_DMP {
 	RollingAverage<float,200> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
-
-	float magOffX = (-19.0 + 80) / 2,  // + is to the rear  
-		  magOffY = (-5.0 + 93) / 2, //  + is left
-		  magOffZ = (-80 + 20) / 2; // + is up
-		  
-	float gyrOffX = -2.96, 
-		  gyrOffY = -.61, 
-		  gyrOffZ = - 1.6;
-		  
-	float accOffX = .017,
-		  accOffY = -.029,
-		  accOffZ = -.06;
-
-
 public:
 	
 	int begin(){ return true; }
@@ -199,10 +201,11 @@ public:
     void setAccelFSR(int) {};
     void setSensors(int) {}
 	void updateAccel() { 
+		ESP32sim_run();
 		while(gxDelay.size() > 400) {
 			gxDelay.pop();
 			pitchDelay.pop();
-			gx = gxDelay.front() + gyrOffX;
+			gx = gxDelay.front();
 			pitch = pitchDelay.front();
 		}
 		printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
@@ -226,7 +229,7 @@ public:
 		// servooutput read from ESP32sim_currentPwm; 
 		_micros += 3500;
 		rollCmd.add((ESP32sim_currentPwm - 4915.0) / 4915.0);
-		gy = rollCmd.average() * 2.0 + gyrOffY;
+		gy = rollCmd.average() * 2.0;
 		bank += gy * .01;
 		bank = max(-15.0, min(15.0, (double)bank));
 		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
