@@ -241,13 +241,10 @@ void setup() {
 	imuInit();	
 	
 	if (digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
-		//SCREENLINE.println("Opening SD card...");
-		//open_TTGOTS_SD();
-		//printSD();
+		WiFi.disconnect(true);
+		WiFi.mode(WIFI_STA);
+		WiFi.setSleep(false);
 
-		//SCREENLINE.println("Connecting to WiFi...");
-		//WiFi.mode(WIFI_STA);
-		//WiFi.setSleep(false);
 		//WiFi.begin("ChloeNet", "niftyprairie7");
 		wifi.addAP("Ping-582B", "");
 		wifi.addAP("ChloeNet", "niftyprairie7");
@@ -257,7 +254,7 @@ void setup() {
 		while (WiFi.status() != WL_CONNECTED && digitalRead(button.pin) != 0) {
 			wifi.run();
 			delay(10);
-			if (millis() - startms > 11000)
+			if (millis() - startms > 21000)
 				break;
 		}
 		
@@ -662,7 +659,7 @@ void loop() {
 				ed.pidg.value = knobPID->finalGain;
 
 				Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
-				
+				printMag();
 			}
 		}
 	}
