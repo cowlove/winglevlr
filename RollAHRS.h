@@ -89,6 +89,7 @@ public:
 		accOffX = zeroAverages.ax.average();
 		accOffY = zeroAverages.ay.average();
 		accOffZ = zeroAverages.az.average() - 1.0;
+		Serial.printf("ZERO SENSORS gyro %f %f %f accel %f %f %f\n", gyrOffX, gyrOffY, gyrOffZ, accOffX, accOffY, accOffZ); 
 	}
 	
 	float add(const AhrsInput &i) {
