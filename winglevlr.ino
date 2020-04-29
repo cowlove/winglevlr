@@ -93,8 +93,8 @@ namespace Display {
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%04.1f "); JDisplayItem<float> pset(&jd,70,y,    "PSET:", "%+05.1f ");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> tzer(&jd,70,y,    "TZER:", "%04.0f ");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); //JDisplayItem<float> pmin(&jd,70,y,    "XXXX:", "%03.1f ");
-	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.1f "); //JDisplayItem<float> pmax(&jd,70,y,    "XXXX:", "%03.1f ");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pidg(&jd,70,y,    "PIDG:", "%03.1f ");
+	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> mtin(&jd,70,y,    "MTIN:", "%03.1f ");
 }
 
 void ESP32sim_JDisplay_forceUpdate() { 
@@ -197,22 +197,22 @@ public:
 	JDisplayEditableItem pidp = JDisplayEditableItem(&Display::pidp, .01);
 	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
 	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
-	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
+	JDisplayEditableItem pidl = JDisplayEditableItem(&Display::pidl, .01);
 	JDisplayEditableItem maxb = JDisplayEditableItem(NULL, 1);
 	JDisplayEditableItem pset = JDisplayEditableItem(&Display::pset, .1);
 	JDisplayEditableItem tzer = JDisplayEditableItem(&Display::tzer, 1);
-	//JDisplayEditableItem pmin = JDisplayEditableItem(&Display::pmin, .1);
-	//JDisplayEditableItem pmax = JDisplayEditableItem(&Display::pmax, .1);
+	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
+	JDisplayEditableItem mtin = JDisplayEditableItem(&Display::mtin, .1);
 	
 	MyEditor() : JDisplayEditor(26, 27) {
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
-		add(&pidg);	
+		add(&pidl);	
 		add(&pset);
 		add(&tzer);
-		//add(&pmin);
-		//add(&pmax);
+		add(&pidg);	
+		add(&mtin);
 	}
 } ed;
 
@@ -238,8 +238,6 @@ void setup() {
 	Display::jd.begin();
 	Display::jd.clear();
 	
-	//wdt.begin();  // doesn't work yet
-
 	pinMode(button.pin, INPUT_PULLUP);
 	pinMode(button2.pin, INPUT_PULLUP);
 	pinMode(button3.pin, INPUT_PULLUP);
@@ -294,10 +292,12 @@ void setup() {
 	ed.pidp.value = knobPID->gain.p;
 	ed.pidi.value = knobPID->gain.i;
 	ed.pidd.value = knobPID->gain.d;
+	ed.pidl.value = knobPID->gain.l;
 	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 9;
 	ed.pset.value = +0.0;
 	ed.tzer.value = 940;
+	ed.mtin.value = 10;
 	
 	//ed.rlhz.value = 3; // period for relay activation, in seconds
 	//ed.mnrl.value = 70;
@@ -462,12 +462,12 @@ void loop() {
 			
 		}
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false && pitchTrimOverride != -1) {
-			pitchTrimOverride -= 10;
+			pitchTrimOverride -= ed.mtin.value;
 		}
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false && pitchTrimOverride != -1) {
-			pitchTrimOverride += 10;
+			pitchTrimOverride += ed.mtin.value;
 		}
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
 			logActive = !logActive;
@@ -592,6 +592,7 @@ void loop() {
 		knobPID->gain.p = ed.pidp.value;
 		knobPID->gain.i = ed.pidi.value;
 		knobPID->gain.d = ed.pidd.value;
+		knobPID->gain.l = ed.pidl.value;
 		knobPID->finalGain = ed.pidg.value;
 	}
 	
@@ -672,6 +673,7 @@ void loop() {
 				else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
 				else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
 				else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
+				else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
 				else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
@@ -693,6 +695,7 @@ void loop() {
 				ed.pidp.value = knobPID->gain.p;
 				ed.pidi.value = knobPID->gain.i;
 				ed.pidd.value = knobPID->gain.d;
+				ed.pidl.value = knobPID->gain.l;
 				ed.pidg.value = knobPID->finalGain;
 
 				Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
