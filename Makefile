@@ -8,13 +8,17 @@ plot:	winglevlr_ubuntu
 		&& echo "f='./out.dat'; p f u 2 w l ti 'DTK', f u 4 w l ti 'TRK'; pause 100"| gnuplot
 
 test:
-	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | tee test.out
+	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | uniq | tee test.out
 	(cd tests && ./regress.sh 052 -html && ./regress.sh 068 -html)
 	google-chrome logs/regression/*.html
 
 test.out:	winglevlr_ubuntu
-	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | tee $@
+	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | uniq | tee $@
 	
+	
+simplot:	test.out
+	cat test.out | grep pit | gnuplot -e 'p "-" u 1:5 w l; pause 111'
+
 winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
 	g++ -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
 

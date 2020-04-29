@@ -322,6 +322,7 @@ public:
 	}
 	~SDCardBufferedLog() { 
 		 this->exit();
+		 vQueueDelete(queue);
 		 printSD();
 		 SD.end();
 	}
@@ -377,7 +378,6 @@ public:
 					f.flush();
 				lastFlush = now;
 			}
-			delay(1);
 		}
 		if (f) 
 			f.close();
@@ -391,7 +391,7 @@ public:
 #else
 public:
 	String currentFile;
-	void add(T *v, int t) {}
+	void add(T *v, int t) { printf("%s LOG\n", v->toString().c_str()); }
 	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true) {}
 #endif
 
