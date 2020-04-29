@@ -55,10 +55,11 @@ template <class T, int SIZE>
 class RollingAverage {
 	T values[SIZE];
 	float sum = 0;
+public:
 	int count = 0;
 	int index = 0;
-public:
 	RollingAverage() {}
+	void reset() { sum = count = index = 0; } 
 	void add(const T &v) { 
 		if (count == SIZE) 
 			sum -= values[index];
@@ -86,6 +87,47 @@ public:
 	}
 };
 
+
+template <class T, int SIZE1, int SIZE2>
+class TwoStageRollingAverage {
+	RollingAverage<T,SIZE1> stage1;
+	RollingAverage<T,SIZE2> stage2;
+	T maxs[SIZE2] = {0}, mins[SIZE2] = {0};
+public:
+
+	TwoStageRollingAverage() {}
+	void add(const T &v) {
+		stage1.add(v);
+		if (stage1.count == SIZE1) { 
+			maxs[stage2.index] = stage1.max();
+			mins[stage2.index] = stage1.min();
+			stage2.add(stage1.average());
+			stage1.reset();
+		}
+	}
+	T min() { 
+		if (stage2.count < 1)
+			return stage1.min();
+		T m = mins[0];
+		for(int n = 1; n < stage2.count; n++) {
+			m = std::min(mins[n], m);
+		}
+		return m;
+	}
+	T max() { 
+		if (stage2.count < 1)
+			return stage1.max();
+		T m = maxs[0];
+		for(int n = 1; n < stage2.count; n++) {
+			m = std::max(maxs[n], m);
+		}
+		return m;
+	}
+	double average() {
+		return stage2.average();
+	}
+};
+			
 
 class RunningLeastSquares {
     public:

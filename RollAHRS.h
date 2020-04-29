@@ -7,7 +7,7 @@ using namespace std;
 struct AhrsInput { 
 	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed;
 	String toString() { 
-		static char buf[2048];
+		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f", 
 		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed);
 		return String(buf);	
@@ -49,7 +49,7 @@ class RollAHRS {
 		  
 public:
 	struct { 
-		RollingAverage<float,1000> ax,ay,az,gx,gy,gz;
+		TwoStageRollingAverage<float,40,40> ax,ay,az,gx,gy,gz;
 	} zeroAverages;
 
 
@@ -280,7 +280,7 @@ struct LogItemC {
 	float desRoll, pitchCmd, roll; // 32 33 34
 	AhrsInput ai;
 	String toString() {
-		char buf[1024];
+		char buf[200];
 		snprintf(buf, sizeof(buf), " %d %d %f %f %f %f %f %f %f %f %f %f", (int)pwmOutput, (int)flags, pidP, pidI, pidD, gainP, gainI, gainD, finalGain,
 			desRoll, pitchCmd, roll);
 		return ai.toString() +  String(buf);

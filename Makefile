@@ -14,10 +14,14 @@ test:
 
 test.out:	winglevlr_ubuntu
 	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | uniq | tee $@
+
+backtrace:
+	tr ' ' '\n' | /home/jim/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/bin/xtensa-esp32-elf-addr2line -f -i -e /tmp/mkESP/winglevlr_esp32/*.elf
 	
+
 	
 simplot:	test.out
-	cat test.out | grep pit | gnuplot -e 'p "-" u 1:5 w l; pause 111'
+	cat test.out | grep but | gnuplot -e 'p "-" u 1:5 w l; pause 111'
 
 winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
 	g++ -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/

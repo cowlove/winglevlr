@@ -16,6 +16,10 @@
 #include <mySD.h>
 #include "Wire.h"
 #include <MPU9250_asukiaaa.h>
+#if defined(ESP32)
+//#include "esp_system.h"
+#include <esp_task_wdt.h>
+#endif
 #else
 #include "ESP32sim_ubuntu.h"
 #endif
@@ -212,7 +216,15 @@ public:
 	}
 } ed;
 
-void setup() {
+#if 0 
+#include "esp_freertos_hooks.h"
+bool bApplicationIdleHook() {
+	return true;
+}
+#endif
+
+void setup() {	
+	//esp_register_freertos_idle_hook(bApplicationIdleHook);
 	pinMode(LED_PIN, OUTPUT);
 	digitalWrite(LED_PIN, 1);
 
@@ -294,6 +306,10 @@ void setup() {
 	pinMode(33, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
+
+	esp_task_wdt_init(15, true);
+	esp_err_t err = esp_task_wdt_add(NULL);
+	
 }
 
 
@@ -344,7 +360,7 @@ void udpSendString(const char *b) {
 }
 	
 void pitchTrimSet(float p) { 
-	char l[256];
+	char l[60];
 	static int seq = 5;
 	snprintf(l, sizeof(l), "trim %f %d\n", p, seq++);
 	udpSendString(l);
@@ -352,7 +368,7 @@ void pitchTrimSet(float p) {
 }
 
 void pitchTrimRelay(int relay, int ms) { 
-	char l[256];
+	char l[60];
 	static int seq = 5;
 	logItem.flags |= ((1 << relay) | (ms << 8));
 	serialLogFlags |= ((1 << relay) | (ms << 8));
@@ -374,11 +390,11 @@ void loop() {
 	static int gpsUseGDL90 = 2; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
-	static bool phSafetySwitch = true;
+	static bool logActive = false;
 	static bool screenEnabled = true;
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
-	static RollingAverage<int,1000> loopTime;
+	static TwoStageRollingAverage<int,40,40> loopTime;
 	static EggTimer serialReportTimer(200), navPIDTimer(50);
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
@@ -386,15 +402,31 @@ void loop() {
 	static String logFilename("none");
 	static AhrsInput lastAhrsInput; 
 	
+	esp_task_wdt_reset();
+
+	if (0) {  // debugging memory leak from xTaskCreate/vTaskDelete in log implementation
+		static EggTimer t(20000);
+		if (t.tick()) {
+			static int logtestc = 0;
+			if (logtestc++ % 2 == 0) 
+				logActive = true;
+			else
+				logActive = false;
+		}
+	}
+	
+	//vTaskDelay(1);
 	delayMicroseconds(10);
+	//yield();
+	
 	uint64_t now = micros();
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("%06.3f roll %+05.1f pit %+05.1f accpit %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f servo %04d buttons %d%d%d%d Loop time min/avg/max %d/%d/%d\n", 
+		Serial.printf("%06.3f R %+05.1f P %+05.1f acP %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d but %d%d%d%d loop %d/%d/%d heap %d\n", 
 			millis()/1000.0, roll, pitch, ahrs.accelPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, logItem.pitchCmd, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
-		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max());
+		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap());
 		serialLogFlags = 0;
 	}
 	
@@ -438,8 +470,8 @@ void loop() {
 			pitchTrimOverride += 10;
 		}
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
-			phSafetySwitch = !phSafetySwitch;
-			if (phSafetySwitch == false) {
+			logActive = !logActive;
+			if (logActive == true) {
 				screenEnabled = false;
 				Display::jd.clear();
 			} else {
@@ -467,16 +499,16 @@ void loop() {
 		}
 	}
 	
-	if (phSafetySwitch == false && logFile == NULL) {
-		logFile = new SDCardBufferedLog<LogItem>("AHRSD%03d.DAT", 200/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+	if (logActive == true && logFile == NULL) {
+		logFile = new SDCardBufferedLog<LogItem>("AHRSD%03d.DAT", 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
 		logFilename = logFile->currentFile;
 		Serial.printf("Opened log file '%s'\n", logFile->currentFile.c_str());
 	} 
-	if (phSafetySwitch == true && logFile != NULL) {
+	if (logActive == false && logFile != NULL) {
 		Serial.printf("Closing log file '%s'\n", logFile->currentFile.c_str());
 		delete logFile;
 		logFile = NULL;
-		//printSD();
+		Serial.printf("Closed\n");
 	}
 
 	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
@@ -574,7 +606,7 @@ void loop() {
 		Display::trk = ahrsInput.gpsTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
-		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)phSafetySwitch; 
+		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)logActive; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::vtg = (float)gpsTrackVTG;
 		Display::rmc = (float)gpsTrackRMC; 
@@ -619,7 +651,7 @@ void loop() {
 	while(recsize > 0);
 
 	if (Serial.available()) {
-		static char line[128]; // TODO make a line parser class with a lambda/closure
+		static char line[32]; // TODO make a line parser class with a lambda/closure
 		static int index;
 		int n = Serial.readBytes(buf, sizeof(buf));
 		for (int i = 0; i < n; i++) {
@@ -671,7 +703,7 @@ void loop() {
 
 	int avail = udpSL30.parsePacket();
 	while(avail > 0) { 
-		static char line[128];
+		static char line[100];
 		static int index;
 		
 		int n = udpSL30.read(buf, sizeof(buf));
