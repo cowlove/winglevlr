@@ -22,8 +22,10 @@ float ESP32sim_getPitchCmd();
 int digitalRead(int p) {
 	// HACK simple proof-of-concept to simulate button push and arm
 	// the servos  
-	if (p == 35 && millis() > 1000 && millis() < 3100)
-		return 0;
+	
+	if (p == 35 && millis() > 1000 && millis() < 3100) return 0;  // arm servos
+	//if (p == 39 && millis() > 5000 && millis() < 7100) return 0; // start logging
+	
 	return 1; 
 }
 void ledcWrite(int chan, int val) { 
@@ -208,7 +210,7 @@ public:
 			gx = gxDelay.front();
 			pitch = pitchDelay.front();
 		}
-		printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
+		//printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
 		az = cos(pitch * M_PI / 180) * 1.0;
 		ay = sin(pitch * M_PI / 180) * 1.0;
 		ax = 0;

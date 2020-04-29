@@ -432,8 +432,6 @@ void loop() {
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false && pitchTrimOverride != -1) {
 			pitchTrimOverride -= 10;
 		}
-		
-		
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false && pitchTrimOverride != -1) {
@@ -506,10 +504,13 @@ void loop() {
 		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - ed.pset.value, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
 			float trimCmd = ed.tzer.value - pCmd;
-			trimCmd = pitchTrimOverride != -1 ? pitchTrimOverride : trimCmd;
-			if (armServo) { 
-				pitchTrimSet(trimCmd); 
+			if (pitchTrimOverride != -1) {
+				trimCmd = pitchTrimOverride;
 			}
+			if (armServo == false) { 
+				trimCmd = -1;
+			}
+			pitchTrimSet(trimCmd); 
 			logItem.pitchCmd = trimCmd;
 		}
 
