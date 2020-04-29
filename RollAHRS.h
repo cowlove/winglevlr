@@ -39,13 +39,16 @@ class RollAHRS {
 		  magOffY = (-5.0 + 93) / 2, //  + is left
 		  magOffZ = (-80 + 20) / 2; // + is up
 		  
-	float gyrOffX = -2.96, 
-		  gyrOffY = -.61, 
-		  gyrOffZ = - 1.6;
 		  
-	float accOffX = .017,
-		  accOffY = -.029,
-		  accOffZ = -.06;
+//ZERO SENSORS gyro 1.385096 1.073140 0.889719 accel 0.109684 0.022846 -0.059723
+	
+	float gyrOffX = +1.36, 
+		  gyrOffY = +1.07, 
+		  gyrOffZ = -0.89;
+		  
+	float accOffX = +0.109,
+		  accOffY = +0.022,
+		  accOffZ = -0.060;
 		  
 public:
 	struct { 
@@ -88,7 +91,7 @@ public:
 		gyrOffZ = zeroAverages.gz.average();
 		accOffX = zeroAverages.ax.average();
 		accOffY = zeroAverages.ay.average();
-		accOffZ = zeroAverages.az.average() - 1.0;
+		accOffZ = zeroAverages.az.average() + 1.0;
 		Serial.printf("ZERO SENSORS gyro %f %f %f accel %f %f %f\n", gyrOffX, gyrOffY, gyrOffZ, accOffX, accOffY, accOffZ); 
 	}
 	
