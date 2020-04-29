@@ -5,7 +5,7 @@ class GDL90Parser {
 	bool lock() { return true; } 
 	void unlock() {};
 	
-	unsigned char buf[1024];
+	unsigned char buf[256];
 	int index = -1;
 	bool esc = 0;
 	unsigned long bs3(unsigned char* b) {

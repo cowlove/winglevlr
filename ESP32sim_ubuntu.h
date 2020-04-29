@@ -19,6 +19,15 @@ void pinMode(int, int) {}
 static int ESP32sim_currentPwm = 0;
 float ESP32sim_getPitchCmd();
 
+typedef int esp_err_t; 
+void esp_task_wdt_init(int, int) {}
+void esp_task_wdt_reset() {}
+esp_err_t esp_task_wdt_add(void *) { return 0; }
+
+struct {
+	int getFreeHeap() { return 0; }
+} ESP;
+
 int digitalRead(int p) {
 	// HACK simple proof-of-concept to simulate button push and arm
 	// the servos  
@@ -90,7 +99,8 @@ class FakeSerial {
 			vprintf (f, args);
 		va_end (args);
 	}
-	void setTimeout(int) {} 
+	void setTimeout(int) {}
+	void flush() {} 
 	int available() { return inputLine.length(); }
 	int readBytes(uint8_t *b, int l) {
 		int rval =  min(inputLine.length(), l);

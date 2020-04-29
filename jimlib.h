@@ -295,10 +295,13 @@ class SDCardBufferedLog {
 
 	void exit() { 
 		exitNow = true;
+		Serial.printf("Exiting, qsize %d, free heap %d\n", (int)uxQueueMessagesWaiting(queue), ESP.getFreeHeap());
 		T v;
 		add(&v);
-		while(exitNow)
+		while(exitNow) {
+			yield();
 			delay(1);
+		};
 	}
 	bool textMode;
 public:
@@ -334,11 +337,11 @@ public:
 	}
 	void setFilename() { 
 		int fileVer = 1;
-		char fname[1024];
+		char fname[20];
 		msdFile f;
 		if (strchr(filename, '%')) { // if filename contains '%', scan for existing files  
 			for(fileVer = 1; fileVer < 999; fileVer++) {
-				sprintf(fname, filename, fileVer);
+				snprintf(fname, sizeof(fname), filename, fileVer);
 				if (!(f = SD.open(fname, (F_READ)))) {
 					f.close();
 					break;
@@ -382,6 +385,7 @@ public:
 		if (f) 
 			f.close();
 		exitNow = false;
+		Serial.printf("task out\n");
 		vTaskDelete(NULL);
 	}
 	void flush() { 
