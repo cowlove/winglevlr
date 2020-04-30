@@ -14,8 +14,9 @@ struct AhrsInput {
 		return String(buf);	
 	 }
 	 AhrsInput fromString(const char *s) { 
-		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &palt, &gspeed, &g5Pitch, g5Roll, g5TimeStamp);
+		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, 
+		&gz, &mx, &my, &mz, &q1, &q2, &q3, &palt, &gspeed, &g5Pitch, &g5Roll, &g5TimeStamp);
 		return *this;
 	}
 		 
@@ -93,7 +94,9 @@ public:
 		accOffX = zeroAverages.ax.average();
 		accOffY = zeroAverages.ay.average();
 		accOffZ = zeroAverages.az.average() + 1.0;
+#ifdef ESP32
 		Serial.printf("ZERO SENSORS gyro %f %f %f accel %f %f %f\n", gyrOffX, gyrOffY, gyrOffZ, accOffX, accOffY, accOffZ); 
+#endif
 	}
 	
 	float add(const AhrsInput &i) {
