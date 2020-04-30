@@ -43,7 +43,7 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(10,15), navPID(50); /*20Hz*/
+PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), navPID(50); /*20Hz*/
 PidControl *knobPID = &pitchPID;
 static int servoTrim = 1325;
 
@@ -224,6 +224,9 @@ bool bApplicationIdleHook() {
 #endif
 
 void setup() {	
+	esp_task_wdt_init(15, true);
+	esp_err_t err = esp_task_wdt_add(NULL);
+
 	//esp_register_freertos_idle_hook(bApplicationIdleHook);
 	pinMode(LED_PIN, OUTPUT);
 	digitalWrite(LED_PIN, 1);
@@ -258,15 +261,13 @@ void setup() {
 
 		//WiFi.begin("ChloeNet", "niftyprairie7");
 		wifi.addAP("Ping-582B", "");
-		wifi.addAP("ChloeNet", "niftyprairie7");
+		wifi.addAP("Flora_2GEXT", "maynards");
 		wifi.addAP("Team America", "51a52b5354");
 
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED && digitalRead(button.pin) != 0) {
 			wifi.run();
 			delay(10);
-			if (millis() - startms > 21000)
-				break;
 		}
 		
 		udpSL30.begin(7891);
@@ -281,7 +282,7 @@ void setup() {
 	rollPID.maxerr.i = 20;
 	navPID.setGains(0.5, 0, 0.1);
 	navPID.finalGain = 2.2;
-	pitchPID.setGains(20.0, 0.0, 2.0, 0, .7);
+	pitchPID.setGains(12.0, 0.0, 2.0, 0, .7);
 	pitchPID.finalGain = 1.0;
 	pitchPID.maxerr.i = .5;
 
@@ -307,9 +308,6 @@ void setup() {
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
 
-	esp_task_wdt_init(15, true);
-	esp_err_t err = esp_task_wdt_add(NULL);
-	
 }
 
 
@@ -387,7 +385,7 @@ void loop() {
 	static char lastParam[64];
 	static int lastHdg;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 2; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
+	static int gpsUseGDL90 = 1; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool logActive = false;
@@ -423,8 +421,8 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("%06.3f R %+05.1f P %+05.1f acP %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d but %d%d%d%d loop %d/%d/%d heap %d\n", 
-			millis()/1000.0, roll, pitch, ahrs.accelPitch, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, logItem.pitchCmd, servoOutput, 
+		Serial.printf("%06.3f R %+05.1f P %+05.1f g5 %+05.1f %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d but %d%d%d%d loop %d/%d/%d heap %d\n", 
+			millis()/1000.0, roll, pitch, ahrsInput.g5Pitch, ahrsInput.g5Roll, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, logItem.pitchCmd, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap());
 		serialLogFlags = 0;
@@ -547,7 +545,7 @@ void loop() {
 		}
 
 		pwmOutput = 0;
-		if (ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0) { // hold down button to override and make servo work  
+		if (1 /*ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0*/) { // hold down button to override and make servo work  
 			if (desiredTrk != -1) {
 				double hdgErr = ahrsInput.gpsTrack - desiredTrk;
 				if(hdgErr < -180) hdgErr += 360;
@@ -556,6 +554,9 @@ void loop() {
 					desRoll = -navPID.add(hdgErr, hdgErr /*ahrsInput.gpsTrack TODO: not continuous */, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
 				}
+			}
+			if (ahrs.valid() == false) {
+				desRoll = 0.0;
 			}
 			// TODO: desRoll may be stale, but leave this bug so serial cmdline can set desRoll 
 			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
@@ -676,6 +677,7 @@ void loop() {
 				else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
 				else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
+				else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
 				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
 				else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
@@ -720,6 +722,19 @@ void loop() {
 			if (buf[i] != '\r')
 				line[index++] = buf[i];
 			if (buf[i] == '\n' || buf[i] == '\r') {
+				float pit, roll, knobSel, knobVal;
+				if (sscanf(line, "%f %f %f %f CAN", &pit, &roll, &knobSel, &knobVal) == 4) {
+					ahrsInput.g5Pitch = pit * 180 / M_PI;
+					ahrsInput.g5Roll = roll * 180 / M_PI;
+					if (knobSel == 1 || knobSel == 4) {
+						obs = knobVal * 180 / M_PI;
+						if (obs <= 0) obs += 360;
+						if (obs != lastObs)
+							desiredTrk = ((int)(obs + 15.5 + 360)) % 360;
+						lastObs = obs;
+					}
+				}
+
 				// 0123456789012
 				// $PMRRV34nnnXX
 				line[11] = 0; // TODO calculate the checksum 
