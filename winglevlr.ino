@@ -385,7 +385,7 @@ void loop() {
 	static char lastParam[64];
 	static int lastHdg;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 1; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
+	static int gpsUseGDL90 = 0; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool logActive = false;
@@ -512,8 +512,9 @@ void loop() {
 	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
 	ahrsInput.gpsTrackVTG = gpsTrackVTG;
 	ahrsInput.gpsTrackRMC = gpsTrackRMC;
-	if (gpsUseGDL90 == 0) ahrsInput.gpsTrack = gpsTrackVTG;
+	if (gpsUseGDL90 == 0) ahrsInput.gpsTrack = ahrsInput.g5Hdg;
 	if (gpsUseGDL90 == 1) ahrsInput.gpsTrack = gpsTrackGDL90;
+#if 0 
 	if (gpsUseGDL90 == 2) {
 		if (!gpsTrackVTG.isValid()) {
 			ahrsInput.gpsTrack = gpsTrackGDL90;
@@ -526,7 +527,7 @@ void loop() {
 			ahrsInput.gpsTrack = gpsTrackVTG - diff / 2;
 		}
 	}
-	
+#endif
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
@@ -722,15 +723,16 @@ void loop() {
 			if (buf[i] != '\r')
 				line[index++] = buf[i];
 			if (buf[i] == '\n' || buf[i] == '\r') {
-				float pit, roll, knobSel, knobVal;
-				if (sscanf(line, "%f %f %f %f CAN", &pit, &roll, &knobSel, &knobVal) == 4) {
+				float pit, roll, magHdg, knobSel, knobVal;
+				if (sscanf(line, "%f %f %f %f %f CAN", &pit, &roll, &magHdg,  &knobSel, &knobVal) == 5) {
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
+					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
 					if (knobSel == 1 || knobSel == 4) {
 						obs = knobVal * 180 / M_PI;
 						if (obs <= 0) obs += 360;
 						if (obs != lastObs)
-							desiredTrk = ((int)(obs + 15.5 + 360)) % 360;
+							desiredTrk = ((int)(obs + /*15.5 +*/ 360)) % 360;
 						lastObs = obs;
 					}
 				}
