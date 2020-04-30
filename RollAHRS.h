@@ -6,17 +6,17 @@ using namespace std;
 
 struct AhrsInput { 
 	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed;
-	float g5Pitch = 0, g5Roll = 0, g5TimeStamp = 0;
+	float g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5TimeStamp = 0;
 	String toString() { 
 		static char buf[512];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f %.2f %.2f %.3f", 
-		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed, g5Pitch, g5Roll, g5TimeStamp);
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f %.2f %.2f %.2f %.3f", 
+		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed, g5Pitch, g5Roll, g5Hdg, g5TimeStamp);
 		return String(buf);	
 	 }
 	 AhrsInput fromString(const char *s) { 
-		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
 		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, 
-		&gz, &mx, &my, &mz, &q1, &q2, &q3, &palt, &gspeed, &g5Pitch, &g5Roll, &g5TimeStamp);
+		&gz, &mx, &my, &mz, &q1, &q2, &q3, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5TimeStamp);
 		return *this;
 	}
 		 
@@ -85,7 +85,6 @@ public:
 	bool valid() { 
 		return prev.gpsTrack != -1;
 	}
-	
 	
 	void zeroSensors() { 
 		gyrOffX = zeroAverages.gx.average(); 
