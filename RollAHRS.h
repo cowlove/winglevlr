@@ -6,15 +6,16 @@ using namespace std;
 
 struct AhrsInput { 
 	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed;
+	float g5Pitch = 0, g5Roll = 0, g5TimeStamp = 0;
 	String toString() { 
 		static char buf[512];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f", 
-		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed);
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f %.2f %.2f %.3f", 
+		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed, g5Pitch, g5Roll, g5TimeStamp);
 		return String(buf);	
 	 }
 	 AhrsInput fromString(const char *s) { 
 		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &palt, &gspeed);
+		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz, &q1, &q2, &q3, &palt, &gspeed, &g5Pitch, g5Roll, g5TimeStamp);
 		return *this;
 	}
 		 
@@ -51,6 +52,7 @@ class RollAHRS {
 		  accOffZ = -0.060;
 		  
 public:
+	float g5LastTimeStamp = 0; 
 	struct { 
 		TwoStageRollingAverage<float,40,40> ax,ay,az,gx,gy,gz;
 	} zeroAverages;
@@ -61,7 +63,6 @@ public:
 	float gyroTurnBank, pG;
 	float pitchComp = 0, pitchRaw = 0, pitchDrift = 0, pitchCompDriftCorrected = 0;
 	RunningLeastSquares // all at about 200 HZ */
-		bankFit = RunningLeastSquares(100), 
 		accelPitchFit = RunningLeastSquares(400), 
 		altFit = RunningLeastSquares(200), // 10Hz
 		gpsHdgFit = RunningLeastSquares(500),  // TODO run GPS histories at lower rate 
@@ -188,15 +189,17 @@ public:
 		bankAngle = (isnan(gpsBankAngle) ? 0 : (1.0 * gpsBankAngle)) +
 						  (isnan(magBankAngle) ? 0 : (0.0 * magBankAngle)) + 
 						  (isnan(dipBankAngle) ? 0 : (0.0 * dipBankAngle));
-		bankFit.add(l.sec, bankAngle);
-		float compRatio1 = .0006; // will depend on sample rate, this works for 50Hz 
+		const float compRatio1 = 0.0012	;
+		const float driftCorrCoeff1 = pow(1 - compRatio1, 200) * 7;
+		
+		bankAngle = -l.g5Roll; // TMP HACK Ignore all our own sensors, just use G5
 		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio1) + (bankAngle * compRatio1);
 		rollG  += l.gy * dt;
 		if (tick10HZ) { 
 			gyroDriftFit.add(l.sec, compR - rollG);
 			gyroDrift = gyroDriftFit.slope();
 		}
-		compYH = compR + gyroDrift * 8.8;
+		compYH = compR + gyroDrift * driftCorrCoeff1;
 		
 	
 		if (tick10HZ) { 
@@ -217,12 +220,13 @@ public:
 		//pG = sin(abs(compYH) * M_PI / 180) * gtmag;
 		pG = l.gx - sin(abs(compYH) * M_PI / 180) * gtmag;
 		
-		const float compRatio2 = 0.0015	;
+		const float compRatio2 = 0.003	;
 		const float driftCorrCoeff = pow(1 - compRatio2, 200) * 7;
 		pitchRaw += pG * dt;
 		//pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2/2) + (gpsPitch  * compRatio2/2);
-		pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2) ;
-		
+		//pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2) ;
+		pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (l.g5Pitch  * compRatio2) ;
+				
 		if (tick10HZ) { 
 			pitchDriftFit.add(l.sec, pitchComp - pitchRaw);
 			pitchDrift = pitchDriftFit.slope();
