@@ -230,7 +230,7 @@ class DigitalButtonLongShort {
 	int wasLong() { return filter.wasLong; } 
 };
 
-
+#ifdef ESP32
 void open_TTGOTS_SD() { 
 	for (int retries = 0; retries < 2; retries++) { 	
 		Serial.print("Initializing SD card...");
@@ -279,8 +279,9 @@ void printSD() {
 #else
 void printSD() {}
 #endif
+#endif
 
-
+#ifdef ESP32
 template <class T>
 void SDCardBufferedLogThread(void *p);
 
@@ -662,3 +663,4 @@ inline void JDisplayEditor::buttonPress(bool longpress) {
 	items[selectedItem]->update();
 }
 
+#endif

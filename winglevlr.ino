@@ -1,3 +1,26 @@
+
+/*
+ * TTGO TS 1.4 PINOUTS
+ * 
+ * 	VN			VP
+ * 	33 (PWM)	RST
+ * 	27 			32  (KNOB)
+ * 	GND(GND)	26  (ROT)
+ * 	0			GND 		
+ * 	GND			3.3V
+ * 	RXD			21  (ROT)
+ * 	TXD			22	
+ * 	VBAT		5V
+ * 
+ * 
+ * 
+ * 
+ */
+
+
+
+
+
 #ifndef UBUNTU
 #include <HardwareSerial.h>
 #include "SPI.h"
@@ -7,7 +30,7 @@
 #include "FS.h"
 #include "ESPmDNS.h"
 #include "ArduinoOTA.h"
-#include "WiFiManager.h"
+//#include "WiFiManager.h"
 #include "WiFiUdp.h"
 #include "WiFiMulti.h"
 #include <MPU9250_asukiaaa.h>
@@ -91,9 +114,9 @@ namespace Display {
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%04.1f "); JDisplayItem<float> pset(&jd,70,y,    "PSET:", "%+05.1f ");
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pset(&jd,70,y,    "PSET:", "%+05.1f ");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> tzer(&jd,70,y,    "TZER:", "%04.0f ");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pidg(&jd,70,y,    "PIDG:", "%03.1f ");
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pidg(&jd,70,y,    "PIDG:", "%04.2f ");
 	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> mtin(&jd,70,y,    "MTIN:", "%03.1f ");
 }
 
@@ -204,7 +227,7 @@ public:
 	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
 	JDisplayEditableItem mtin = JDisplayEditableItem(&Display::mtin, .1);
 	
-	MyEditor() : JDisplayEditor(26, 27) {
+	MyEditor() : JDisplayEditor(26, 21) {
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
@@ -230,12 +253,14 @@ void setup() {
 	//esp_register_freertos_idle_hook(bApplicationIdleHook);
 	pinMode(LED_PIN, OUTPUT);
 	digitalWrite(LED_PIN, 1);
+	pinMode(27, OUTPUT);
+	digitalWrite(27, 1);
 
 //	pinMode(32, INPUT);
 //	pinMode(26, OUTPUT);
 //	Serial1.begin(57600, SERIAL_8N1, 32, 26);
 //	Serial1.setTimeout(1);
-	Serial.begin(115200, SERIAL_8N1);
+	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
 
 	Display::jd.begin();
@@ -282,8 +307,8 @@ void setup() {
 	rollPID.maxerr.i = 20;
 	navPID.setGains(0.5, 0, 0.1);
 	navPID.finalGain = 2.2;
-	pitchPID.setGains(12.0, 0.0, 2.0, 0, .7);
-	pitchPID.finalGain = 1.0;
+	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
+	pitchPID.finalGain = 0.2;
 	pitchPID.maxerr.i = .5;
 
 	ed.begin();
@@ -297,7 +322,7 @@ void setup() {
 	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 9;
 	ed.pset.value = +0.0;
-	ed.tzer.value = 940;
+	ed.tzer.value = 1000;
 	ed.mtin.value = 10;
 	
 	//ed.rlhz.value = 3; // period for relay activation, in seconds
@@ -308,6 +333,7 @@ void setup() {
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
 
+	ArduinoOTA.begin();
 }
 
 
@@ -333,7 +359,16 @@ float desRoll = 0;
 
 void ESP32sim_set_gpsTrackGDL90(float v) { 
 	gpsTrackGDL90 = v;
+	ahrsInput.g5Hdg = v;
 }
+
+void ESP32sim_set_g5(float p, float r, float h) { 
+	ahrsInput.g5Hdg = h;
+	ahrsInput.g5Pitch = p;
+	ahrsInput.g5Roll = r;
+}
+
+
 void ESP32sim_set_desiredTrk(float v) {
 	desiredTrk = v;
 }
@@ -401,6 +436,7 @@ void loop() {
 	static AhrsInput lastAhrsInput; 
 	
 	esp_task_wdt_reset();
+	ArduinoOTA.handle();
 
 	if (0) {  // debugging memory leak from xTaskCreate/vTaskDelete in log implementation
 		static EggTimer t(20000);
@@ -421,7 +457,7 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("%06.3f R %+05.1f P %+05.1f g5 %+05.1f %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d but %d%d%d%d loop %d/%d/%d heap %d\n", 
+		Serial.printf("%06.3f R %+05.1f P %+05.1f g5 %+05.1f %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d\n"/* but %d%d%d%d loop %d/%d/%d heap %d\n"*/, 
 			millis()/1000.0, roll, pitch, ahrsInput.g5Pitch, ahrsInput.g5Roll, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, logItem.pitchCmd, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap());
@@ -562,7 +598,7 @@ void loop() {
 			// TODO: desRoll may be stale, but leave this bug so serial cmdline can set desRoll 
 			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 			//Serial.printf("%05.2f %05.2f %04d\n", desRoll, roll);
-			if (armServo) {  
+			if (armServo || digitalRead(button4.pin) == 0 /*quick servo functional test via knob button*/) {  
 				servoOutput = servoTrim + rollPID.corr;
 				if (servoOverride > 0)
 					servoOutput = servoOverride;
@@ -724,7 +760,9 @@ void loop() {
 				line[index++] = buf[i];
 			if (buf[i] == '\n' || buf[i] == '\r') {
 				float pit, roll, magHdg, knobSel, knobVal;
-				if (sscanf(line, "%f %f %f %f %f CAN", &pit, &roll, &magHdg,  &knobSel, &knobVal) == 5) {
+				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f CAN", &pit, &roll, &magHdg,  &knobSel, &knobVal) == 5
+					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) && (knobSel >=0 && knobSel < 6)) {
+					//Serial.printf("CAN %s", line);
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
 					ahrsInput.g5Hdg = magHdg * 180 / M_PI;

@@ -25,6 +25,11 @@ void esp_task_wdt_reset() {}
 esp_err_t esp_task_wdt_add(void *) { return 0; }
 
 struct {
+	void begin() {}
+	void handle() {}
+} ArduinoOTA;
+
+struct {
 	int getFreeHeap() { return 0; }
 } ESP;
 
@@ -185,6 +190,7 @@ public:
 // TODO: remove these pokes, instead send NMEA or GDL90 data 
 // to the simulated UDP ports
 void ESP32sim_set_gpsTrackGDL90(float v);
+void ESP32sim_set_g5(float p, float r, float h);
 void ESP32sim_set_desiredTrk(float v);
 extern float desRoll;
 
@@ -237,7 +243,7 @@ public:
 		gxDelay.push(ngx);
 		pitchDelay.push(simPitch);
 				
-		// Simulate simply airplane roll/bank/track turn response to 
+		// Simulate simple airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm; 
 		_micros += 3500;
 		rollCmd.add((ESP32sim_currentPwm - 4915.0) / 4915.0);
@@ -253,6 +259,7 @@ public:
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;	
 			ESP32sim_set_gpsTrackGDL90(track);
+			ESP32sim_set_g5(pitch, -bank, track);
 			ESP32sim_JDisplay_forceUpdate();	
 		}
 		int s = now/1000;
