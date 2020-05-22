@@ -9,8 +9,11 @@ struct AhrsInput {
 	float g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5TimeStamp = 0;
 	String toString() { 
 		static char buf[512];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.1f %.2f %.2f %.2f %.3f", 
-		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed, g5Pitch, g5Roll, g5Hdg, g5TimeStamp);
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f " /* 1 - 10 */
+			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 11 - 20 */
+			"%.3f %.3f %.1f %.2f %.2f %.2f %.3f",  /* 21 - 27 */ 
+		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed, 
+		g5Pitch, g5Roll, g5Hdg, g5TimeStamp);
 		return String(buf);	
 	 }
 	 AhrsInput fromString(const char *s) { 
@@ -42,15 +45,15 @@ class RollAHRS {
 		  magOffZ = (-80 + 20) / 2; // + is up
 		  
 		  
-//ZERO SENSORS gyro 1.385096 1.073140 0.889719 accel 0.109684 0.022846 -0.059723
+//ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
 	
-	float gyrOffX = +1.36, 
-		  gyrOffY = +1.07, 
-		  gyrOffZ = -0.89;
+	float gyrOffX = +0.859, 
+		  gyrOffY = +0.834, 
+		  gyrOffZ = +1.463;
 		  
-	float accOffX = +0.109,
-		  accOffY = +0.022,
-		  accOffZ = -0.060;
+	float accOffX = +0.171,
+		  accOffY = -0.856,
+		  accOffZ = -0.037;
 		  
 public:
 	float g5LastTimeStamp = 0; 
@@ -283,10 +286,10 @@ struct LogItemB {
 };
 
 struct LogItemC {
-	short pwmOutput, flags;  // 23 24
-	float pidP, pidI, pidD;  // 25 26 27 
-	float gainP, gainI, gainD, finalGain; // 28 29 30 31 
-	float desRoll, pitchCmd, roll; // 32 33 34
+	short pwmOutput, flags;  // 28 29
+	float pidP, pidI, pidD;  // 30 31 32 
+	float gainP, gainI, gainD, finalGain; // 33 34 35 36 
+	float desRoll, pitchCmd, roll; // 37 38 39 
 	AhrsInput ai;
 	String toString() {
 		char buf[200];

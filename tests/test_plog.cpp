@@ -44,8 +44,8 @@ int main(int argc, char **argv) {
 		}
 		 
 		cout << l.toString() <<" "<<
-/*36*/	ahrs.compYH <<" "<< servo <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<< pCmd  << " " << pulse  / 100 <<" "<< 
-/*42*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
+/*41*/	ahrs.compYH <<" "<< servo <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<< pCmd  << " " << pulse  / 100 <<" "<< 
+/*47*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
     endl;
 	    
 	    
