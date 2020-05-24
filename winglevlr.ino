@@ -115,7 +115,7 @@ namespace Display {
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pset(&jd,70,y,    "PSET:", "%+05.1f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> tzer(&jd,70,y,    "TZER:", "%04.0f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.0f ");
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pidg(&jd,70,y,    "PIDG:", "%04.2f ");
 	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> mtin(&jd,70,y,    "MTIN:", "%03.1f ");
 }
@@ -221,9 +221,9 @@ public:
 	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
 	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
 	JDisplayEditableItem pidl = JDisplayEditableItem(&Display::pidl, .01);
-	JDisplayEditableItem maxb = JDisplayEditableItem(NULL, 1);
+	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
 	JDisplayEditableItem pset = JDisplayEditableItem(&Display::pset, .1);
-	JDisplayEditableItem tzer = JDisplayEditableItem(&Display::tzer, 1);
+	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);;
 	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
 	JDisplayEditableItem mtin = JDisplayEditableItem(&Display::mtin, .1);
 	
@@ -233,7 +233,7 @@ public:
 		add(&pidd);	
 		add(&pidl);	
 		add(&pset);
-		add(&tzer);
+		add(&maxb);
 		add(&pidg);	
 		add(&mtin);
 	}
@@ -284,10 +284,10 @@ void setup() {
 		WiFi.mode(WIFI_STA);
 		WiFi.setSleep(false);
 
-		//WiFi.begin("ChloeNet", "niftyprairie7");
 		wifi.addAP("Ping-582B", "");
 		wifi.addAP("Flora_2GEXT", "maynards");
 		wifi.addAP("Team America", "51a52b5354");
+		wifi.addAP("ChloeNet", "niftyprairie7");
 
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED && digitalRead(button.pin) != 0) {
@@ -759,30 +759,39 @@ void loop() {
 			if (buf[i] != '\r')
 				line[index++] = buf[i];
 			if (buf[i] == '\n' || buf[i] == '\r') {
-				float pit, roll, magHdg, knobSel, knobVal;
-				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f CAN", &pit, &roll, &magHdg,  &knobSel, &knobVal) == 5
+				float pit, roll, magHdg, knobSel, knobVal, ias, tas, palt, age;
+				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f CAN", 
+				&pit, &roll, &magHdg, &ias, &tas, &palt,  &knobSel, &knobVal, &age) == 9
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) && (knobSel >=0 && knobSel < 6)) {
 					//Serial.printf("CAN %s", line);
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
 					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
+					ahrsInput.g5Palt = palt / 3.2808;
+					ahrsInput.g5Ias = ias / 0.5144;
+					ahrsInput.g5Tas = tas / 0.5144;
+					ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
 					if (knobSel == 1 || knobSel == 4) {
 						obs = knobVal * 180 / M_PI;
 						if (obs <= 0) obs += 360;
 						if (obs != lastObs)
-							desiredTrk = ((int)(obs + /*15.5 +*/ 360)) % 360;
+							desiredTrk = obs;
 						lastObs = obs;
 					}
 				}
 
-				// 0123456789012
-				// $PMRRV34nnnXX
-				line[11] = 0; // TODO calculate the checksum 
-				sscanf(line, "$PMRRV34%d", &obs);
-				index = 0;
-				if (obs != lastObs)
-					desiredTrk = ((int)(obs + 15.5 + 360)) % 360;
-				lastObs = obs;
+				if (0) { 
+					// 0123456789012
+					// $PMRRV34nnnXX
+					line[11] = 0; // TODO calculate the checksum // error this will break the other parsers
+
+					if (sscanf(line, "$PMRRV34%d", &obs) == 1) {
+						index = 0;
+						if (obs != lastObs)
+							desiredTrk = ((int)(obs + 15.5 + 360)) % 360;
+						lastObs = obs;
+					}
+				}
 			}
 			gps.encode(buf[i]);
 			// Use only VTG course so as to only use G5 data
