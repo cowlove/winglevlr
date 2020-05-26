@@ -115,7 +115,7 @@ namespace Display {
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pset(&jd,70,y,    "PSET:", "%+05.1f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.0f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pidg(&jd,70,y,    "PIDG:", "%04.2f ");
 	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> mtin(&jd,70,y,    "MTIN:", "%03.1f ");
 }
@@ -745,25 +745,29 @@ void loop() {
 
 	int avail = udpSL30.parsePacket();
 	while(avail > 0) { 
-		static char line[100];
+		static char line[200];
 		static int index;
 		
 		int n = udpSL30.read(buf, sizeof(buf));
 		if (n <= 0)
 			break;
+		buf[n] = '\0';
+		//printf("READ: %s", buf);
 		avail -= n;
 		udpBytes += n; // + random(0,2);
 		for (int i = 0; i < n; i++) {
-			if (index >= sizeof(line))
+			if (index >= sizeof(line) - 1)
 				index = 0;
 			if (buf[i] != '\r')
 				line[index++] = buf[i];
 			if (buf[i] == '\n' || buf[i] == '\r') {
+				line[index++] = '\0';
+				index = 0;
 				float pit, roll, magHdg, knobSel, knobVal, ias, tas, palt, age;
 				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f CAN", 
 				&pit, &roll, &magHdg, &ias, &tas, &palt,  &knobSel, &knobVal, &age) == 9
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) && (knobSel >=0 && knobSel < 6)) {
-					//Serial.printf("CAN %s", line);
+					//printf("CAN: %s", line);
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
 					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
@@ -776,19 +780,6 @@ void loop() {
 						if (obs <= 0) obs += 360;
 						if (obs != lastObs)
 							desiredTrk = obs;
-						lastObs = obs;
-					}
-				}
-
-				if (0) { 
-					// 0123456789012
-					// $PMRRV34nnnXX
-					line[11] = 0; // TODO calculate the checksum // error this will break the other parsers
-
-					if (sscanf(line, "$PMRRV34%d", &obs) == 1) {
-						index = 0;
-						if (obs != lastObs)
-							desiredTrk = ((int)(obs + 15.5 + 360)) % 360;
 						lastObs = obs;
 					}
 				}

@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <iostream>
 #include <fstream>
+#include <map>
 #include "RunningLeastSquares.h"
 
 using namespace std;
@@ -152,20 +153,9 @@ public:
 float ESP32sim_pitchCmd = 940.0;
 
 class WiFiUDP {
-	ifstream i;
-	int delay;
-	int nextPacket;
 	int port, txPort;
 public:
-	void begin(int p) {
-		port = p;
-		char fname[256];
-		snprintf(fname, sizeof(fname), "udp%04d.dat", p);
-		// TMP HACK - don't read GDL data, let sim do it below 
-		//	i = ifstream(fname, ios_base::in | ios::binary);
-		nextPacket = _micros;
-		delay = 500;
-	}
+	void begin(int p) { port = p; }
 	void beginPacket(IPAddress, int p) { beginPacket(NULL, p); }
 	void beginPacket(const char *, int p) { txPort = p; }
 	void write(const uint8_t *b, int len) {
@@ -175,17 +165,39 @@ public:
 		}
 	}
 	void endPacket() {}
-	int parsePacket() { return i.good() &&  _micros > nextPacket; } ;
-	int read(uint8_t *buf, int buflen) {
-		nextPacket += delay; 
-		i.read((char *)buf, 1);
-		return i.gcount();
+
+	static std::map<int,String> inputMap;
+	int  parsePacket() { 
+		if (inputMap.find(port) != inputMap.end()) { 
+			return inputMap.find(port)->second.length();
+		} else { 
+			return 0;
+		}
 	}
+	int read(uint8_t *b, int l) {
+		if (inputMap.find(port) != inputMap.end()) { 
+			String inputLine = inputMap.find(port)->second;
+			int rval =  min(inputLine.length(), l);
+			strncpy((char *)b, inputLine.c_str(), rval);
+			printf("UDP: %s", b);
+			inputMap.erase(port);
+			return rval;
+		} else { 
+			return 0;
+		}
+	}
+
 	IPAddress remoteIP() { return IPAddress(); } 
 };
+
+std::map<int,String> WiFiUDP::inputMap;
+void udpInput(int p, String s) { 
+	WiFiUDP::inputMap[p] = s;
+}
+
 #define INV_SUCCESS 1
 #define INV_XYZ_GYRO 1
-#define INV_XYZ_ACCEL 0
+#define INV_XYZ_ACCEL 1
 #define INV_XYZ_COMPASS 0
 // TODO: remove these pokes, instead send NMEA or GDL90 data 
 // to the simulated UDP ports
@@ -194,10 +206,27 @@ void ESP32sim_set_g5(float p, float r, float h);
 void ESP32sim_set_desiredTrk(float v);
 extern float desRoll;
 
+struct { 
+	float pitch, roll, hdg, ias, tas, alt, knobVal;
+	int knobSel, age; 
+} g5;
+
 void ESP32sim_run() { 
 	static float lastTime = 0;
 	float now = micros() / 1000000.0;
-	
+
+	if (floor(now / .1) != floor(lastTime / .1)) {
+		char buf[128];
+		snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f %.3f %.3f %d %.3f %d CAN\n",
+			g5.pitch, g5.roll, g5.hdg, g5.ias, g5.tas, g5.alt, g5.knobSel, g5.knobVal, g5.age);
+		WiFiUDP::inputMap[7891] = String(buf);
+	}
+
+	if (now > 001) ESP32sim_set_desiredTrk(90);
+	if (now > 100) ESP32sim_set_desiredTrk(185);
+	if (now > 300) ESP32sim_set_desiredTrk(90);
+	if (now > 500) ESP32sim_set_desiredTrk(175);
+		
 	if (now >= 100 && lastTime < 100) {	Serial.inputLine = "pitch=10\n"; }
 	if (now >= 400 && lastTime < 400) {	Serial.inputLine = "zeroimu\n"; }
 
@@ -251,22 +280,20 @@ public:
 		bank += gy * .01;
 		bank = max(-15.0, min(15.0, (double)bank));
 		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
-			//printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, currentPwm, track, desRoll, bank, gy);
+			//printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
+			//ESP32sim_currentPwm, track, desRoll, bank, gy);
 		}
 		uint64_t now = millis();
 		if (floor(lastMillis / 1000) != floor(now / 1000)) { // 1hz
 			track -= bank * 0.15;
 			if (track < 0) track += 360;
-			if (track > 360) track -= 360;	
-			ESP32sim_set_gpsTrackGDL90(track);
-			ESP32sim_set_g5(pitch, -bank, track);
+			if (track > 360) track -= 360;
 			ESP32sim_JDisplay_forceUpdate();	
 		}
-		int s = now/1000;
-		if (s > 001) ESP32sim_set_desiredTrk(90);
-		if (s > 100) ESP32sim_set_desiredTrk(180);
-		if (s > 300) ESP32sim_set_desiredTrk(90);
-		if (s > 500) ESP32sim_set_desiredTrk(180);
+
+		g5.hdg = track * M_PI / 180;
+		g5.roll = -bank * M_PI / 180;
+		g5.pitch = pitch * M_PI / 180;
 
 		lastMillis = now;
 	}
