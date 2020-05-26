@@ -34,14 +34,38 @@ struct {
 	int getFreeHeap() { return 0; }
 } ESP;
 
+class ButtonManager {
+	struct PressInfo { int pin; float start; float duration; };
+	std::vector<PressInfo> presses;
+	 
+public:
+	void add(int pin, float start, float duration) {
+		PressInfo pi; 
+		pi.pin = pin; pi.start = start; pi.duration = duration;
+		presses.push_back(pi);
+	}
+	int check(int pin, float time) {
+		float now = millis() / 1000.0;
+		for (vector<PressInfo>::iterator it = presses.begin(); it != presses.end(); it++) { 
+			if (it->pin == pin && now >= it->start && now < it->start + it->duration)
+				return 0;
+		
+		} 
+		return 1;
+	} 
+} bm;
+
 int digitalRead(int p) {
 	// HACK simple proof-of-concept to simulate button push and arm
 	// the servos  
+	float now = millis()/1000.0;
 	
-	if (p == 35 && millis() > 1000 && millis() < 3100) return 0;  // arm servos
-	//if (p == 39 && millis() > 5000 && millis() < 7100) return 0; // start logging
-	
-	return 1; 
+	if (p == 35 && now >= 1 && now < 3.1) return 0;  // arm servos
+	if (p == 34 && now >= 110 && now < 113.1) return 0;  // activate test turn mode
+	if (p == 34 && now >= 50 && now < 50.2) return 0;  // double press, zero sensors
+	if (p == 34 && now >= 50.5 && now < 50.7) return 0;  
+
+	return bm.check(p, now);
 }
 void ledcWrite(int chan, int val) { 
 	ESP32sim_currentPwm = val;
@@ -222,13 +246,9 @@ void ESP32sim_run() {
 		WiFiUDP::inputMap[7891] = String(buf);
 	}
 
-	if (now > 001) ESP32sim_set_desiredTrk(90);
-	if (now > 100) ESP32sim_set_desiredTrk(185);
-	if (now > 300) ESP32sim_set_desiredTrk(90);
-	if (now > 500) ESP32sim_set_desiredTrk(175);
-		
-	if (now >= 100 && lastTime < 100) {	Serial.inputLine = "pitch=10\n"; }
-	if (now >= 400 && lastTime < 400) {	Serial.inputLine = "zeroimu\n"; }
+	if (now >= 1 && lastTime < 1) ESP32sim_set_desiredTrk(90);
+	if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
+	if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
 
 	lastTime = now;
 }
@@ -248,22 +268,13 @@ public:
     void setAccelFSR(int) {};
     void setSensors(int) {}
 	void updateAccel() { 
-		ESP32sim_run();
-		while(gxDelay.size() > 400) {
-			gxDelay.pop();
-			pitchDelay.pop();
-			gx = gxDelay.front();
-			pitch = pitchDelay.front();
-		}
-		//printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
-		az = cos(pitch * M_PI / 180) * 1.0;
-		ay = sin(pitch * M_PI / 180) * 1.0;
-		ax = 0;
 	}
 
 	std::queue<float> gxDelay, pitchDelay;
 	
 	void updateGyro() {
+		ESP32sim_run();
+
 		float rawCmd = ESP32sim_pitchCmd;
 		cmdPitch = rawCmd > 0 ? (940 - rawCmd) / 13 : 0;
 		float ngx = (cmdPitch - simPitch) * 1.3;
@@ -276,16 +287,18 @@ public:
 		// servooutput read from ESP32sim_currentPwm; 
 		_micros += 3500;
 		rollCmd.add((ESP32sim_currentPwm - 4915.0) / 4915.0);
-		gy = rollCmd.average() * 2.0;
-		bank += gy * .01;
-		bank = max(-15.0, min(15.0, (double)bank));
+		gy = rollCmd.average() * 10.0;
+		bank += gy * (3500.0 / 1000000.0);
+		bank = max(-20.0, min(20.0, (double)bank));
 		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			//printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
 			//ESP32sim_currentPwm, track, desRoll, bank, gy);
 		}
+		
 		uint64_t now = millis();
-		if (floor(lastMillis / 1000) != floor(now / 1000)) { // 1hz
-			track -= bank * 0.15;
+		const float bper = .05;
+		if (floor(lastMillis * bper) != floor(now * bper)) { // 10hz
+			track -= tan(bank * M_PI / 180) * 9.8 / 40 * 25 * bper;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
 			ESP32sim_JDisplay_forceUpdate();	
@@ -294,6 +307,17 @@ public:
 		g5.hdg = track * M_PI / 180;
 		g5.roll = -bank * M_PI / 180;
 		g5.pitch = pitch * M_PI / 180;
+
+		while(gxDelay.size() > 400) {
+			gxDelay.pop();
+			pitchDelay.pop();
+			gx = gxDelay.front();
+			pitch = pitchDelay.front();
+		}
+		//printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
+		az = cos(pitch * M_PI / 180) * 1.0;
+		ay = sin(pitch * M_PI / 180) * 1.0;
+		ax = 0;
 
 		lastMillis = now;
 	}

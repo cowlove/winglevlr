@@ -114,7 +114,7 @@ namespace Display {
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> pset(&jd,70,y,    "PSET:", "%+05.1f ");
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> ttsc(&jd,70,y,    "TTSC:", "%05.0f ");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pidg(&jd,70,y,    "PIDG:", "%04.2f ");
 	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> mtin(&jd,70,y,    "MTIN:", "%03.1f ");
@@ -222,7 +222,7 @@ public:
 	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
 	JDisplayEditableItem pidl = JDisplayEditableItem(&Display::pidl, .01);
 	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
-	JDisplayEditableItem pset = JDisplayEditableItem(&Display::pset, .1);
+	JDisplayEditableItem ttsc = JDisplayEditableItem(&Display::ttsc, 1);
 	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);;
 	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
 	JDisplayEditableItem mtin = JDisplayEditableItem(&Display::mtin, .1);
@@ -232,7 +232,7 @@ public:
 		add(&pidi);	
 		add(&pidd);	
 		add(&pidl);	
-		add(&pset);
+		add(&ttsc);
 		add(&maxb);
 		add(&pidg);	
 		add(&mtin);
@@ -320,8 +320,8 @@ void setup() {
 	ed.pidd.value = knobPID->gain.d;
 	ed.pidl.value = knobPID->gain.l;
 	ed.pidg.value = knobPID->finalGain;
-	ed.maxb.value = 9;
-	ed.pset.value = +0.0;
+	ed.maxb.value = 12;
+	ed.ttsc.value = 30;
 	ed.tzer.value = 1000;
 	ed.mtin.value = 10;
 	
@@ -410,6 +410,10 @@ void pitchTrimRelay(int relay, int ms) {
 }
 
 static int servoOverride = 0, pitchTrimOverride = -1;
+static bool testTurnActive = false;
+static bool testTurnAlternate = false;
+static float testTurnLastTurnTime = 0;
+
 void loop() {
 	uint16_t len;
 	static int ledOn = 0;
@@ -420,7 +424,7 @@ void loop() {
 	static char lastParam[64];
 	static int lastHdg;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 0; // 0- use VTG sentence, 1 use GDL90 data, 2 use average of both 
+	static int gpsUseGDL90 = 0; // 0- use g5 data, 1 use GDL90 data, 2 use average of both 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool logActive = false;
@@ -454,6 +458,8 @@ void loop() {
 	//yield();
 	
 	uint64_t now = micros();
+	double nowSec = micros() / 1000000.0;
+	
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	if (serialReportTimer.tick()) { 
@@ -477,12 +483,15 @@ void loop() {
 				Display::jd.begin();
 				Display::jd.forceUpdate();
 			} else { 
-				gpsUseGDL90 = (gpsUseGDL90 + 1) % 3;
+				ahrs.zeroSensors();
+				//gpsUseGDL90 = (gpsUseGDL90 + 1) % 3;
 			}
 				
 		} else { 
-			screenEnabled = false;
-			Display::jd.clear();
+			//screenEnabled = false;
+			//Display::jd.clear();
+			testTurnActive = !testTurnActive;
+			testTurnAlternate = false;
 		}
 		
 	}
@@ -532,6 +541,18 @@ void loop() {
 			}
 		}
 	}
+
+	if (testTurnActive && nowSec - testTurnLastTurnTime > ed.ttsc.value) {
+		testTurnLastTurnTime = nowSec;
+		const int deg = 30;
+		desiredTrk += testTurnAlternate ? -deg : deg * 2;
+		testTurnAlternate = !testTurnAlternate;
+		if (desiredTrk <= 0)
+			desiredTrk += 360;
+		if (desiredTrk > 360) 
+			desiredTrk -= 360;
+	}
+	
 	
 	if (logActive == true && logFile == NULL) {
 		logFile = new SDCardBufferedLog<LogItem>("AHRSD%03d.DAT", 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
@@ -569,7 +590,8 @@ void loop() {
 		pitch = ahrs.pitchCompDriftCorrected;
 		
 		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
-			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - ed.pset.value, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
+			float pset = 0;
+			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - pset, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
 			float trimCmd = ed.tzer.value - pCmd;
 			if (pitchTrimOverride != -1) {
 				trimCmd = pitchTrimOverride;
@@ -637,8 +659,8 @@ void loop() {
 	if (screenEnabled && screenTimer.tick()) {
 		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
 		Display::mode.color.vf = ST7735_BLACK;
-		Display::roll.color.vf = ST7735_RED;
-		Display::pitc.color.vf = ST7735_RED;
+		//Display::roll.color.vf = ST7735_RED;
+		//Display::pitc.color.vf = ST7735_RED;
 
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = desiredTrk; 
@@ -712,7 +734,7 @@ void loop() {
 				else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
 				else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
 				else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
-				else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
+				//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 				else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
 				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
@@ -737,7 +759,7 @@ void loop() {
 				ed.pidl.value = knobPID->gain.l;
 				ed.pidg.value = knobPID->finalGain;
 
-				Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
+				//Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
 				printMag();
 			}
 		}
