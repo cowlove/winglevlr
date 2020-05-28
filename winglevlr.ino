@@ -305,7 +305,8 @@ void setup() {
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	navPID.setGains(0.5, 0, 0.1);
+	navPID.setGains(0.5, 0.01, 0.1);
+	navPID.maxerr.i = 20;
 	navPID.finalGain = 2.2;
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
 	pitchPID.finalGain = 0.2;
@@ -462,9 +463,10 @@ void loop() {
 	
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
+	PidControl *pid = &rollPID;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("%06.3f R %+05.1f P %+05.1f g5 %+05.1f %+05.1f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d\n"/* but %d%d%d%d loop %d/%d/%d heap %d\n"*/, 
-			millis()/1000.0, roll, pitch, ahrsInput.g5Pitch, ahrsInput.g5Roll, pitchPID.err.p, pitchPID.err.i, pitchPID.err.d, pitchPID.corr, logItem.pitchCmd, servoOutput, 
+		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d\n"/* but %d%d%d%d loop %d/%d/%d heap %d\n"*/, 
+			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, pid->err.p, pid->err.i, pid->err.d, pid->corr, logItem.pitchCmd, servoOutput, 
 		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap());
 		serialLogFlags = 0;
@@ -544,7 +546,7 @@ void loop() {
 
 	if (testTurnActive && nowSec - testTurnLastTurnTime > ed.ttsc.value) {
 		testTurnLastTurnTime = nowSec;
-		const int deg = 30;
+		const int deg = 30.3;
 		desiredTrk += testTurnAlternate ? -deg : deg * 2;
 		testTurnAlternate = !testTurnAlternate;
 		if (desiredTrk <= 0)

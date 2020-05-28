@@ -37,19 +37,25 @@ struct {
 class ButtonManager {
 	struct PressInfo { int pin; float start; float duration; };
 	std::vector<PressInfo> presses;
-	 
 public:
 	void add(int pin, float start, float duration) {
 		PressInfo pi; 
 		pi.pin = pin; pi.start = start; pi.duration = duration;
 		presses.push_back(pi);
 	}
+	void addPress(int pin, float time, int clicks, bool longPress)  {
+		for(int n = 0; n < clicks; n++) {
+			float duration = longPress ? 2.5 : .2; 
+			add(pin, time,  duration);
+			time += duration + .2;
+		}
+	}
+	
 	int check(int pin, float time) {
 		float now = millis() / 1000.0;
 		for (vector<PressInfo>::iterator it = presses.begin(); it != presses.end(); it++) { 
 			if (it->pin == pin && now >= it->start && now < it->start + it->duration)
 				return 0;
-		
 		} 
 		return 1;
 	} 
@@ -61,9 +67,7 @@ int digitalRead(int p) {
 	float now = millis()/1000.0;
 	
 	if (p == 35 && now >= 1 && now < 3.1) return 0;  // arm servos
-	if (p == 34 && now >= 110 && now < 113.1) return 0;  // activate test turn mode
-	if (p == 34 && now >= 50 && now < 50.2) return 0;  // double press, zero sensors
-	if (p == 34 && now >= 50.5 && now < 50.7) return 0;  
+	//if (p == 34 && now >= 110 && now < 113.1) return 0;  // activate test turn mode
 
 	return bm.check(p, now);
 }
@@ -178,6 +182,7 @@ float ESP32sim_pitchCmd = 940.0;
 
 class WiFiUDP {
 	int port, txPort;
+	bool toSerial = false;
 public:
 	void begin(int p) { port = p; }
 	void beginPacket(IPAddress, int p) { beginPacket(NULL, p); }
@@ -203,7 +208,9 @@ public:
 			String inputLine = inputMap.find(port)->second;
 			int rval =  min(inputLine.length(), l);
 			strncpy((char *)b, inputLine.c_str(), rval);
-			printf("UDP: %s", b);
+			if (toSerial) { 
+				printf("UDP: %s", b);
+			}
 			inputMap.erase(port);
 			return rval;
 		} else { 
@@ -247,8 +254,8 @@ void ESP32sim_run() {
 	}
 
 	if (now >= 1 && lastTime < 1) ESP32sim_set_desiredTrk(90);
-	if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
-	if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
+	//if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
+	//if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
 
 	lastTime = now;
 }
@@ -258,7 +265,7 @@ void ESP32sim_JDisplay_forceUpdate();
 
 class MPU9250_DMP {
 	float bank = 0, track = 0, simPitch = 0;
-	RollingAverage<float,200> rollCmd;
+	RollingAverage<float,500> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
 public:
@@ -286,7 +293,8 @@ public:
 		// Simulate simple airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm; 
 		_micros += 3500;
-		rollCmd.add((ESP32sim_currentPwm - 4915.0) / 4915.0);
+		const float servoTrim = 4915.0;
+		rollCmd.add((ESP32sim_currentPwm - servoTrim) / servoTrim);
 		gy = rollCmd.average() * 10.0;
 		bank += gy * (3500.0 / 1000000.0);
 		bank = max(-20.0, min(20.0, (double)bank));
@@ -301,6 +309,8 @@ public:
 			track -= tan(bank * M_PI / 180) * 9.8 / 40 * 25 * bper;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
+		}
+		if (floor(now / 1000) != floor(lastMillis / 1000)) { 
 			ESP32sim_JDisplay_forceUpdate();	
 		}
 
@@ -346,6 +356,10 @@ int main(int argc, char **argv) {
 		if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
 	}
 	
+	//bm.addPress(34, 050, 2, false);
+	bm.addPress(34, 500, 1, true);
+	
+
 	setup();
 	while(seconds <= 0 || _micros / 1000000 < seconds) loop();
 }

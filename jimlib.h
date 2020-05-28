@@ -439,7 +439,6 @@ class JDisplayItemBase;
 class JDisplay {
 	std::vector<JDisplayItemBase *> items;
 public:
-	static bool displayToConsole;
 	static const struct Colors { 
 		int lf, lb, vf, vb; 
 	} defaultColors; 
@@ -474,14 +473,16 @@ public:
 		}
 	}
 	void clear() {}
+	static bool displayToConsole;
 	void printAt(int x, int y, const char *f, int, int) { 
-		char *line = lines[y/10];
-		int flen = strlen(f);
-		for (int n = 0; n < flen; n++) { 
-			line[x/6 + n] = f[n];
-		}
-		if (displayToConsole) 
+		if (displayToConsole) {
+			char *line = lines[y/10];
+			int flen = strlen(f);
+			for (int n = 0; n < flen; n++) { 
+				line[x/6 + n] = f[n];
+			}
 			::printf("%s\n", line);
+		}
 	}
 #endif
 
@@ -491,13 +492,13 @@ public:
 	inline void forceUpdate();	
 };
 
-bool JDisplay::displayToConsole = false;
-static void JDisplayToConsole(bool b) { JDisplay::displayToConsole = b; } 
 
 #ifndef UBUNTU
 const JDisplay::Colors JDisplay::defaultColors = { ST7735_WHITE, ST7735_BLACK, ST7735_YELLOW, ST7735_BLACK };
 #else
 const JDisplay::Colors JDisplay::defaultColors = { 0, 0, 0, 0 };
+bool JDisplay::displayToConsole = false;
+static void JDisplayToConsole(bool b) { JDisplay::displayToConsole = b; } 
 #endif
 
 class JDisplayItemBase {

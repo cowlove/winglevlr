@@ -1,7 +1,7 @@
 #BOARD=esp32doit-devkit-v1
 #BOARD=heltec_wifi_kit_32
 #BOARD=nodemcu-32s
-#VERBOSE=1
+VERBOSE=1
 
 plot:	winglevlr_ubuntu
 	./winglevlr_ubuntu --jdisplay --serial --seconds 700 | grep DTK | tr ':' ' ' > out.dat \
@@ -13,7 +13,7 @@ test:
 	google-chrome logs/regression/*.html
 
 test.out:	winglevlr_ubuntu
-	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | uniq | tee $@
+	./winglevlr_ubuntu  --serial --seconds 36000  | uniq | tee $@
 
 backtrace:
 	tr ' ' '\n' | /home/jim/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/bin/xtensa-esp32-elf-addr2line -f -i -e /tmp/mkESP/winglevlr_esp32/*.elf
@@ -24,7 +24,7 @@ simplot:	test.out
 	cat test.out | grep srv > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; p f u 1:5 w l t "Pitch", f u 1:3 w l t "Roll"; pause 111'
 
 winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
-	g++ -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
+	g++ -x c++ -g -O2 $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
 
 CHIP=esp32
 OTA_ADDR=192.168.43.222

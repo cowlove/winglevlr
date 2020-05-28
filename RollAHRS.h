@@ -5,8 +5,9 @@
 using namespace std;
 
 struct AhrsInput { 
-	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed;
-	float g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
+	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax;
+	float ay, az, gx, gy, gz, mx, my, mz, q1, q2;
+	float q3, palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
 	String toString() { 
 		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f " /* 1 - 10 */
@@ -183,6 +184,7 @@ public:
 		if (count % 3217 == 0) { 
 			gpsHdgFit.rebaseX();
 			magHdgFit.rebaseX();
+			gyroDriftFit.rebaseX();
 		}
 
 		float tas = 90 * .51444; // true airspeed in m/sec.  Units in bank angle may be wrong, why need 140Kts?  
@@ -200,13 +202,17 @@ public:
 		bankAngle = -l.g5Roll; // TMP HACK Ignore all our own sensors, just use G5
 		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio1) + (bankAngle * compRatio1);
 		rollG  += l.gy * dt;
-		if (tick10HZ) { 
+		
+		/*if (tick10HZ) { 
 			gyroDriftFit.add(l.sec, compR - rollG);
 			gyroDrift = gyroDriftFit.slope();
 		}
+		compYH = compR + gyroDrift * driftCorrCoeff1;		
+		*/
 		compYH = compR + gyroDrift * driftCorrCoeff1;
-		
-	
+		if (abs(bankAngle) < 5) {			
+			gyroDrift += (bankAngle -compYH) * 0.00001;
+		}
 		if (tick10HZ) { 
 			altFit.add(l.sec, l.alt);
 		}
@@ -286,10 +292,10 @@ struct LogItemB {
 };
 
 struct LogItemC {
-	short pwmOutput, flags;  // 28 29
-	float pidP, pidI, pidD;  // 30 31 32 
-	float gainP, gainI, gainD, finalGain; // 33 34 35 36 
-	float desRoll, pitchCmd, roll; // 37 38 39 
+	short pwmOutput, flags;  // 30 31
+	float pidP, pidI, pidD;  // 32  
+	float gainP, gainI, gainD, finalGain; // 35 
+	float desRoll, pitchCmd, roll; // 39 
 	AhrsInput ai;
 	String toString() {
 		char buf[200];

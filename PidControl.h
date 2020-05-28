@@ -72,7 +72,7 @@ public:
     	histMeasurement.rebaseX();
     }
     
-    double lastVal, drms, lastTime = 0;
+    double lastVal, lastTime = 0;
     int count = 0;
     double add(double error, double measurement, double time) {
 		if (count++ % 2000 == 0) 
@@ -91,7 +91,7 @@ public:
  	    err.l = calcGain(histCorrection.averageY(), gain.l, hiGain.l, hiGainTrans.l);
  	    err.d = calcGain(histMeasurement.slope(), gain.d, hiGain.d, hiGainTrans.d);
  	    //err.d = calcGain(histError.slope(), gain.d, hiGain.d, hiGainTrans.d);
- 	    drms = histMeasurement.rmsError();
+ 	    //drms = histMeasurement.rmsError();
  	           
 	    corr = -(err.p + err.i + err.d + err.l) * finalGain;
 	    histCorrection.add(time, corr / finalGain);
