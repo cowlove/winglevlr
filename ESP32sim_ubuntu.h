@@ -14,8 +14,8 @@
 
 using namespace std;
 static uint64_t _micros = 0;
-uint64_t micros() { return ++_micros; }
-uint64_t millis() { return micros() / 1000; }
+uint64_t micros() { return ++_micros & 0xffffffff; }
+uint64_t millis() { return ++_micros / 1000; }
 void pinMode(int, int) {}
 static int ESP32sim_currentPwm = 0;
 float ESP32sim_getPitchCmd();
@@ -244,7 +244,7 @@ struct {
 
 void ESP32sim_run() { 
 	static float lastTime = 0;
-	float now = micros() / 1000000.0;
+	float now = _micros / 1000000.0;
 
 	if (floor(now / .1) != floor(lastTime / .1)) {
 		char buf[128];
@@ -361,5 +361,5 @@ int main(int argc, char **argv) {
 	
 
 	setup();
-	while(seconds <= 0 || _micros / 1000000 < seconds) loop();
+	while(seconds <= 0 || _micros / 1000000.0 < seconds) loop();
 }

@@ -13,7 +13,7 @@ test:
 	google-chrome logs/regression/*.html
 
 test.out:	winglevlr_ubuntu
-	./winglevlr_ubuntu  --serial --seconds 36000  | uniq | tee $@
+	./winglevlr_ubuntu  --serial --seconds 7200  | uniq | tee $@
 
 backtrace:
 	tr ' ' '\n' | /home/jim/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/bin/xtensa-esp32-elf-addr2line -f -i -e /tmp/mkESP/winglevlr_esp32/*.elf

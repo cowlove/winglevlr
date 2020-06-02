@@ -6,25 +6,53 @@ using namespace std;
 
 struct AhrsInput { 
 	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax;
-	float ay, az, gx, gy, gz, mx, my, mz, q1, q2;
+	float ay, az, gx, gy, gz, mx, my, mz, dtk, q2;
 	float q3, palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
 	String toString() { 
 		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f " /* 1 - 10 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 11 - 20 */
 			"%.3f %.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f",  /* 21 - 27 */ 
-		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, q1, q2, q3, palt, gspeed, 
+		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, q2, q3, palt, gspeed, 
 		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp);
 		return String(buf);	
 	 }
 	 AhrsInput fromString(const char *s) { 
 		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
 		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, 
-		&gz, &mx, &my, &mz, &q1, &q2, &q3, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp);
+		&gz, &mx, &my, &mz, &dtk, &q2, &q3, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp);
 		return *this;
 	}
 		 
 };
+
+
+class Windup360 {
+public:
+	float value = 0;
+	operator float () { 
+		return value;
+	}
+	Windup360 &operator =(float f) {
+		float hd = f - value;
+		if (abs(hd) > 100000) {
+			value = f;
+		} else {
+			while (hd < -180) hd += 360;
+			while (hd > +180) hd -= 360;
+			value += hd;
+		}
+		return *this;
+	}
+};
+
+
+float angularDiff(float d) { 
+	if(d < -180) d += 360;
+	if(d > 180) d -= 360;
+	return d;
+}
+
 
 inline static float windup360(float now, float prev) { 
 	float hd = now - prev;

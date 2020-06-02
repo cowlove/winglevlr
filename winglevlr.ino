@@ -173,7 +173,7 @@ bool imuRead() {
 		imu.updateCompass();
 
 		AhrsInput &x = ahrsInput;
-		x.sec = micros() / 1000000.0;
+		x.sec = millis() / 1000.0;
 		x.ax = imu.calcAccel(imu.ax);
 		x.ay = imu.calcAccel(imu.ay);
 		x.az = imu.calcAccel(imu.az);
@@ -183,7 +183,7 @@ bool imuRead() {
 		x.mx = imu.calcMag(imu.mx);
 		x.my = imu.calcMag(imu.my);
 		x.mz = imu.calcMag(imu.mz);
-		x.q1 = imu.calcQuat(imu.qw);
+		//x.dtk = imu.calcQuat(imu.qw);
 		x.q2 = imu.calcQuat(imu.qx);
 		x.q3 = imu.calcQuat(imu.qy);
 		//x.q4 = imu.calcQuat(imu.qz);
@@ -279,7 +279,7 @@ void setup() {
 	//SCREENLINE.println("Initializing IMU...");
 	imuInit();	
 	
-	if (digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
+	if (true || digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
 		WiFi.disconnect(true);
 		WiFi.mode(WIFI_STA);
 		WiFi.setSleep(false);
@@ -290,7 +290,7 @@ void setup() {
 		wifi.addAP("ChloeNet", "niftyprairie7");
 
 		uint64_t startms = millis();
-		while (WiFi.status() != WL_CONNECTED && digitalRead(button.pin) != 0) {
+		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
 			wifi.run();
 			delay(10);
 		}
@@ -305,7 +305,7 @@ void setup() {
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	navPID.setGains(0.5, 0.01, 0.1);
+	navPID.setGains(0.5, 0.00, 0.1);
 	navPID.maxerr.i = 20;
 	navPID.finalGain = 2.2;
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
@@ -410,11 +410,12 @@ void pitchTrimRelay(int relay, int ms) {
 	udpSendString(l);
 }
 
+	
 static int servoOverride = 0, pitchTrimOverride = -1;
 static bool testTurnActive = false;
 static bool testTurnAlternate = false;
 static float testTurnLastTurnTime = 0;
-
+Windup360 currentHdg;
 void loop() {
 	uint16_t len;
 	static int ledOn = 0;
@@ -459,7 +460,7 @@ void loop() {
 	//yield();
 	
 	uint64_t now = micros();
-	double nowSec = micros() / 1000000.0;
+	double nowSec = millis() / 1000.0;
 	
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
@@ -472,11 +473,7 @@ void loop() {
 		serialLogFlags = 0;
 	}
 	
-	//Serial.printf("%d\n", (int)(micros() - lastLoop));
-	//lastLoop = micros();
-	//printMag();
-	
-
+	//printMag(); 
 	buttonISR();
 	if (butFilt.newEvent()) { // MIDDLE BUTTON
 		if (!butFilt.wasLong) {
@@ -546,7 +543,7 @@ void loop() {
 
 	if (testTurnActive && nowSec - testTurnLastTurnTime > ed.ttsc.value) {
 		testTurnLastTurnTime = nowSec;
-		const int deg = 30.3;
+		const int deg = 30;
 		desiredTrk += testTurnAlternate ? -deg : deg * 2;
 		testTurnAlternate = !testTurnAlternate;
 		if (desiredTrk <= 0)
@@ -580,13 +577,13 @@ void loop() {
 		} else if (!gpsTrackGDL90.isValid()) {
 			ahrsInput.gpsTrack = gpsTrackVTG;
 		} else { 
-			float diff = gpsTrackVTG - gpsTrackGDL90; 
-			if (diff < -180) diff += 360;
-			if (diff > 180) diff -= 360;
+			float diff = angularDiff(gpsTrackVTG - gpsTrackGDL90); 
 			ahrsInput.gpsTrack = gpsTrackVTG - diff / 2;
 		}
 	}
 #endif
+	currentHdg = ahrsInput.gpsTrack;
+
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
@@ -608,11 +605,9 @@ void loop() {
 		pwmOutput = 0;
 		if (1 /*ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0*/) { // hold down button to override and make servo work  
 			if (desiredTrk != -1) {
-				double hdgErr = ahrsInput.gpsTrack - desiredTrk;
-				if(hdgErr < -180) hdgErr += 360;
-				if(hdgErr > 180) hdgErr -= 360;
+				double hdgErr = angularDiff(ahrsInput.gpsTrack - desiredTrk);
 				if (navPIDTimer.tick()) {
-					desRoll = -navPID.add(hdgErr, hdgErr /*ahrsInput.gpsTrack TODO: not continuous */, ahrsInput.sec);
+					desRoll = -navPID.add(hdgErr, currentHdg, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
 				}
 			}
@@ -642,6 +637,7 @@ void loop() {
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
+		logItem.ai.dtk = desiredTrk;
 		if (logFile != NULL) {
 			sdLog();
 		}
