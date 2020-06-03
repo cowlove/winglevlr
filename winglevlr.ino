@@ -184,7 +184,7 @@ bool imuRead() {
 		x.my = imu.calcMag(imu.my);
 		x.mz = imu.calcMag(imu.mz);
 		//x.dtk = imu.calcQuat(imu.qw);
-		x.q2 = imu.calcQuat(imu.qx);
+		//x.q2 = imu.calcQuat(imu.qx);
 		x.q3 = imu.calcQuat(imu.qy);
 		//x.q4 = imu.calcQuat(imu.qz);
 		x.p = imu.pitch;
@@ -426,7 +426,7 @@ void loop() {
 	static char lastParam[64];
 	static int lastHdg;
 	static int apMode = 1;
-	static int gpsUseGDL90 = 0; // 0- use g5 data, 1 use GDL90 data, 2 use average of both 
+	static int hdgSelect = 0; // 0- use g5 hdg, 1 use g5 track, 2 use GDL90 data 
 	static int obs = 0, lastObs = 0;
 	static int navDTK = 0;
 	static bool logActive = false;
@@ -482,8 +482,8 @@ void loop() {
 				Display::jd.begin();
 				Display::jd.forceUpdate();
 			} else { 
-				ahrs.zeroSensors();
-				//gpsUseGDL90 = (gpsUseGDL90 + 1) % 3;
+				//ahrs.zeroSensors();
+				hdgSelect = (hdgSelect + 1) % 3;
 			}
 				
 		} else { 
@@ -568,10 +568,11 @@ void loop() {
 	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
 	ahrsInput.gpsTrackVTG = gpsTrackVTG;
 	ahrsInput.gpsTrackRMC = gpsTrackRMC;
-	if (gpsUseGDL90 == 0) ahrsInput.gpsTrack = ahrsInput.g5Hdg;
-	if (gpsUseGDL90 == 1) ahrsInput.gpsTrack = gpsTrackGDL90;
+	if (hdgSelect == 0) ahrsInput.gpsTrack = ahrsInput.g5Hdg;
+	if (hdgSelect == 1) ahrsInput.gpsTrack = ahrsInput.g5Track;
+	if (hdgSelect == 2) ahrsInput.gpsTrack = gpsTrackGDL90;
 #if 0 
-	if (gpsUseGDL90 == 2) {
+	if (hdgSelect == 2) {
 		if (!gpsTrackVTG.isValid()) {
 			ahrsInput.gpsTrack = gpsTrackGDL90;
 		} else if (!gpsTrackGDL90.isValid()) {
@@ -665,7 +666,7 @@ void loop() {
 		Display::trk = ahrsInput.gpsTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
-		Display::mode = armServo * 100 + gpsUseGDL90 * 10 + (int)logActive; 
+		Display::mode = armServo * 100 + hdgSelect * 10 + (int)logActive; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::vtg = (float)gpsTrackVTG;
 		Display::rmc = (float)gpsTrackRMC; 
@@ -697,7 +698,7 @@ void loop() {
 				GDL90Parser::State s = gdl90.getState();
 				if (s.valid && s.updated) {
 					gpsTrackGDL90 = s.track;
-					if (gpsUseGDL90 == 1 || gpsUseGDL90 == 2) {
+					if (hdgSelect == 2) {
 						gpsFixes++;
 						ahrsInput.alt = s.alt;
 						ahrsInput.palt = s.palt;
@@ -783,14 +784,16 @@ void loop() {
 			if (buf[i] == '\n' || buf[i] == '\r') {
 				line[index++] = '\0';
 				index = 0;
-				float pit, roll, magHdg, knobSel, knobVal, ias, tas, palt, age;
-				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f CAN", 
-				&pit, &roll, &magHdg, &ias, &tas, &palt,  &knobSel, &knobVal, &age) == 9
-					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) && (knobSel >=0 && knobSel < 6)) {
+				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
+				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f CAN", 
+				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age) == 9
+					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
+					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
 					//printf("CAN: %s", line);
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
 					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
+					ahrsInput.g5Track = magTrack * 180 / M_PI;
 					ahrsInput.g5Palt = palt / 3.2808;
 					ahrsInput.g5Ias = ias / 0.5144;
 					ahrsInput.g5Tas = tas / 0.5144;
@@ -812,7 +815,7 @@ void loop() {
 			if (gps.course.isUpdated()) { 
 				gpsTrackRMC = gps.course.deg();
 			}
-			if (gps.location.isUpdated() && gpsUseGDL90 == 2) {
+			if (gps.location.isUpdated() && hdgSelect == 2) {
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
 				ahrsInput.gspeed = gps.speed.knots();
 				gpsFixes++;
