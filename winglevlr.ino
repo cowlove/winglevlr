@@ -786,7 +786,7 @@ void loop() {
 				index = 0;
 				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
 				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f CAN", 
-				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age) == 9
+				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age) == 10
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
 					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
 					//printf("CAN: %s", line);
