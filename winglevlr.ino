@@ -60,6 +60,8 @@ WiFiMulti wifi;
 
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
+TinyGPSCustom xte(gps, "GPRMB", 2);
+TinyGPSCustom xteLR(gps, "GPRMB", 3);
 TinyGPSCustom vtgCourse(gps, "GPVTG", 1);
 
 GDL90Parser gdl90;
@@ -415,6 +417,9 @@ static int servoOverride = 0, pitchTrimOverride = -1;
 static bool testTurnActive = false;
 static bool testTurnAlternate = false;
 static float testTurnLastTurnTime = 0;
+static RollingAverage<float,5> crossTrackError;
+static RollingAverage<float,10> windCorrectionAngle;
+
 Windup360 currentHdg;
 void loop() {
 	uint16_t len;
@@ -428,7 +433,7 @@ void loop() {
 	static int apMode = 1;
 	static int hdgSelect = 0; // 0- use g5 hdg, 1 use g5 track, 2 use GDL90 data 
 	static int obs = 0, lastObs = 0;
-	static int navDTK = 0;
+	static float navDTK = -1;
 	static bool logActive = false;
 	static bool screenEnabled = true;
 	static uint64_t lastLoop = micros();
@@ -466,10 +471,12 @@ void loop() {
 	lastLoop = now;
 	PidControl *pid = &rollPID;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d\n"/* but %d%d%d%d loop %d/%d/%d heap %d\n"*/, 
+		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f\n"/* but %d%d%d%d loop %d/%d/%d heap %d\n"*/, 
 			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, pid->err.p, pid->err.i, pid->err.d, pid->corr, logItem.pitchCmd, servoOutput, 
-		digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
-		(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap());
+			crossTrackError.average()
+//			,digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
+//			(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap()
+		);
 		serialLogFlags = 0;
 	}
 	
@@ -606,7 +613,8 @@ void loop() {
 		pwmOutput = 0;
 		if (1 /*ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0*/) { // hold down button to override and make servo work  
 			if (desiredTrk != -1) {
-				double hdgErr = angularDiff(ahrsInput.gpsTrack - desiredTrk);
+				float xteCorrection = max(-30.0, min(30.0, crossTrackError.average() * -50.0));
+				double hdgErr = angularDiff(ahrsInput.gpsTrack - desiredTrk + xteCorrection);
 				if (navPIDTimer.tick()) {
 					desRoll = -navPID.add(hdgErr, currentHdg, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
@@ -698,6 +706,9 @@ void loop() {
 				GDL90Parser::State s = gdl90.getState();
 				if (s.valid && s.updated) {
 					gpsTrackGDL90 = s.track;
+					if (s.track > 0 && ahrsInput.g5Hdg > 0) {
+						windCorrectionAngle.add(angularDiff(s.track - ahrsInput.g5Hdg));
+					}
 					if (hdgSelect == 2) {
 						gpsFixes++;
 						ahrsInput.alt = s.alt;
@@ -801,8 +812,10 @@ void loop() {
 					if (knobSel == 1 || knobSel == 4) {
 						obs = knobVal * 180 / M_PI;
 						if (obs <= 0) obs += 360;
-						if (obs != lastObs)
+						if (obs != lastObs) {
 							desiredTrk = obs;
+							crossTrackError.reset();
+						}
 						lastObs = obs;
 					}
 				}
@@ -823,8 +836,16 @@ void loop() {
 			if (desiredHeading.isUpdated()) { 
 				if (apMode == 4) 
 					apMode = 5;
-				navDTK = 0.01 * gps.parseDecimal(desiredHeading.value());
+				navDTK = 0.01 * gps.parseDecimal(desiredHeading.value()) - windCorrectionAngle.average();
+				if (navDTK < 0)
+					navDTK += 360;
 				desiredTrk = navDTK;
+			}
+			if (xte.isUpdated() && xteLR.isUpdated()) {
+				float err = 0.01 * gps.parseDecimal(xte.value());
+				if (strcmp(xteLR.value(), "L") == 0)
+					err *= -1;
+				crossTrackError.add(err);
 			}
 		}
 	}
