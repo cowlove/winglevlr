@@ -233,7 +233,7 @@ void udpInput(int p, String s) {
 // TODO: remove these pokes, instead send NMEA or GDL90 data 
 // to the simulated UDP ports
 void ESP32sim_set_gpsTrackGDL90(float v);
-void ESP32sim_set_g5(float p, float r, float h);
+//void ESP32sim_set_g5(float p, float r, float h);
 void ESP32sim_set_desiredTrk(float v);
 extern float desRoll;
 
@@ -314,9 +314,12 @@ public:
 			ESP32sim_JDisplay_forceUpdate();	
 		}
 
-		g5.hdg = track * M_PI / 180;
+		float hdg = track - 35.555; // simluate mag var and WCA 
+		if (hdg < 0) hdg += 360;	
+		g5.hdg = hdg * M_PI / 180;
 		g5.roll = -bank * M_PI / 180;
 		g5.pitch = pitch * M_PI / 180;
+		ESP32sim_set_gpsTrackGDL90(track);
 
 		while(gxDelay.size() > 400) {
 			gxDelay.pop();
