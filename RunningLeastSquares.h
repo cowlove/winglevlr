@@ -1,5 +1,6 @@
 #ifndef _RunningLeastSquares_h_
 #define _RunningLeastSquares_h_
+#include <algorithm>
 /*
  * Tips for expanding this into a general running quadratic or linear least squares regression 
  * Based on 

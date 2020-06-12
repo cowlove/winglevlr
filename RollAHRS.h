@@ -26,7 +26,6 @@ struct AhrsInput {
 		 
 };
 
-
 class Windup360 {
 public:
 	float value = 0;

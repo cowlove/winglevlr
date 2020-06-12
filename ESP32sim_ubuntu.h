@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <algorithm>
 #include "RunningLeastSquares.h"
 
 using namespace std;
@@ -99,6 +100,7 @@ void yield() {}
 #define ST7735_BLACK 0 
 #define ST7735_WHITE 0 
 #define ST7735_YELLOW 0 
+
 class String {
 	public:
 	std::string st;
@@ -110,6 +112,7 @@ class String {
 	String &operator+(const String& x) { st = st + x.st; return *this; } 
 	const char *c_str(void) { return st.c_str(); }
 };
+
 class IPAddress {
 public:
 	void fromString(const char *) {}
@@ -248,8 +251,8 @@ void ESP32sim_run() {
 
 	if (floor(now / .1) != floor(lastTime / .1)) {
 		char buf[128];
-		snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f %.3f %.3f %d %.3f %d CAN\n",
-			g5.pitch, g5.roll, g5.hdg, g5.ias, g5.tas, g5.alt, g5.knobSel, g5.knobVal, g5.age);
+		snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f %.3f %.3f %.3f %d %.3f %d CAN\n",
+			g5.pitch, g5.roll, g5.hdg, 0.0, g5.ias, g5.tas, g5.alt, g5.knobSel, g5.knobVal, g5.age);
 		WiFiUDP::inputMap[7891] = String(buf);
 	}
 
@@ -262,26 +265,31 @@ void ESP32sim_run() {
 
 void ESP32sim_JDisplay_forceUpdate();
 
+void ESP32sim_replayLogItem(ifstream &);
 
 class MPU9250_DMP {
 	float bank = 0, track = 0, simPitch = 0;
 	RollingAverage<float,500> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
+
 public:
-	
-	int begin(){ return true; }
+	static const char *replayFile;
+	ifstream ifile;
+	int begin(){ 
+		if (replayFile != NULL) { 
+			ifile = ifstream(replayFile, ios_base::in | ios::binary);
+		}
+		return true; 
+	}
 	void setGyroFSR(int) {};
     void setAccelFSR(int) {};
     void setSensors(int) {}
-	void updateAccel() { 
-	}
+	void updateAccel() {}
 
 	std::queue<float> gxDelay, pitchDelay;
-	
-	void updateGyro() {
-		ESP32sim_run();
 
+	void flightSim() { 
 		float rawCmd = ESP32sim_pitchCmd;
 		cmdPitch = rawCmd > 0 ? (940 - rawCmd) / 13 : 0;
 		float ngx = (cmdPitch - simPitch) * 1.3;
@@ -334,6 +342,17 @@ public:
 
 		lastMillis = now;
 	}
+	
+	//LogItem l, prevl;
+	void updateGyro() {
+		ESP32sim_run();
+		if (replayFile == NULL) { 
+			flightSim();
+		} else {
+			ESP32sim_replayLogItem(ifile);			 
+		}
+	}
+	
 	void updateCompass() {}
 	float calcAccel(float x) { return x; }
 	float calcGyro(float x) { return x; }
@@ -343,6 +362,7 @@ public:
 	MPU9250_DMP() { bzero(this, sizeof(this)); } 
 };
 
+const char *MPU9250_DMP::replayFile;
 typedef char byte;
 
 #include "TinyGPS++.h"
@@ -351,17 +371,19 @@ typedef char byte;
 void setup(void);
 void loop(void);
 static void JDisplayToConsole(bool b);
+
+
 int main(int argc, char **argv) {
 	float seconds = 0;
 	for(char **a = argv + 1; a < argv+argc; a++) {
 		if (strcmp(*a, "--serial") == 0) Serial.toConsole = true;
 		if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
 		if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
+		if (strcmp(*a, "--replay") == 0) MPU9250_DMP::replayFile = *(++a);
 	}
 	
 	//bm.addPress(34, 050, 2, false);
-	bm.addPress(34, 500, 1, true);
-	
+	bm.addPress(34, 500, 1, true);	
 
 	setup();
 	while(seconds <= 0 || _micros / 1000000.0 < seconds) loop();
