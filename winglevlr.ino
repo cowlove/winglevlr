@@ -51,10 +51,10 @@
 
 
 #include "jimlib.h"
-#include "RollAHRS.h"
 #include "PidControl.h"
 #include "TinyGPS++.h"
 #include "G90Parser.h"
+#include "RollAHRS.h"
 
 WiFiMulti wifi;
 
@@ -365,17 +365,36 @@ void ESP32sim_set_gpsTrackGDL90(float v) {
 	ahrsInput.g5Hdg = v;
 }
 
-void ESP32sim_set_g5(float p, float r, float h) { 
+/*void ESP32sim_set_g5(float p, float r, float h) { 
 	ahrsInput.g5Hdg = h;
 	ahrsInput.g5Pitch = p;
 	ahrsInput.g5Roll = r;
 }
-
+*/
 
 void ESP32sim_set_desiredTrk(float v) {
 	desiredTrk = v;
 }
 
+
+void ESP32sim_replayLogItem(ifstream &i) {
+	LogItem l; 
+	if (i.read((char *)&l, sizeof(l))) {
+		_micros = l.ai.sec * 1000000;
+		imu.ax = l.ai.ax;
+		imu.ay = l.ai.ay;
+		imu.az = l.ai.az;
+		imu.gx = l.ai.gx;
+		imu.gy = l.ai.gy;
+		imu.gz = l.ai.gz;
+		imu.mx = l.ai.mx;
+		imu.my = l.ai.my;
+		imu.mz = l.ai.mz;
+		g5.hdg = l.ai.g5Hdg * M_PI / 180;
+		g5.roll = l.ai.g5Roll * M_PI / 180;
+		g5.pitch = l.ai.g5Pitch * M_PI / 180;
+	}
+}
 
 static int serialLogFlags = 0;
 
