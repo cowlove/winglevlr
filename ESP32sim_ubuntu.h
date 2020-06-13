@@ -349,7 +349,8 @@ public:
 		if (replayFile == NULL) { 
 			flightSim();
 		} else {
-			ESP32sim_replayLogItem(ifile);			 
+			ESP32sim_replayLogItem(ifile);
+			//printf("%06.4f AX %+05.2f G5 %+05.2f\n", _micros / 1000000.0, ax, g5.roll); 			 
 		}
 	}
 	

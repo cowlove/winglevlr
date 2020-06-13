@@ -135,7 +135,7 @@ public:
 		if (fakeTimeMs > 0)
 			l.sec = (count * fakeTimeMs) / 1000.0;	
 		if (count > 0 ) 
-			dt = l.sec - prev.sec;
+			dt = min((float).1, l.sec - prev.sec);
 		
 		bool tick10HZ = (floor(l.sec / .1) != floor(prev.sec / .1));
 
