@@ -108,7 +108,7 @@ namespace Display {
 	int y = 0;
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
-	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<int>    obs(&jd,70,y,    " OBS:", "%03d ");
+	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<float>    obs(&jd,70,y,    " OBS:", "%05.1f ");
 	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
 	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    " RLL:", "%+05.1f ");
@@ -290,6 +290,7 @@ void setup() {
 		wifi.addAP("Flora_2GEXT", "maynards");
 		wifi.addAP("Team America", "51a52b5354");
 		wifi.addAP("ChloeNet", "niftyprairie7");
+		wifi.addAP("TUK-PUBLIC", "");
 
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
@@ -360,6 +361,8 @@ static StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVT
 static float desiredTrk = -1;
 float desRoll = 0;		
 
+#ifdef UBUNTU
+
 void ESP32sim_set_gpsTrackGDL90(float v) { 
 	gpsTrackGDL90 = v;
 	ahrsInput.g5Hdg = v;
@@ -395,6 +398,7 @@ void ESP32sim_replayLogItem(ifstream &i) {
 		g5.pitch = l.ai.g5Pitch * M_PI / 180;
 	}
 }
+#endif
 
 static int serialLogFlags = 0;
 
@@ -440,6 +444,8 @@ static RollingAverage<float,5> crossTrackError;
 static RollingAverage<float,10> windCorrectionAngle;
 
 Windup360 currentHdg;
+ChangeTimer g5HdgChangeTimer;
+
 void loop() {
 	uint16_t len;
 	static int ledOn = 0;
@@ -451,7 +457,7 @@ void loop() {
 	static int lastHdg;
 	static int apMode = 1;
 	static int hdgSelect = 0; // 0- use g5 hdg, 1 use g5 track, 2 use GDL90 data 
-	static int obs = 0, lastObs = 0;
+	static float obs = 0, lastObs = 0;
 	static float navDTK = -1;
 	static bool logActive = false;
 	static bool screenEnabled = true;
@@ -508,15 +514,15 @@ void loop() {
 				Display::jd.begin();
 				Display::jd.forceUpdate();
 			} else { 
-				//ahrs.zeroSensors();
 				hdgSelect = (hdgSelect + 1) % 3;
 			}
 				
 		} else { 
+			ahrs.zeroSensors();
 			//screenEnabled = false;
 			//Display::jd.clear();
-			testTurnActive = !testTurnActive;
-			testTurnAlternate = false;
+			//testTurnActive = !testTurnActive;
+			//testTurnAlternate = false;
 		}
 		
 	}
@@ -527,7 +533,6 @@ void loop() {
 			navPID.reset();
 			pitchPID.reset();
 			ahrs.reset();
-			
 		}
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false && pitchTrimOverride != -1) {
 			pitchTrimOverride -= ed.mtin.value;
@@ -552,6 +557,13 @@ void loop() {
 	if (butFilt4.newEvent()) { 	// main knob button
 		if (butFilt4.wasCount == 1) { 
 			ed.buttonPress(butFilt4.wasLong);
+		}
+		if (butFilt4.wasLong && butFilt4.wasCount == 1) {
+			armServo = !armServo; 
+			rollPID.reset();
+			navPID.reset();
+			pitchPID.reset();
+			ahrs.reset();
 		}
 		if (butFilt4.wasLong && butFilt4.wasCount == 2) {
 			ed.negateSelectedValue();
@@ -609,11 +621,16 @@ void loop() {
 		}
 	}
 #endif
-	currentHdg = ahrsInput.gpsTrack;
 
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
+		if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) > 1.0) { 
+			ahrsInput.g5Hdg = -1;
+		}
+		if (ahrsInput.gpsTrack != -1) {
+			currentHdg = ahrsInput.gpsTrack;
+		}
 		
 		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pset = 0;
@@ -639,10 +656,10 @@ void loop() {
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
 				}
 			}
-			if (ahrs.valid() == false) {
-				desRoll = 0.0;
+			if (ahrs.valid() == false || desiredTrk == -1 || ahrsInput.gpsTrack == -1) {
+				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}
-			// TODO: desRoll may be stale, but leave this bug so serial cmdline can set desRoll 
+
 			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 			//Serial.printf("%05.2f %05.2f %04d\n", desRoll, roll);
 			if (armServo || digitalRead(button4.pin) == 0 /*quick servo functional test via knob button*/) {  
@@ -789,7 +806,7 @@ void loop() {
 				ed.pidg.value = knobPID->finalGain;
 
 				//Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
-				printMag();
+				//printMag();
 			}
 		}
 	}
@@ -815,8 +832,9 @@ void loop() {
 				line[index++] = '\0';
 				index = 0;
 				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
-				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f CAN", 
-				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age) == 10
+				int mode = 0;
+				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
+				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
 					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
 					//printf("CAN: %s", line);
@@ -828,10 +846,11 @@ void loop() {
 					ahrsInput.g5Ias = ias / 0.5144;
 					ahrsInput.g5Tas = tas / 0.5144;
 					ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
+					apMode = mode;
 					if (knobSel == 1 || knobSel == 4) {
-						obs = knobVal * 180 / M_PI;
+						obs = knobVal * 180.0 / M_PI;
 						if (obs <= 0) obs += 360;
-						if (obs != lastObs) {
+						if (apMode != 4 && obs != lastObs) {
 							desiredTrk = obs;
 							crossTrackError.reset();
 						}
@@ -853,12 +872,11 @@ void loop() {
 				gpsFixes++;
 			}
 			if (desiredHeading.isUpdated()) { 
-				if (apMode == 4) 
-					apMode = 5;
 				navDTK = 0.01 * gps.parseDecimal(desiredHeading.value()) - windCorrectionAngle.average();
 				if (navDTK < 0)
 					navDTK += 360;
-				desiredTrk = navDTK;
+				if (apMode == 4) 
+					desiredTrk = navDTK;
 			}
 			if (xte.isUpdated() && xteLR.isUpdated()) {
 				float err = 0.01 * gps.parseDecimal(xte.value());

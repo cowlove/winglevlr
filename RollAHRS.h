@@ -26,6 +26,22 @@ struct AhrsInput {
 		 
 };
 
+class ChangeTimer { 
+	public:
+	float lastVal = 0;
+	uint64_t lastChangeMillis;
+	ChangeTimer() : lastChangeMillis(0) {}
+	float unchanged(float v) { 
+		if (v == lastVal) { 
+			return (millis() - lastChangeMillis) / 1000.0;
+		} else { 
+			lastVal = v;
+			lastChangeMillis = millis();
+			return 0.0;
+		}
+	}
+};
+
 class Windup360 {
 public:
 	float value = 0;
@@ -68,16 +84,16 @@ class RollAHRS {
 		while(h > 360) h -= 360;
 		return h;
 	}
-	float magOffX = (-19.0 + 80) / 2,  // + is to the rear  
-		  magOffY = (-5.0 + 93) / 2, //  + is left
-		  magOffZ = (-80 + 20) / 2; // + is up
+	float magOffX = (-48.0 + 48) / 2,  // + is to the rear  
+		  magOffY = (-7.0 + 92) / 2, //  + is left
+		  magOffZ = (-90 + 16) / 2; // + is up
 		  
 		  
 //ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
 	
-	float gyrOffX = +0.859, 
-		  gyrOffY = +0.834, 
-		  gyrOffZ = +1.463;
+	float gyrOffX = +1.5, 
+		  gyrOffY = +1.1, 
+		  gyrOffZ = +0.9;
 		  
 	float accOffX = +0.171,
 		  accOffY = -0.856,
@@ -124,9 +140,7 @@ public:
 		accOffX = zeroAverages.ax.average();
 		accOffY = zeroAverages.ay.average();
 		accOffZ = zeroAverages.az.average() + 1.0;
-#ifdef ESP32
-		Serial.printf("ZERO SENSORS gyro %f %f %f accel %f %f %f\n", gyrOffX, gyrOffY, gyrOffZ, accOffX, accOffY, accOffZ); 
-#endif
+		//Serial.printf("ZERO SENSORS gyro %f %f %f accel %f %f %f\n", gyrOffX, gyrOffY, gyrOffZ, accOffX, accOffY, accOffZ); 
 	}
 	
 	float add(const AhrsInput &i) {
@@ -188,14 +202,17 @@ public:
 		y2 = min(y2, xyMagnitude);
 		if (y2 > xyMagnitude) y2 = xyMagnitude;
 		bankCorrection = (acos(y1/xyMagnitude) - acos(y2/xyMagnitude)) * 180 / M_PI;
-		//printf("actualZ %f levelZ %f y1:%f y2:%f yzM:%f xyM:%f mz:%f lzBC:%f\n", actualZAngle, levelZAngle, y1, y2, yzMagnitude, xyMagnitude, l.mz, levelBankZComponent);
 		if (isnan(bankCorrection)) {
 			bankCorrection = 0;
 		}
 		
-		rawMagHdg = fit360(magHdg);
-		magHdg += bankCorrection;
-		magHdg = fit360(magHdg);
+		//rawMagHdg = fit360(magHdg);
+		//magHdg += bankCorrection;
+		//magHdg = fit360(magHdg);
+
+		//printf("MH %+08.3f actualZ %+08.3f levelZ %+08.3f y1:%+08.3f y2:%+08.3f yzM:%+08.3f xyM:%+08.3f mz:%+08.3f lzBC:%+08.3f %+08.3f %+08.3f %+08.3f\n", magHdg, actualYZAngle, levelYZAngle, y1, y2, 
+		//	yzMagnitude, xyMagnitude, l.mz, levelBankZComponent, l.mx, l.my, l.mz);
+
 	
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
 		if (count > 0) { 	
@@ -207,6 +224,8 @@ public:
 		magHdgRawFit.add(l.sec, rawMagHdg);
 		magHdgFit.add(l.sec, magHdg);
 		gpsHdgFit.add(l.sec, l.gpsTrack);
+
+
 		
 		if (count % 3217 == 0) { 
 			gpsHdgFit.rebaseX();
