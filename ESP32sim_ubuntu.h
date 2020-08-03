@@ -44,6 +44,7 @@ public:
 		pi.pin = pin; pi.start = start; pi.duration = duration;
 		presses.push_back(pi);
 	}
+	
 	void addPress(int pin, float time, int clicks, bool longPress)  {
 		for(int n = 0; n < clicks; n++) {
 			float duration = longPress ? 2.5 : .2; 
@@ -265,7 +266,7 @@ void ESP32sim_run() {
 
 void ESP32sim_JDisplay_forceUpdate();
 
-void ESP32sim_replayLogItem(ifstream &);
+bool ESP32sim_replayLogItem(ifstream &);
 
 class MPU9250_DMP {
 	float bank = 0, track = 0, simPitch = 0;
@@ -349,7 +350,9 @@ public:
 		if (replayFile == NULL) { 
 			flightSim();
 		} else {
-			ESP32sim_replayLogItem(ifile);
+			if (ESP32sim_replayLogItem(ifile) == false)
+				exit(1);
+			
 			//printf("%06.4f AX %+05.2f G5 %+05.2f\n", _micros / 1000000.0, ax, g5.roll); 			 
 		}
 	}
@@ -373,6 +376,7 @@ void setup(void);
 void loop(void);
 static void JDisplayToConsole(bool b);
 
+extern void ESP32sim_setLogFile(const char *);
 
 int main(int argc, char **argv) {
 	float seconds = 0;
@@ -381,10 +385,15 @@ int main(int argc, char **argv) {
 		if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
 		if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
 		if (strcmp(*a, "--replay") == 0) MPU9250_DMP::replayFile = *(++a);
+		if (strcmp(*a, "--log") == 0) { 
+			bm.addPress(39, 1, 1, true);  // long press top button - start log 1 second in  
+			ESP32sim_setLogFile(*(++a));
+		}	
 	}
 	
 	//bm.addPress(34, 050, 2, false);
 	bm.addPress(34, 500, 1, true);	
+
 
 	setup();
 	while(seconds <= 0 || _micros / 1000000.0 < seconds) loop();

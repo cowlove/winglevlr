@@ -26,21 +26,6 @@ struct AhrsInput {
 		 
 };
 
-class ChangeTimer { 
-	public:
-	float lastVal = 0;
-	uint64_t lastChangeMillis;
-	ChangeTimer() : lastChangeMillis(0) {}
-	float unchanged(float v) { 
-		if (v == lastVal) { 
-			return (millis() - lastChangeMillis) / 1000.0;
-		} else { 
-			lastVal = v;
-			lastChangeMillis = millis();
-			return 0.0;
-		}
-	}
-};
 
 class Windup360 {
 public:

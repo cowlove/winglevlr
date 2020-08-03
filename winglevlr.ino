@@ -200,6 +200,13 @@ bool imuRead() {
 
 LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
+const char *logFileName = "AHRSD%03d.DAT";
+
+
+#ifdef UBUNTU
+void ESP32sim_setLogFile(const char *p) { logFileName = p; } 
+#endif
+
 
 void sdLog()  {
 	logItem.ai = ahrsInput;
@@ -357,7 +364,7 @@ public:
 	T getValue() { return value; } 
 };
  
-static StaleData<float> gpsTrackGDL90(5000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
+static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(3000,-1), gpsTrackVTG(3000,-1);
 static float desiredTrk = -1;
 float desRoll = 0;		
 
@@ -380,10 +387,14 @@ void ESP32sim_set_desiredTrk(float v) {
 }
 
 
-void ESP32sim_replayLogItem(ifstream &i) {
+bool ESP32sim_replayLogItem(ifstream &i) {
 	LogItem l; 
+	static uint64_t logfileMicrosOffset = 0;
+	
 	if (i.read((char *)&l, sizeof(l))) {
-		_micros = l.ai.sec * 1000000;
+		if (logfileMicrosOffset == 0) 
+			logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
+		_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
 		imu.ax = l.ai.ax;
 		imu.ay = l.ai.ay;
 		imu.az = l.ai.az;
@@ -393,10 +404,14 @@ void ESP32sim_replayLogItem(ifstream &i) {
 		imu.mx = l.ai.mx;
 		imu.my = l.ai.my;
 		imu.mz = l.ai.mz;
-		g5.hdg = l.ai.g5Hdg * M_PI / 180;
-		g5.roll = l.ai.g5Roll * M_PI / 180;
-		g5.pitch = l.ai.g5Pitch * M_PI / 180;
-	}
+		
+		ahrsInput = l.ai;
+		//g5.hdg = l.ai.g5Hdg * M_PI / 180;
+		//g5.roll = l.ai.g5Roll * M_PI / 180;
+		//g5.pitch = l.ai.g5Pitch * M_PI / 180;
+		return true;
+	} 
+	return false;
 }
 #endif
 
@@ -518,11 +533,11 @@ void loop() {
 			}
 				
 		} else { 
-			ahrs.zeroSensors();
+			//ahrs.zeroSensors();
 			//screenEnabled = false;
 			//Display::jd.clear();
-			//testTurnActive = !testTurnActive;
-			//testTurnAlternate = false;
+			testTurnActive = !testTurnActive;
+			testTurnAlternate = false;
 		}
 		
 	}
@@ -555,7 +570,7 @@ void loop() {
 		}
 	}
 	if (butFilt4.newEvent()) { 	// main knob button
-		if (butFilt4.wasCount == 1) { 
+		if (butFilt4.wasCount == 1 && butFilt4.wasLong != true) { 
 			ed.buttonPress(butFilt4.wasLong);
 		}
 		if (butFilt4.wasLong && butFilt4.wasCount == 1) {
@@ -592,7 +607,7 @@ void loop() {
 	
 	
 	if (logActive == true && logFile == NULL) {
-		logFile = new SDCardBufferedLog<LogItem>("AHRSD%03d.DAT", 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+		logFile = new SDCardBufferedLog<LogItem>(logFileName, 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
 		logFilename = logFile->currentFile;
 		Serial.printf("Opened log file '%s'\n", logFile->currentFile.c_str());
 	} 
@@ -606,9 +621,6 @@ void loop() {
 	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
 	ahrsInput.gpsTrackVTG = gpsTrackVTG;
 	ahrsInput.gpsTrackRMC = gpsTrackRMC;
-	if (hdgSelect == 0) ahrsInput.gpsTrack = ahrsInput.g5Hdg;
-	if (hdgSelect == 1) ahrsInput.gpsTrack = ahrsInput.g5Track;
-	if (hdgSelect == 2) ahrsInput.gpsTrack = gpsTrackGDL90;
 #if 0 
 	if (hdgSelect == 2) {
 		if (!gpsTrackVTG.isValid()) {
@@ -625,9 +637,17 @@ void loop() {
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
-		if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) > 1.0) { 
-			ahrsInput.g5Hdg = -1;
+		if (hdgSelect == 0) { // hybrid G5/GDL90 data 
+			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale 
+				ahrsInput.gpsTrack = ahrsInput.g5Hdg;
+			} else if (ahrsInput.gpsTrackGDL90 != -1 && lastAhrsInput.gpsTrack != -1) { // otherwise use change in GDL90 data 
+				ahrsInput.gpsTrack = lastAhrsInput.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsInput.gpsTrackGDL90); 
+			} else { // otherwise, no available heading/track data 
+				ahrsInput.gpsTrack = -1;
+			}
 		}
+		if (hdgSelect == 1) ahrsInput.gpsTrack = ahrsInput.g5Track;
+		if (hdgSelect == 2) ahrsInput.gpsTrack = gpsTrackGDL90;
 		if (ahrsInput.gpsTrack != -1) {
 			currentHdg = ahrsInput.gpsTrack;
 		}
@@ -833,7 +853,7 @@ void loop() {
 				index = 0;
 				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
 				int mode = 0;
-				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
+				if (strstr(line, " %") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
 				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
 					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
