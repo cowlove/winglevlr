@@ -281,6 +281,12 @@ void printSD() {}
 #endif
 #endif
 
+
+#ifdef UBUNTU
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 #ifdef ESP32
 template <class T>
 void SDCardBufferedLogThread(void *p);
@@ -396,16 +402,41 @@ public:
 #else
 public:
 	String currentFile;
-	void add(T *v, int t) { printf("%s LOG\n", v->toString().c_str()); }
-	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true) {}
+	int fd;
+	void add(T *v, int t) { 
+		int s = write(fd, (void *)v, sizeof(T));
+		printf("%s LOG\n", v->toString().c_str()); 
+	}
+	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true) {
+		currentFile = fname;
+		char buf[64];
+		snprintf(buf, sizeof(buf), fname, 1);
+		fd = open(buf, O_WRONLY | O_CREAT, 0666);
+	}
 #endif
-
 };	
 
 template <class T>
 void SDCardBufferedLogThread(void *p) {
 	((SDCardBufferedLog<T> *)p)->thread(); 
 }
+
+
+class ChangeTimer { 
+	public:
+	float lastVal = 0;
+	uint64_t lastChangeMillis;
+	ChangeTimer() : lastChangeMillis(0) {}
+	float unchanged(float v) { 
+		if (v == lastVal) { 
+			return (millis() - lastChangeMillis) / 1000.0;
+		} else { 
+			lastVal = v;
+			lastChangeMillis = millis();
+			return 0.0;
+		}
+	}
+};
 
 
 
