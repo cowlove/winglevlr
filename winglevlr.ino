@@ -621,6 +621,7 @@ void loop() {
 	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
 	ahrsInput.gpsTrackVTG = gpsTrackVTG;
 	ahrsInput.gpsTrackRMC = gpsTrackRMC;
+	ahrsInput.dtk = desiredTrk;
 #if 0 
 	if (hdgSelect == 2) {
 		if (!gpsTrackVTG.isValid()) {
@@ -668,15 +669,15 @@ void loop() {
 
 		pwmOutput = 0;
 		if (1 /*ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0*/) { // hold down button to override and make servo work  
-			if (desiredTrk != -1) {
+			if (ahrsInput.dtk != -1) {
 				float xteCorrection = max(-30.0, min(30.0, crossTrackError.average() * -50.0));
-				double hdgErr = angularDiff(ahrsInput.gpsTrack - desiredTrk + xteCorrection);
+				double hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk + xteCorrection);
 				if (navPIDTimer.tick()) {
 					desRoll = -navPID.add(hdgErr, currentHdg, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
 				}
 			}
-			if (ahrs.valid() == false || desiredTrk == -1 || ahrsInput.gpsTrack == -1) {
+			if (ahrs.valid() == false || ahrsInput.dtk == -1 || ahrsInput.gpsTrack == -1) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}
 
@@ -702,7 +703,6 @@ void loop() {
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
-		logItem.ai.dtk = desiredTrk;
 		if (logFile != NULL) {
 			sdLog();
 		}
