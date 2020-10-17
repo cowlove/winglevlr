@@ -129,56 +129,57 @@ public:
 	}
 };
 			
+typedef double flo;
 
 class RunningLeastSquares {
     public:
-    double *xs, *ys, *weights;
+    flo *xs, *ys, *weights;
     int index = 0, size = 0;
     int totalWeight = 0;
-    double X = 0, Y = 0, XX = 0, XY = 0, xBase = 0;
+    flo X = 0, Y = 0, XX = 0, XY = 0, xBase = 0;
     int count = 0;
     void clear() { X = Y = XX = XY = 0; count = 0; } 
     
     RunningLeastSquares(int s) {
         size = s;
-        xs = new double[size];
-        ys = new double[size];
-        weights = new double[size];
+        xs = new flo[size];
+        ys = new flo[size];
+        weights = new flo[size];
     }
     ~RunningLeastSquares() {
 		delete xs;
 		delete ys;
 		delete weights;
 	}
-    void add(double x, double y) { 
+    void add(flo x, flo y) { 
     	add(x, y, 1.0);
     }
-    double slope() {
+    flo slope() {
         if (count < 2) return 0.0;
         return (totalWeight * XY - X * Y) / (totalWeight * XX - X * X);
 	}
 	
 	
-	double intercept() { 
+	flo intercept() { 
 		if (count < 1) return 0.0;
-		double b = (Y - slope() * X) / (totalWeight);
+		flo b = (Y - slope() * X) / (totalWeight);
 		return slope() * -xBase + b;
 	}
 	
-    double predict(double x) { 
+    flo predict(flo x) { 
 		//x -= xBase;
     	return slope() * x + intercept();
 	}
-    double err(double x, double y) {
+    flo err(flo x, flo y) {
 		x -= xBase;
 		return std::abs((-x * slope()) + y - intercept()) / 
                         sqrt(slope() * slope() + 1);
 	}
-    double rmsError() {
-        double s = 0;
+    flo rmsError() {
+        flo s = 0;
         for (int i = 0; i < count; i++) {
             int idx = (index + size - count + i) % size;
-            double e = err(xs[idx], ys[idx]);
+            flo e = err(xs[idx], ys[idx]);
             s += e * e;
         }
         return sqrt(s / count);
@@ -188,7 +189,7 @@ class RunningLeastSquares {
 		if (count < size)
 			return;
 		
-		double delta = xs[0] - xBase;
+		flo delta = xs[0] - xBase;
 		xBase = xs[0];
 		X = Y = XX = XY = totalWeight = 0;
 		for(int n = 0; n < count; n++) {
@@ -200,10 +201,10 @@ class RunningLeastSquares {
             totalWeight += weights[n];
 		}
 	}
-    double averageY() {
+    flo averageY() {
     	return totalWeight > 0 ? Y / totalWeight : 0;
     }
-    void add(double x, double y, double w) {
+    void add(flo x, flo y, flo w) {
 		x -= xBase;
         if (count == size) {
             X -= xs[index] * weights[index];

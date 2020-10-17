@@ -24,7 +24,7 @@ simplot:	test.out
 	cat test.out | grep srv > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; p f u 1:5 w l t "Pitch", f u 1:3 w l t "Roll"; pause 111'
 
 winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
-	g++ -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
+	g++ -pg -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
 
 CHIP=esp32
 OTA_ADDR=192.168.43.222
