@@ -43,3 +43,12 @@ cat:	fixtty
 setap1:
 	wget 'http://192.168.4.1/wifisave?s=ChloeNet&p=niftyprairie7'
 
+%-A50.plog: %.DAT winglevlr_ubuntu
+	./winglevlr_ubuntu --replay $< | avg.pl 50 > $@
+
+
+%.plog:  %.DAT winglevlr_ubuntu
+	./winglevlr_ubuntu --replay $< > $@
+        
+
+

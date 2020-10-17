@@ -234,7 +234,7 @@ class DigitalButtonLongShort {
 void open_TTGOTS_SD() { 
 	for (int retries = 0; retries < 2; retries++) { 	
 		Serial.print("Initializing SD card...");
-		if (SD.begin(13, 15, 2, 14	)) { 
+		if (SD.begin(13, 15, 2, 14)) { 
 			Serial.println("initialization done.");
 			return;
 		}

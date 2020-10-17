@@ -351,7 +351,7 @@ public:
 			flightSim();
 		} else {
 			if (ESP32sim_replayLogItem(ifile) == false)
-				exit(1);
+				exit(0);
 			
 			//printf("%06.4f AX %+05.2f G5 %+05.2f\n", _micros / 1000000.0, ax, g5.roll); 			 
 		}
@@ -392,7 +392,7 @@ int main(int argc, char **argv) {
 	}
 	
 	//bm.addPress(34, 050, 2, false);
-	bm.addPress(34, 500, 1, true);	
+	bm.addPress(34, 50, 1, true);	
 
 
 	setup();
