@@ -209,7 +209,6 @@ void ESP32sim_setLogFile(const char *p) { logFileName = p; }
 
 
 void sdLog()  {
-	logItem.ai = ahrsInput;
 	//Serial.println(x.toString());
 	if (logFile != NULL)
 		logFile->add(&logItem, 0/*timeout*/);
@@ -332,7 +331,7 @@ void setup() {
 	ed.pidl.value = knobPID->gain.l;
 	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 12;
-	ed.ttsc.value = 30;
+	ed.ttsc.value = 45;
 	ed.tzer.value = 1000;
 	ed.mtin.value = 10;
 	
@@ -511,11 +510,11 @@ void loop() {
 	lastLoop = now;
 	PidControl *pid = &rollPID;
 	if (serialReportTimer.tick()) { 
-		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f PPID %+05.1f %+05.1f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f\n"/* but %d%d%d%d loop %d/%d/%d heap %d\n"*/, 
-			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, pid->err.p, pid->err.i, pid->err.d, pid->corr, logItem.pitchCmd, servoOutput, 
+		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f but %d%d%d%d loop %d/%d/%d heap %d\n", 
+			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, ahrs.magXFit.rmsError(), pid->corr, logItem.pitchCmd, servoOutput, 
 			crossTrackError.average()
-//			,digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
-//			(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap()
+			,digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
+			(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap()
 		);
 		serialLogFlags = 0;
 	}
@@ -533,7 +532,6 @@ void loop() {
 			}
 				
 		} else { 
-			//ahrs.zeroSensors();
 			//screenEnabled = false;
 			//Display::jd.clear();
 			testTurnActive = !testTurnActive;
@@ -543,19 +541,18 @@ void loop() {
 	}
 	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
 		if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
+			ahrs.zeroSensors();
+		}
+		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
 			armServo = !armServo; 
 			rollPID.reset();
 			navPID.reset();
 			pitchPID.reset();
 			ahrs.reset();
 		}
-		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false && pitchTrimOverride != -1) {
-			pitchTrimOverride -= ed.mtin.value;
-		}
 	}
 	if (butFilt3.newEvent()) { // TOP or RIGHT button 
-		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false && pitchTrimOverride != -1) {
-			pitchTrimOverride += ed.mtin.value;
+		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
 		}
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
 			logActive = !logActive;
@@ -583,20 +580,11 @@ void loop() {
 		if (butFilt4.wasLong && butFilt4.wasCount == 2) {
 			ed.negateSelectedValue();
 		}
-		if (butFilt4.wasLong && butFilt4.wasCount == 3) {
-			screenEnabled = !screenEnabled;
-			if (!screenEnabled)
-				Display::jd.clear();
-			else {
-				Display::jd.begin();
-				Display::jd.forceUpdate();
-			}
-		}
 	}
 
-	if (testTurnActive && nowSec - testTurnLastTurnTime > ed.ttsc.value) {
+	if (testTurnActive && nowSec - testTurnLastTurnTime > (testTurnAlternate ? ed.ttsc.value * 2 : ed.ttsc.value + 10)) {
 		testTurnLastTurnTime = nowSec;
-		const int deg = 30;
+		const int deg = 40;
 		desiredTrk += testTurnAlternate ? -deg : deg * 2;
 		testTurnAlternate = !testTurnAlternate;
 		if (desiredTrk <= 0)
@@ -670,7 +658,10 @@ void loop() {
 		pwmOutput = 0;
 		if (1 /*ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0*/) { // hold down button to override and make servo work  
 			if (ahrsInput.dtk != -1) {
-				float xteCorrection = max(-30.0, min(30.0, crossTrackError.average() * -50.0));
+				float xteCorrection = 0;
+				if (apMode == 4) {
+					xteCorrection = max(-20.0, min(20.0, crossTrackError.average() * -50.0));
+				} 
 				double hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk + xteCorrection);
 				if (navPIDTimer.tick()) {
 					desRoll = -navPID.add(hdgErr, currentHdg, ahrsInput.sec);
@@ -703,6 +694,13 @@ void loop() {
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
+		logItem.ai = ahrsInput;
+#ifdef UBUNTU
+		cout << logItem.toString().c_str() << " " << 
+/*44*/	ahrs.compYH <<" "<< servoOutput <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<<  ahrs.magHdg << " " << 0 <<" "<< 
+/*49*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
+		"LOG" << endl;
+#endif
 		if (logFile != NULL) {
 			sdLog();
 		}
@@ -730,7 +728,7 @@ void loop() {
 		Display::trk = ahrsInput.gpsTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
-		Display::mode = armServo * 100 + hdgSelect * 10 + (int)logActive; 
+		Display::mode = apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)logActive; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::vtg = (float)gpsTrackVTG;
 		Display::rmc = (float)gpsTrackRMC; 
@@ -853,11 +851,12 @@ void loop() {
 				index = 0;
 				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
 				int mode = 0;
-				if (strstr(line, " %") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
+				//Serial.printf("LINE %s\n", line);
+				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
 				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
 					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
-					//printf("CAN: %s", line);
+					printf("CAN: %s", line);
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
 					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
