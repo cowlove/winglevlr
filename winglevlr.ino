@@ -99,6 +99,7 @@ void buttonISR() {
 	button3.check();
 	butFilt.check(button.duration());
 	butFilt2.check(button2.duration());
+	
 	butFilt3.check(button3.duration());
 	butFilt4.check(button4.duration());
 }
@@ -116,9 +117,9 @@ namespace Display {
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> ttsc(&jd,70,y,    "TTSC:", "%05.0f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> pidg(&jd,70,y,    "PIDG:", "%04.2f ");
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> ttsc(&jd,70,y,    "TTSC:", "%04.0f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> ttde(&jd,70,y,    "TTDE:", "%04.0f ");;
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> mtin(&jd,70,y,    "MTIN:", "%03.1f ");
 }
 
@@ -231,18 +232,19 @@ public:
 	JDisplayEditableItem pidl = JDisplayEditableItem(&Display::pidl, .01);
 	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
 	JDisplayEditableItem ttsc = JDisplayEditableItem(&Display::ttsc, 1);
+	JDisplayEditableItem ttde = JDisplayEditableItem(&Display::ttde, 1);
 	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);;
-	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
+	JDisplayEditableItem pidg = JDisplayEditableItem(NULL, .1);
 	JDisplayEditableItem mtin = JDisplayEditableItem(&Display::mtin, .1);
 	
-	MyEditor() : JDisplayEditor(26, 21) {
+	MyEditor() : JDisplayEditor(26, 21) { // add in correct knob selection order
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
 		add(&pidl);	
 		add(&ttsc);
+		add(&ttde);	
 		add(&maxb);
-		add(&pidg);	
 		add(&mtin);
 	}
 } ed;
@@ -331,7 +333,8 @@ void setup() {
 	ed.pidl.value = knobPID->gain.l;
 	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 12;
-	ed.ttsc.value = 45;
+	ed.ttsc.value = 45; // seconds to make each test turn 
+	ed.ttde.value = 40; // degrees of each test turn 
 	ed.tzer.value = 1000;
 	ed.mtin.value = 10;
 	
@@ -469,7 +472,7 @@ void loop() {
 	static int mavBytesIn = 0;
 	static char lastParam[64];
 	static int lastHdg;
-	static int apMode = 1;
+	static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 	static int hdgSelect = 0; // 0- use g5 hdg, 1 use g5 track, 2 use GDL90 data 
 	static float obs = 0, lastObs = 0;
 	static float navDTK = -1;
@@ -478,7 +481,7 @@ void loop() {
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
 	static TwoStageRollingAverage<int,40,40> loopTime;
-	static EggTimer serialReportTimer(200), navPIDTimer(50);
+	static EggTimer serialReportTimer(200), navPIDTimer(50), buttonCheckTimer(10);
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0, pitch = 0;
@@ -511,80 +514,85 @@ void loop() {
 	PidControl *pid = &rollPID;
 	if (serialReportTimer.tick()) { 
 		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f but %d%d%d%d loop %d/%d/%d heap %d\n", 
-			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, ahrs.magXFit.rmsError(), pid->corr, logItem.pitchCmd, servoOutput, 
+			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, 
 			crossTrackError.average()
 			,digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
 			(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap()
 		);
 		serialLogFlags = 0;
 	}
-	
-	//printMag(); 
-	buttonISR();
-	if (butFilt.newEvent()) { // MIDDLE BUTTON
-		if (!butFilt.wasLong) {
-			if (butFilt.wasCount == 1) {
-				screenEnabled = true;
-				Display::jd.begin();
-				Display::jd.forceUpdate();
-			} else { 
-				hdgSelect = (hdgSelect + 1) % 3;
-			}
-				
-		} else { 
-			//screenEnabled = false;
-			//Display::jd.clear();
-			testTurnActive = !testTurnActive;
-			testTurnAlternate = false;
-		}
-		
-	}
-	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
-		if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
-			ahrs.zeroSensors();
-		}
-		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
-			armServo = !armServo; 
-			rollPID.reset();
-			navPID.reset();
-			pitchPID.reset();
-			ahrs.reset();
-		}
-	}
-	if (butFilt3.newEvent()) { // TOP or RIGHT button 
-		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
-		}
-		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
-			logActive = !logActive;
-			if (logActive == true) {
-				screenEnabled = false;
-				Display::jd.clear();
-			} else {
-				screenEnabled = true;
-				Display::jd.begin();
-				Display::jd.forceUpdate();
-			}
-		}
-	}
-	if (butFilt4.newEvent()) { 	// main knob button
-		if (butFilt4.wasCount == 1 && butFilt4.wasLong != true) { 
-			ed.buttonPress(butFilt4.wasLong);
-		}
-		if (butFilt4.wasLong && butFilt4.wasCount == 1) {
-			armServo = !armServo; 
-			rollPID.reset();
-			navPID.reset();
-			pitchPID.reset();
-			ahrs.reset();
-		}
-		if (butFilt4.wasLong && butFilt4.wasCount == 2) {
-			ed.negateSelectedValue();
-		}
-	}
 
+	if (buttonCheckTimer.tick()) { 
+		//printMag(); 
+		buttonISR();
+		if (butFilt.newEvent()) { // MIDDLE BUTTON
+			if (!butFilt.wasLong) {
+				if (butFilt.wasCount == 1) {
+					hdgSelect = (hdgSelect + 1) % 3;
+				} else { 
+					screenEnabled = true;
+					Display::jd.begin();
+					Display::jd.forceUpdate();
+				}
+					
+			} else { 
+				testTurnActive = !testTurnActive;
+				testTurnAlternate = false;
+			}
+			
+		}
+		if (butFilt2.newEvent()) { // BOTTOM or LEFT button
+			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
+				ahrs.zeroSensors();
+			}
+			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
+				armServo = !armServo; 
+				rollPID.reset();
+				navPID.reset();
+				pitchPID.reset();
+				ahrs.reset();
+			}
+		}
+		if (butFilt3.newEvent()) { // TOP or RIGHT button 
+			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
+				apMode = 1;
+				if (desiredTrk == -1) 
+					desiredTrk = ahrsInput.gpsTrack;
+				else 
+					desiredTrk = -1;
+			}
+			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
+				logActive = !logActive;
+				if (logActive == true) {
+					screenEnabled = false;
+					Display::jd.clear();
+				} else {
+					screenEnabled = true;
+					Display::jd.begin();
+					Display::jd.forceUpdate();
+				}
+			}
+		}
+		if (butFilt4.newEvent()) { 	// main knob button
+			if (butFilt4.wasCount == 1 && butFilt4.wasLong != true) { 
+				ed.buttonPress(butFilt4.wasLong);
+			}
+			if (butFilt4.wasLong && butFilt4.wasCount == 1) {
+				armServo = !armServo; 
+				rollPID.reset();
+				navPID.reset();
+				pitchPID.reset();
+				ahrs.reset();
+			}
+			if (butFilt4.wasLong && butFilt4.wasCount == 2) {
+				ed.negateSelectedValue();
+			}
+		}
+	}
+	
 	if (testTurnActive && nowSec - testTurnLastTurnTime > (testTurnAlternate ? ed.ttsc.value * 2 : ed.ttsc.value + 10)) {
 		testTurnLastTurnTime = nowSec;
-		const int deg = 40;
+		const int deg = ed.ttde.value;
 		desiredTrk += testTurnAlternate ? -deg : deg * 2;
 		testTurnAlternate = !testTurnAlternate;
 		if (desiredTrk <= 0)
@@ -674,7 +682,7 @@ void loop() {
 
 			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 			//Serial.printf("%05.2f %05.2f %04d\n", desRoll, roll);
-			if (armServo || digitalRead(button4.pin) == 0 /*quick servo functional test via knob button*/) {  
+			if (armServo) {  
 				servoOutput = servoTrim + rollPID.corr;
 				if (servoOverride > 0)
 					servoOutput = servoOverride;

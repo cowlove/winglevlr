@@ -190,10 +190,8 @@ public:
 		magXyAngFit.add(l.sec, atan(l.my/l.mx));
 		magZAngFit.add(l.sec, atan(xyMagnitude/l.mz));
 		
-		magStability = abs(magZFit.slope()) * magZFit.rmsError() + abs(magXFit.slope()) * magXFit.rmsError() + abs(magYFit.slope()) * magYFit.rmsError(); 
-		
-		magXyAngFit.slope() * magXyAngFit.slope() * magXyAngFit.rmsError() + magZAngFit.slope() * magZAngFit.slope() * magZAngFit.rmsError();
-		
+		//magStability = abs(magZFit.slope()) * magZFit.rmsError() + abs(magXFit.slope()) * magXFit.rmsError() + abs(magYFit.slope()) * magYFit.rmsError(); 
+		//magXyAngFit.slope() * magXyAngFit.slope() * magXyAngFit.rmsError() + magZAngFit.slope() * magZAngFit.slope() * magZAngFit.rmsError();
 		
 		
 		/*
