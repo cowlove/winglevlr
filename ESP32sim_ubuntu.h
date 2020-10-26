@@ -68,7 +68,7 @@ int digitalRead(int p) {
 	// the servos  
 	float now = millis()/1000.0;
 	
-	if (p == 35 && now >= 1 && now < 3.1) return 0;  // arm servos
+	//if (p == 35 && now >= 1 && now < 3.1) return 0;  // arm servos
 	//if (p == 34 && now >= 110 && now < 113.1) return 0;  // activate test turn mode
 
 	return bm.check(p, now);
@@ -277,6 +277,7 @@ class MPU9250_DMP {
 public:
 	static const char *replayFile;
 	ifstream ifile;
+	static int logSkip; //log entries to skip
 	int begin(){ 
 		if (replayFile != NULL) { 
 			ifile = ifstream(replayFile, ios_base::in | ios::binary);
@@ -350,6 +351,8 @@ public:
 		if (replayFile == NULL) { 
 			flightSim();
 		} else {
+			while(logSkip > 0 && logSkip-- > 0) 
+				ESP32sim_replayLogItem(ifile);
 			if (ESP32sim_replayLogItem(ifile) == false)
 				exit(0);
 			
@@ -367,6 +370,8 @@ public:
 };
 
 const char *MPU9250_DMP::replayFile;
+int MPU9250_DMP::logSkip = 0;
+
 typedef char byte;
 
 #include "TinyGPS++.h"
@@ -385,6 +390,7 @@ int main(int argc, char **argv) {
 		if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
 		if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
 		if (strcmp(*a, "--replay") == 0) MPU9250_DMP::replayFile = *(++a);
+		if (strcmp(*a, "--replaySkip") == 0) MPU9250_DMP::logSkip = atoi(*(++a));
 		if (strcmp(*a, "--log") == 0) { 
 			bm.addPress(39, 1, 1, true);  // long press top button - start log 1 second in  
 			ESP32sim_setLogFile(*(++a));
@@ -392,7 +398,7 @@ int main(int argc, char **argv) {
 	}
 	
 	//bm.addPress(34, 050, 2, false);
-	bm.addPress(34, 50, 1, true);	
+	//bm.addPress(34, 50, 1, true);	
 
 
 	setup();
