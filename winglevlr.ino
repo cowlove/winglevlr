@@ -486,7 +486,7 @@ void loop() {
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0, pitch = 0;
 	static String logFilename("none");
-	static AhrsInput lastAhrsInput; 
+	static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
 	
 	esp_task_wdt_reset();
 	ArduinoOTA.handle();
@@ -626,10 +626,11 @@ void loop() {
 		if (hdgSelect == 0) { // hybrid G5/GDL90 data 
 			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale 
 				ahrsInput.gpsTrack = ahrsInput.g5Hdg;
-			} else if (ahrsInput.gpsTrackGDL90 != -1 && lastAhrsInput.gpsTrack != -1) { // otherwise use change in GDL90 data 
-				ahrsInput.gpsTrack = lastAhrsInput.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsInput.gpsTrackGDL90); 
-			} else if (ahrsInput.gpsTrackRMC != -1 && lastAhrsInput.gpsTrack != -1) { // otherwise use change in VTG data 
-				ahrsInput.gpsTrack = lastAhrsInput.gpsTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsInput.gpsTrackRMC); 
+				lastAhrsGoodG5 = ahrsInput;
+			} else if (ahrsInput.gpsTrackGDL90 != -1) { // otherwise use change in GDL90 data 
+				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90); 
+			} else if (ahrsInput.gpsTrackRMC != -1) { // otherwise use change in VTG data 
+				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsInput.gpsTrackRMC); 
 			} else { // otherwise, no available heading/track data 
 				ahrsInput.gpsTrack = -1;
 			}
