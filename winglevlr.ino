@@ -78,9 +78,9 @@ WiFiUDP udpG90;
 WiFiUDP udpMAV;
 
 #define LED_PIN 22
-DigitalButton button(34); // middle
-DigitalButton button2(35); // left
 DigitalButton button3(39); // top
+DigitalButton button(34); // middle
+DigitalButton button2(35); // bottom
 DigitalButton button4(32); // knob press
 
 static IPAddress mavRemoteIp;
@@ -188,7 +188,7 @@ bool imuRead() {
 		x.mz = imu.calcMag(imu.mz);
 		//x.dtk = imu.calcQuat(imu.qw);
 		//x.q2 = imu.calcQuat(imu.qx);
-		x.q3 = imu.calcQuat(imu.qy);
+		//x.q3x = imu.calcQuat(imu.qy);
 		//x.q4 = imu.calcQuat(imu.qz);
 		x.p = imu.pitch;
 		x.r = imu.roll;
@@ -366,7 +366,7 @@ public:
 	T getValue() { return value; } 
 };
  
-static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(3000,-1), gpsTrackVTG(3000,-1);
+static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(6000,-1), gpsTrackVTG(5000,-1);
 static float desiredTrk = -1;
 float desRoll = 0;		
 
@@ -474,7 +474,7 @@ void loop() {
 	static int lastHdg;
 	static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 	static int hdgSelect = 0; // 0- use g5 hdg, 1 use g5 track, 2 use GDL90 data 
-	static float obs = 0, lastObs = 0;
+	static float obs = -1, lastObs = -1;
 	static float navDTK = -1;
 	static bool logActive = false;
 	static bool screenEnabled = true;
@@ -542,10 +542,10 @@ void loop() {
 			
 		}
 		if (butFilt2.newEvent()) { // BOTTOM or LEFT button
-			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
+			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {	// LONG: zero AHRS sensors
 				ahrs.zeroSensors();
 			}
-			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
+			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	// SHORT: arm servo
 				armServo = !armServo; 
 				rollPID.reset();
 				navPID.reset();
@@ -554,14 +554,14 @@ void loop() {
 			}
 		}
 		if (butFilt3.newEvent()) { // TOP or RIGHT button 
-			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {
+			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {		// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
 				apMode = 1;
 				if (desiredTrk == -1) 
 					desiredTrk = ahrsInput.gpsTrack;
 				else 
 					desiredTrk = -1;
 			}
-			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
+			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {		// LONG: stop/start logging
 				logActive = !logActive;
 				if (logActive == true) {
 					screenEnabled = false;
@@ -577,7 +577,7 @@ void loop() {
 			if (butFilt4.wasCount == 1 && butFilt4.wasLong != true) { 
 				ed.buttonPress(butFilt4.wasLong);
 			}
-			if (butFilt4.wasLong && butFilt4.wasCount == 1) {
+			if (butFilt4.wasLong && butFilt4.wasCount == 1) {			// LONG: arm servos
 				armServo = !armServo; 
 				rollPID.reset();
 				navPID.reset();
@@ -618,36 +618,24 @@ void loop() {
 	ahrsInput.gpsTrackVTG = gpsTrackVTG;
 	ahrsInput.gpsTrackRMC = gpsTrackRMC;
 	ahrsInput.dtk = desiredTrk;
-#if 0 
-	if (hdgSelect == 2) {
-		if (!gpsTrackVTG.isValid()) {
-			ahrsInput.gpsTrack = gpsTrackGDL90;
-		} else if (!gpsTrackGDL90.isValid()) {
-			ahrsInput.gpsTrack = gpsTrackVTG;
-		} else { 
-			float diff = angularDiff(gpsTrackVTG - gpsTrackGDL90); 
-			ahrsInput.gpsTrack = gpsTrackVTG - diff / 2;
-		}
-	}
-#endif
 
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
+
 		if (hdgSelect == 0) { // hybrid G5/GDL90 data 
 			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale 
 				ahrsInput.gpsTrack = ahrsInput.g5Hdg;
 			} else if (ahrsInput.gpsTrackGDL90 != -1 && lastAhrsInput.gpsTrack != -1) { // otherwise use change in GDL90 data 
 				ahrsInput.gpsTrack = lastAhrsInput.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsInput.gpsTrackGDL90); 
+			} else if (ahrsInput.gpsTrackRMC != -1 && lastAhrsInput.gpsTrack != -1) { // otherwise use change in VTG data 
+				ahrsInput.gpsTrack = lastAhrsInput.gpsTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsInput.gpsTrackRMC); 
 			} else { // otherwise, no available heading/track data 
 				ahrsInput.gpsTrack = -1;
 			}
 		}
-		if (hdgSelect == 1) ahrsInput.gpsTrack = ahrsInput.g5Track;
-		if (hdgSelect == 2) ahrsInput.gpsTrack = gpsTrackGDL90;
-		if (ahrsInput.gpsTrack != -1) {
-			currentHdg = ahrsInput.gpsTrack;
-		}
+		else if (hdgSelect == 1) ahrsInput.gpsTrack = ahrsInput.g5Track;
+		else if (hdgSelect == 2) ahrsInput.gpsTrack = gpsTrackGDL90;
 		
 		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pset = 0;
@@ -670,7 +658,11 @@ void loop() {
 				if (apMode == 4) {
 					xteCorrection = max(-20.0, min(20.0, crossTrackError.average() * -50.0));
 				} 
-				double hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk + xteCorrection);
+				double hdgErr = 0;
+				if (ahrs.valid() != false && ahrsInput.gpsTrack != -1) {
+					hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk + xteCorrection);
+					currentHdg = ahrsInput.gpsTrack;
+				}
 				if (navPIDTimer.tick()) {
 					desRoll = -navPID.add(hdgErr, currentHdg, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
@@ -703,6 +695,14 @@ void loop() {
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
 		logItem.ai = ahrsInput;
+		logItem.ai.q3 = 
+			//ahrs.magStability; 
+			//ahrs.bankAngle; 
+			ahrs.lastGz;
+			//ahrs.gyrZOffsetFit.average();
+			//-ahrs.zeroAverages.gz.average();
+			0;
+			
 #ifdef UBUNTU
 		cout << logItem.toString().c_str() << " " << 
 /*44*/	ahrs.compYH <<" "<< servoOutput <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<<  ahrs.magHdg << " " << 0 <<" "<< 

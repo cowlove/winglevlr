@@ -86,6 +86,7 @@ public:
 			if (values[n] > m) m = values[n];
 		return m;
 	}
+	bool full() { return count == SIZE; } 
 };
 
 
@@ -127,59 +128,60 @@ public:
 	double average() {
 		return stage2.average();
 	}
+	bool full() { return stage2.full(); } 
 };
 			
-typedef double flo;
 
-class RunningLeastSquares {
+template <class T, class ST> 
+class RunningLeastSquaresBase {
     public:
-    flo *xs, *ys, *weights;
+    ST *xs, *ys, *weights;
     int index = 0, size = 0;
     int totalWeight = 0;
-    flo X = 0, Y = 0, XX = 0, XY = 0, xBase = 0;
+    ST X = 0, Y = 0, XX = 0, XY = 0, xBase = 0;
     int count = 0;
     void clear() { X = Y = XX = XY = 0; count = 0; } 
     
-    RunningLeastSquares(int s) {
+    RunningLeastSquaresBase(int s) {
         size = s;
-        xs = new flo[size];
-        ys = new flo[size];
-        weights = new flo[size];
+        xs = new T[size];
+        ys = new T[size];
+        weights = new T[size];
     }
-    ~RunningLeastSquares() {
+    ~RunningLeastSquaresBase() {
 		delete xs;
 		delete ys;
 		delete weights;
 	}
-    void add(flo x, flo y) { 
+    void add(T x, T y) { 
     	add(x, y, 1.0);
     }
-    flo slope() {
+    T slope() {
         if (count < 2) return 0.0;
         return (totalWeight * XY - X * Y) / (totalWeight * XX - X * X);
 	}
 	
 	
-	flo intercept() { 
+	T intercept() { 
 		if (count < 1) return 0.0;
-		flo b = (Y - slope() * X) / (totalWeight);
+		T b = (Y - slope() * X) / (totalWeight);
 		return slope() * -xBase + b;
 	}
 	
-    flo predict(flo x) { 
+    T predict(T x) { 
 		//x -= xBase;
     	return slope() * x + intercept();
 	}
-    flo err(flo x, flo y) {
+    T err(T x, T y) {
 		x -= xBase;
 		return std::abs((-x * slope()) + y - intercept()) / 
                         sqrt(slope() * slope() + 1);
 	}
-    flo rmsError() {
-        flo s = 0;
+    T rmsError() {
+        T s = 0;
         for (int i = 0; i < count; i++) {
             int idx = (index + size - count + i) % size;
-            flo e = err(xs[idx], ys[idx]);
+            T e = err(xs[idx], ys[idx]);
             s += e * e;
         }
         return sqrt(s / count);
@@ -189,7 +191,7 @@ class RunningLeastSquares {
 		if (count < size)
 			return;
 		
-		flo delta = xs[0] - xBase;
+		T delta = xs[0] - xBase;
 		xBase = xs[0];
 		X = Y = XX = XY = totalWeight = 0;
 		for(int n = 0; n < count; n++) {
@@ -201,10 +203,10 @@ class RunningLeastSquares {
             totalWeight += weights[n];
 		}
 	}
-    flo averageY() {
+    T averageY() {
     	return totalWeight > 0 ? Y / totalWeight : 0;
     }
-    void add(flo x, flo y, flo w) {
+    void add(T x, T y, T w) {
 		x -= xBase;
         if (count == size) {
             X -= xs[index] * weights[index];
@@ -252,5 +254,27 @@ class RunningLeastSquares {
         totalWeight -= weights[index];
     }
 };
+
 		
+typedef RunningLeastSquaresBase<double,double> RunningLeastSquares;
+
+
+template <class T>
+class TwoStageRunningLeastSquares { 
+public:
+	RunningLeastSquaresBase<T,T> stage1, stage2;
+	int idx = 0;
+	TwoStageRunningLeastSquares(int s1, int s2) : stage1(s1), stage2(s2) {}
+	void add(T x, T y, T w = 1.0) { 
+		stage1.add(x, y, w);
+		idx++;
+		if (idx == stage1.size) { 
+			idx = 0;
+			stage2.add(x, stage1.averageY());
+		}
+	}  
+	T slope() { return stage2.slope(); } 
+	bool full() { return stage2.count == stage2.size; } 
+};
+
 #endif 
