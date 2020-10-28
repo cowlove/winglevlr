@@ -630,7 +630,7 @@ void loop() {
 			} else if (ahrsInput.gpsTrackGDL90 != -1) { // otherwise use change in GDL90 data 
 				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90); 
 			} else if (ahrsInput.gpsTrackRMC != -1) { // otherwise use change in VTG data 
-				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsInput.gpsTrackRMC); 
+				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC); 
 			} else { // otherwise, no available heading/track data 
 				ahrsInput.gpsTrack = -1;
 			}
@@ -685,13 +685,13 @@ void loop() {
 		}
 		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
-		logItem.pidP = pitchPID.err.p;
-		logItem.pidI = pitchPID.err.i;
-		logItem.pidD = pitchPID.err.d;
-		logItem.finalGain = pitchPID.finalGain;
-		logItem.gainP = pitchPID.gain.p;
-		logItem.gainI = pitchPID.gain.i;
-		logItem.gainD = pitchPID.gain.d;
+		logItem.pidP = navPID.err.p;
+		logItem.pidI = navPID.err.i;
+		logItem.pidD = navPID.err.d;
+		logItem.finalGain = navPID.finalGain;
+		logItem.gainP = navPID.gain.p;
+		logItem.gainI = navPID.gain.i;
+		logItem.gainD = navPID.gain.d;
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
@@ -699,7 +699,7 @@ void loop() {
 		logItem.ai.q3 = 
 			//ahrs.magStability; 
 			//ahrs.bankAngle; 
-			ahrs.lastGz;
+			//ahrs.lastGz;
 			//ahrs.gyrZOffsetFit.average();
 			//-ahrs.zeroAverages.gz.average();
 			0;
