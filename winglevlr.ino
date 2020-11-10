@@ -69,7 +69,7 @@ GDL90Parser::State state;
 
 RollAHRS ahrs;
 PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), navPID(50); /*20Hz*/
-PidControl *knobPID = &pitchPID;
+PidControl *knobPID = &navPID;
 static int servoTrim = 1325;
 
 WiFiUDP udpSL30;
@@ -110,7 +110,7 @@ namespace Display {
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
 	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<float>    obs(&jd,70,y,    " OBS:", "%05.1f ");
-	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%03d ");
+	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%05d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
 	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
@@ -256,6 +256,9 @@ bool bApplicationIdleHook() {
 }
 #endif
 
+
+static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
+
 void setup() {	
 	esp_task_wdt_init(15, true);
 	esp_err_t err = esp_task_wdt_add(NULL);
@@ -309,6 +312,10 @@ void setup() {
 		udpSL30.begin(7891);
 		udpG90.begin(4000);
 		udpNMEA.begin(7892);
+		
+		lastAhrsGoodG5.g5Hdg = 0;
+		lastAhrsGoodG5.gpsTrackGDL90 = 17;
+		lastAhrsGoodG5.gpsTrackRMC = 17;
 	}
 	
 	//SCREENLINE.println("WiFi connected");
@@ -316,7 +323,7 @@ void setup() {
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	navPID.setGains(0.5, 0.00, 0.1);
+	navPID.setGains(0.22, 0.00, 0.15);
 	navPID.maxerr.i = 20;
 	navPID.finalGain = 2.2;
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
@@ -367,6 +374,8 @@ public:
 };
  
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(6000,-1), gpsTrackVTG(5000,-1);
+static StaleData<int> canMsgCount(3000,-1);
+
 static float desiredTrk = -1;
 float desRoll = 0;		
 
@@ -473,7 +482,7 @@ void loop() {
 	static char lastParam[64];
 	static int lastHdg;
 	static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-	static int hdgSelect = 0; // 0- use g5 hdg, 1 use g5 track, 2 use GDL90 data 
+	static int hdgSelect = 1; // 0- use g5 hdg, 1 use GDL90 but switch to mode 0 on first can msg, 2 use GDL90 data 
 	static float obs = -1, lastObs = -1;
 	static float navDTK = -1;
 	static bool logActive = false;
@@ -486,7 +495,6 @@ void loop() {
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0, pitch = 0;
 	static String logFilename("none");
-	static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
 	
 	esp_task_wdt_reset();
 	ArduinoOTA.handle();
@@ -528,11 +536,10 @@ void loop() {
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
 				if (butFilt.wasCount == 1) {
-					hdgSelect = (hdgSelect + 1) % 3;
+					desiredTrk = angularDiff(desiredTrk - 10);
+					apMode = 1;
 				} else { 
-					screenEnabled = true;
-					Display::jd.begin();
-					Display::jd.forceUpdate();
+					hdgSelect = (hdgSelect + 1) % 4;
 				}
 					
 			} else { 
@@ -546,11 +553,8 @@ void loop() {
 				ahrs.zeroSensors();
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	// SHORT: arm servo
-				armServo = !armServo; 
-				rollPID.reset();
-				navPID.reset();
-				pitchPID.reset();
-				ahrs.reset();
+				desiredTrk = angularDiff(desiredTrk + 10);
+				apMode = 1;
 			}
 		}
 		if (butFilt3.newEvent()) { // TOP or RIGHT button 
@@ -614,19 +618,32 @@ void loop() {
 		Serial.printf("Closed\n");
 	}
 
+#ifndef UBUNTU
+	// TODO - stale/changed data not set by logfile playback
 	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
 	ahrsInput.gpsTrackVTG = gpsTrackVTG;
 	ahrsInput.gpsTrackRMC = gpsTrackRMC;
+#endif
 	ahrsInput.dtk = desiredTrk;
 
 	if (imuRead()) {
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
 
+		if (hdgSelect == 1) { // mode 1, use GDL90 until first can message, then switch to G5
+			ahrsInput.gpsTrack = ahrsInput.gpsTrackGDL90;
+			if (canMsgCount.isValid() == true) // switch to G5 on first CAN msg
+				hdgSelect = 0;  
+		}
 		if (hdgSelect == 0) { // hybrid G5/GDL90 data 
-			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale 
-				ahrsInput.gpsTrack = ahrsInput.g5Hdg;
+			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale
+				if (ahrsInput.gpsTrackGDL90 != -1 || ahrsInput.gpsTrackRMC != -1) { 
+					ahrsInput.gpsTrack = ahrsInput.g5Hdg;
+				}
 				lastAhrsGoodG5 = ahrsInput;
+			} else if (ahrsInput.gpsTrackGDL90 != -1 && ahrsInput.gpsTrackRMC != -1) { 
+				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90) / 2 + 
+				 angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC) / 2;
 			} else if (ahrsInput.gpsTrackGDL90 != -1) { // otherwise use change in GDL90 data 
 				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90); 
 			} else if (ahrsInput.gpsTrackRMC != -1) { // otherwise use change in VTG data 
@@ -635,8 +652,8 @@ void loop() {
 				ahrsInput.gpsTrack = -1;
 			}
 		}
-		else if (hdgSelect == 1) ahrsInput.gpsTrack = ahrsInput.g5Track;
-		else if (hdgSelect == 2) ahrsInput.gpsTrack = gpsTrackGDL90;
+		else if (hdgSelect == 2) ahrsInput.gpsTrack = ahrsInput.gpsTrackGDL90;
+		else if (hdgSelect == 3) ahrsInput.gpsTrack = ahrs.magHdg;
 		
 		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pset = 0;
@@ -663,13 +680,15 @@ void loop() {
 				if (ahrs.valid() != false && ahrsInput.gpsTrack != -1) {
 					hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk + xteCorrection);
 					currentHdg = ahrsInput.gpsTrack;
+				} else { 
+					// lost course guidance, just keep current heading
+					hdgErr = 0;
 				}
 				if (navPIDTimer.tick()) {
 					desRoll = -navPID.add(hdgErr, currentHdg, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
 				}
-			}
-			if (ahrs.valid() == false || ahrsInput.dtk == -1 || ahrsInput.gpsTrack == -1) {
+			} else {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}
 
@@ -737,7 +756,7 @@ void loop() {
 		Display::trk = ahrsInput.gpsTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
-		Display::mode = apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)logActive; 
+		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)logActive; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::vtg = (float)gpsTrackVTG;
 		Display::rmc = (float)gpsTrackRMC; 
@@ -884,6 +903,7 @@ void loop() {
 						}
 						lastObs = obs;
 					}
+					canMsgCount = canMsgCount + 1;
 				}
 			}
 			gps.encode(buf[i]);
@@ -903,6 +923,9 @@ void loop() {
 				navDTK = 0.01 * gps.parseDecimal(desiredHeading.value()) - windCorrectionAngle.average();
 				if (navDTK < 0)
 					navDTK += 360;
+				if (canMsgCount.isValid() == false) {
+					apMode = 4;
+				}
 				if (apMode == 4) 
 					desiredTrk = navDTK;
 			}

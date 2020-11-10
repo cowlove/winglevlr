@@ -397,7 +397,7 @@ int main(int argc, char **argv) {
 		}	
 	}
 	
-	//bm.addPress(34, 050, 2, false);
+	bm.addPress(32, 1, 1, true);
 	//bm.addPress(34, 50, 1, true);	
 
 

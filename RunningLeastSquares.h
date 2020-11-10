@@ -233,7 +233,7 @@ class RunningLeastSquaresBase {
         XY += x * y * w;
         totalWeight += w;
     }
-
+	bool full() { return count == size; }
 
     void reset() {
         count = index = xBase = 0;
@@ -273,6 +273,7 @@ public:
 			stage2.add(x, stage1.averageY());
 		}
 	}  
+	T average() { return stage2.averageY(); } 
 	T slope() { return stage2.slope(); } 
 	bool full() { return stage2.count == stage2.size; } 
 };

@@ -30,10 +30,15 @@ struct AhrsInput {
 class Windup360 {
 public:
 	float value = 0;
+	bool first = true;
 	operator float () { 
 		return value;
 	}
 	Windup360 &operator =(float f) {
+		if (first) {
+			value = f;
+			first = false;
+		}
 		float hd = f - value;
 		if (abs(hd) > 100000) {
 			value = f;
@@ -44,7 +49,23 @@ public:
 		}
 		return *this;
 	}
+	float angle() { 
+		float a = value;
+		if (abs(a) < 10000) { 
+			while(a <= 0) a += 360;
+			while(a > 360) a -= 360;
+		}
+		return a;
+	}
 };
+
+float constrain360(float a) { 
+	if (abs(a) < 10000) { 
+		while(a <= 0) a += 360;
+		while(a > 360) a -= 360;
+	}
+	return a;
+}
 
 
 float angularDiff(float d) { 
@@ -74,11 +95,15 @@ class RollAHRS {
 		  magOffZ = (-82 + 32) / 2; // + is up
 */
 
-	float magOffX = (-28.0 + 12) / 2,  // + is to the rear  
-		  magOffY = (-20.0 + 80) / 2, //  + is left
+	float magOffX = (-30.0 + 10) / 2,  // + is to the rear  
+		  magOffY = (33 + 72) / 2 - 3, //  + is left
 		  magOffZ = (-82 + 32) / 2; // + is up
 
 
+	float magScaleX = (10.0 - (-30.0)) / 100.0;
+	float magScaleY = (72.0 - 33.0) / 100.0;
+	
+	
 //ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
 	
 	float gyrOffX = +1.50, 
@@ -114,8 +139,8 @@ public:
 	RunningLeastSquares // all at about 200 HZ */
 		accelPitchFit = RunningLeastSquares(100), 
 		altFit = RunningLeastSquares(200), // 10Hz
-		gpsHdgFit = RunningLeastSquares(500),  // TODO run GPS histories at lower rate 
-		magHdgFit = RunningLeastSquares(100), 
+		gpsHdgFit = RunningLeastSquares(200),  // TODO run GPS histories at lower rate 
+		magHdgFit = RunningLeastSquares(50), 
 		//magHdgRawFit = RunningLeastSquares(50),
 		//magMagnitudeFit = RunningLeastSquares(300),  
 		//magXyAngFit = RunningLeastSquares(10), 
@@ -128,17 +153,19 @@ public:
 		gyroDriftFit = RunningLeastSquares(300), // 10HZ 
 		pitchDriftFit = RunningLeastSquares(300);  // 10HZ
 
-	RollingAverage<float,100> magStabFit;
+	RollingAverage<float,200> magStabFit;
+	RollingAverage<float,50> avgRoll;
 	
 	TwoStageRLS 
 		magZFit = TwoStageRLS(20, 60),
 		magXFit = TwoStageRLS(20, 60),
-		magYFit = TwoStageRLS(20, 60);
+		magYFit = TwoStageRLS(20, 60),
+		magHdgAvg = TwoStageRLS(20,20);
 		
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
 	int count = 0;
 	AhrsInput prev;
-	float lastMagHdg = 0;
+	Windup360 magHdg360;
 	float compR = 0, compYH =0, rollG = 0;
 	float gyroDrift = 0;
 	float gpsPitch = 0, accelPitch = 0;
@@ -174,8 +201,8 @@ public:
 		zeroAverages.gy.add(l.gy);
 		zeroAverages.gz.add(l.gz);
 		
-		l.mx = -l.mx + magOffX;
-		l.my = -l.my + magOffY;
+		l.mx = (-l.mx + magOffX) / magScaleX;
+		l.my = (-l.my + magOffY) / magScaleY;
 		l.mz = -l.mz + magOffZ;
 		
 		l.ax -= accOffX;
@@ -267,10 +294,6 @@ public:
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
 		if (count > 0) { 	
 			l.gpsTrack = windup360(l.gpsTrack, prev.gpsTrack);
-			magHdgFit.add(l.sec, magHdg);
-			//magHdg = magHdgFit.averageY();
-			magHdg = windup360(magHdg, lastMagHdg);
-			lastMagHdg = magHdg;
 		}
 
 		//magHdgRawFit.add(l.sec, rawMagHdg);
@@ -345,6 +368,36 @@ public:
 		}
 		pitchCompDriftCorrected = pitchComp;
 		//pitchCompDriftCorrected += pitchDrift * driftCorrCoeff;
+	
+		avgRoll.add(compYH);
+		magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 250;
+
+		if (magHdg < 0) magHdg += 360;
+		
+		
+		if (0) { 
+			const float dip = -62;
+			float x = sin(magHdg/180*M_PI);
+			float y = cos(magHdg/180*M_PI);
+			float z = sin(dip/180*M_PI);
+			float roll = -compYH/180*M_PI; //-avgRoll.average()/180*M_PI;
+			float y1 = y * cos(roll) - z * sin(roll);
+			magHdg = atan2(x, y1) / M_PI * 180;
+		}
+		
+
+		magHdg360 = magHdg;
+		if (1) { 
+			static int skipped = 0;
+			if (skipped > 3 || !magHdgFit.full() || abs(magHdgFit.predict(l.sec) - magHdg) < 5.0) {
+				magHdgFit.add(l.sec, magHdg360);
+				magHdgAvg.add(l.sec, magHdg360);
+				skipped = 0;
+			} else {
+				skipped++;
+			}
+			magHdg = constrain360(magHdgAvg.average());
+		}
 		
 		count++;
 		prev = l;
