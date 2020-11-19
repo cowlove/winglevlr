@@ -95,8 +95,8 @@ class RollAHRS {
 		  magOffZ = (-82 + 32) / 2; // + is up
 */
 
-	float magOffX = (-30.0 + 10) / 2,  // + is to the rear  
-		  magOffY = (33 + 72) / 2 - 3, //  + is left
+	float magOffX = 15,//(-30.0 + 10) / 2,  // + is to the rear  
+		  magOffY = 8,//(33 + 72) / 2 - 3, //  + is left
 		  magOffZ = (-82 + 32) / 2; // + is up
 
 
@@ -106,9 +106,9 @@ class RollAHRS {
 	
 //ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
 	
-	float gyrOffX = +1.50, 
-		  gyrOffY = +1.16, 
-		  gyrOffZ = +0.82;
+	float gyrOffX = -0.87, 
+		  gyrOffY = -0.99, 
+		  gyrOffZ = +0.95;
 		  
 	float accOffX = +0.171,
 		  accOffY = -0.856,
@@ -201,8 +201,8 @@ public:
 		zeroAverages.gy.add(l.gy);
 		zeroAverages.gz.add(l.gz);
 		
-		l.mx = (-l.mx + magOffX) / magScaleX;
-		l.my = (-l.my + magOffY) / magScaleY;
+		l.mx = (l.mx - magOffX) / magScaleX;
+		l.my = (l.my - magOffY) / magScaleY;
 		l.mz = -l.mz + magOffZ;
 		
 		l.ax -= accOffX;
@@ -370,7 +370,7 @@ public:
 		//pitchCompDriftCorrected += pitchDrift * driftCorrCoeff;
 	
 		avgRoll.add(compYH);
-		magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 250;
+		//magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 250;
 
 		if (magHdg < 0) magHdg += 360;
 		
@@ -396,7 +396,7 @@ public:
 			} else {
 				skipped++;
 			}
-			magHdg = constrain360(magHdgAvg.average());
+			//magHdg = constrain360(magHdgAvg.average());
 		}
 		
 		count++;

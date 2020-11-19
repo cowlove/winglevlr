@@ -537,7 +537,7 @@ void loop() {
 	}
 	
 	//vTaskDelay(1);
-	delayMicroseconds(10);
+	delayMicroseconds(1);
 	//yield();
 	
 	uint64_t now = micros();
@@ -556,6 +556,7 @@ void loop() {
 		serialLogFlags = 0;
 	}
 
+	ed.re.check();
 	if (buttonCheckTimer.tick()) { 
 		//printMag(); 
 		buttonISR();
