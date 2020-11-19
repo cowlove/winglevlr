@@ -34,7 +34,7 @@
 #include "WiFiUdp.h"
 #include "WiFiMulti.h"
 #include <MPU9250_asukiaaa.h>
-#include <SparkFunMPU9250-DMP.h>
+//#include <SparkFunMPU9250-DMP.h>
 #include <RunningLeastSquares.h>
 #include <mySD.h>
 #include "Wire.h"
@@ -79,8 +79,8 @@ WiFiUDP udpMAV;
 
 #define LED_PIN 22
 DigitalButton button3(39); // top
-DigitalButton button(34); // middle
-DigitalButton button2(35); // bottom
+DigitalButton button(37); // middle
+DigitalButton button2(36); // bottom
 DigitalButton button4(32); // knob press
 
 static IPAddress mavRemoteIp;
@@ -127,42 +127,49 @@ void ESP32sim_JDisplay_forceUpdate() {
 	Display::jd.forceUpdate();
 }
 
-MPU9250_DMP imu;
+//MPU9250_DMP imu;
+MPU9250_asukiaaa imu(0x69);
 #define IMU_INT_PIN 4
+
+
 
 void imuLog(); 
 void imuInit() { 
-  if (imu.begin() != INV_SUCCESS)
-  {
-    while (1)
-    {
-      Serial.println("Unable to communicate with MPU-9250");
-      Serial.println("Check connections, and try again.");
-      Serial.println();
-      delay(100);
-    }
-  }
-  
-  //pinMode(IMU_INT_PIN, INPUT_PULLUP);
-  
-  imu.setGyroFSR(250/*deg per sec*/);
-  imu.setAccelFSR(4/*G*/);
-  imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL | INV_XYZ_COMPASS);
- 
-  // FIFO seems slower than just sampling 
-  //imu.setCompassSampleRate(100); // Set mag rate to 10Hz
-  //imu.setSampleRate(1000);
-  //imu.configureFifo(INV_XYZ_GYRO |INV_XYZ_ACCEL);  
+#ifndef UBUNTU
+	Wire.begin(21,22);
+	imu.setWire(&Wire);
+#endif
 
-  //imu.dmpSetInterruptMode(DMP_INT_CONTINUOUS);
-  //imu.setIntLevel(INT_ACTIVE_LOW);
-  //imu.enableInterrupt(1);
-  //imu.setIntLatched(INT_50US_PULSE);
-  /*imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | // Enable 6-axis quat
-               DMP_FEATURE_GYRO_CAL, // Use gyro calibration
-              100); // Set DMP FIFO rate to 10 Hz
-  */
-  //attachInterrupt(digitalPinToInterrupt(button.pin), imuPrint, FALLING);
+	imu.beginAccel(ACC_FULL_SCALE_4_G);
+	imu.beginGyro(GYRO_FULL_SCALE_250_DPS);
+	imu.beginMag(MAG_MODE_CONTINUOUS_100HZ);
+	uint8_t sensorId;
+	if (imu.readId(&sensorId) == 0) {
+		Serial.print(sensorId);
+	} else {
+		Serial.println("Cannot read sensorId");
+	}
+
+  //pinMode(IMU_INT_PIN, INPUT_PULLUP);
+#if 0 
+	imu.setGyroFSR(250/*deg per sec*/);
+	imu.setAccelFSR(4/*G*/);
+	imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL | INV_XYZ_COMPASS);
+
+	// FIFO seems slower than just sampling 
+	imu.setCompassSampleRate(100); // Set mag rate to 10Hz
+	imu.setSampleRate(1000);
+	imu.configureFifo(INV_XYZ_GYRO |INV_XYZ_ACCEL);  
+
+	imu.dmpSetInterruptMode(DMP_INT_CONTINUOUS);
+	imu.setIntLevel(INT_ACTIVE_LOW);
+	imu.enableInterrupt(1);
+	imu.setIntLatched(INT_50US_PULSE);
+	imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | // Enable 6-axis quat
+			   DMP_FEATURE_GYRO_CAL, // Use gyro calibration
+			  100); // Set DMP FIFO rate to 10 Hz
+	//attachInterrupt(digitalPinToInterrupt(button.pin), imuPrint, FALLING);
+#endif
 }
 
 static AhrsInput ahrsInput;
@@ -171,12 +178,13 @@ bool imuRead() {
 	
 	//if (imu.fifoAvailable() && imu.updateFifo() == INV_SUCCESS) { // FIFO is slow
 	if(true){
+		AhrsInput &x = ahrsInput;
+		x.sec = millis() / 1000.0;
+#if 0
 		imu.updateAccel();
 		imu.updateGyro();
 		imu.updateCompass();
 
-		AhrsInput &x = ahrsInput;
-		x.sec = millis() / 1000.0;
 		x.ax = imu.calcAccel(imu.ax);
 		x.ay = imu.calcAccel(imu.ay);
 		x.az = imu.calcAccel(imu.az);
@@ -186,15 +194,27 @@ bool imuRead() {
 		x.mx = imu.calcMag(imu.mx);
 		x.my = imu.calcMag(imu.my);
 		x.mz = imu.calcMag(imu.mz);
-		//x.dtk = imu.calcQuat(imu.qw);
-		//x.q2 = imu.calcQuat(imu.qx);
-		//x.q3x = imu.calcQuat(imu.qy);
-		//x.q4 = imu.calcQuat(imu.qz);
-		x.p = imu.pitch;
-		x.r = imu.roll;
-		x.y = imu.yaw;
+#else
+		imu.accelUpdate();
+		imu.gyroUpdate();
+		imu.magUpdate();
+
+		x.ax = imu.accelX();
+		x.ay = imu.accelY();
+		x.az = imu.accelZ();
+		x.gx = imu.gyroX();
+		x.gy = imu.gyroY();
+		x.gz = imu.gyroZ();
+		x.mx = imu.magX();
+		x.my = imu.magY();
+		x.mz = imu.magZ();
+#endif
+
 		// remaining items set (alt, hdg, speed) set by main loop
 		return true;
+	} else { 
+		AhrsInput &x = ahrsInput;
+		x.ax = x.gx = x.mx = -1;
 	}
 	return false;
 }
@@ -217,9 +237,15 @@ void sdLog()  {
 
 void printMag() {
       //imu.updateCompass();
+#if 0
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcGyro(imu.gx), (float)imu.calcGyro(imu.gy), (float)imu.calcGyro(imu.gz) );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcAccel(imu.ax), (float)imu.calcAccel(imu.ay), (float)imu.calcAccel(imu.az) );
+#else
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.gyroX(), (float)imu.gyroY(), (float)imu.gyroZ() );
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.magX(), (float)imu.magY(), (float)imu.magZ() );
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.accelX(), (float)imu.accelY(), (float)imu.accelZ() );
+#endif
       Serial.println("");
 }
 
@@ -323,7 +349,7 @@ void setup() {
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	navPID.setGains(0.22, 0.00, 0.15);
+	navPID.setGains(0.12, 0.00, 0.04);
 	navPID.maxerr.i = 20;
 	navPID.finalGain = 2.2;
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
@@ -482,7 +508,7 @@ void loop() {
 	static char lastParam[64];
 	static int lastHdg;
 	static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-	static int hdgSelect = 1; // 0- use g5 hdg, 1 use GDL90 but switch to mode 0 on first can msg, 2 use GDL90 data 
+	static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
 	static float obs = -1, lastObs = -1;
 	static float navDTK = -1;
 	static bool logActive = false;
@@ -520,7 +546,7 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	PidControl *pid = &rollPID;
-	if (serialReportTimer.tick()) { 
+	if (serialReportTimer.tick()) {
 		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f but %d%d%d%d loop %d/%d/%d heap %d\n", 
 			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, 
 			crossTrackError.average()
@@ -630,12 +656,12 @@ void loop() {
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
 
-		if (hdgSelect == 1) { // mode 1, use GDL90 until first can message, then switch to G5
+		if (hdgSelect == 0) { // mode 0, use GDL90 until first can message, then switch to G5
 			ahrsInput.gpsTrack = ahrsInput.gpsTrackGDL90;
 			if (canMsgCount.isValid() == true) // switch to G5 on first CAN msg
-				hdgSelect = 0;  
+				hdgSelect = 1;  
 		}
-		if (hdgSelect == 0) { // hybrid G5/GDL90 data 
+		if (hdgSelect == 1) { // hybrid G5/GDL90 data 
 			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale
 				if (ahrsInput.gpsTrackGDL90 != -1 || ahrsInput.gpsTrackRMC != -1) { 
 					ahrsInput.gpsTrack = ahrsInput.g5Hdg;
