@@ -107,6 +107,7 @@ class String {
 	std::string st;
 	String(const char *s) : st(s) {}
 	String(std::string s) : st(s) {}
+	String(int s) : st(std::to_string(s)) {}
 	String() {}
 	int length() { return st.length(); } 
 	bool operator!=(const String& x) { return st != x.st; } 
@@ -268,6 +269,8 @@ void ESP32sim_JDisplay_forceUpdate();
 
 bool ESP32sim_replayLogItem(ifstream &);
 
+const int ACC_FULL_SCALE_4_G = 0, GYRO_FULL_SCALE_250_DPS = 0, MAG_MODE_CONTINUOUS_100HZ = 0;
+
 class MPU9250_DMP {
 	float bank = 0, track = 0, simPitch = 0;
 	RollingAverage<float,500> rollCmd;
@@ -288,7 +291,25 @@ public:
     void setAccelFSR(int) {};
     void setSensors(int) {}
 	void updateAccel() {}
+	void accelUpdate() { updateAccel(); }
+	void magUpdate() { updateCompass(); }
+	void gyroUpdate() { updateGyro(); }
 
+	float accelX() { return ax; } 
+	float accelY() { return ay; } 
+	float accelZ() { return az; } 
+	float magX() { return mx; } 
+	float magY() { return my; } 
+	float magZ() { return mz; } 
+	float gyroX() { return gx; } 
+	float gyroY() { return gy; } 
+	float gyroZ() { return gz; } 
+	
+	void beginAccel(int) { begin(); }
+	void beginGyro(int) {}
+	void beginMag(int) {}
+	int readId(uint8_t *) { return 0; } 
+	
 	std::queue<float> gxDelay, pitchDelay;
 
 	void flightSim() { 
@@ -366,8 +387,10 @@ public:
 	float calcQuat(float x) { return x; }
 	float calcMag(float x) { return x; }
 	float ax,ay,az,gx,gy,gz,mx,my,mz,qw,qx,qy,qz,pitch,roll,yaw;
-	MPU9250_DMP() { bzero(this, sizeof(this)); } 
+	MPU9250_DMP(int addr = 0x68) { bzero(this, sizeof(this)); } 
 };
+
+typedef MPU9250_DMP MPU9250_asukiaaa;
 
 const char *MPU9250_DMP::replayFile;
 int MPU9250_DMP::logSkip = 0;
