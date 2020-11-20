@@ -286,6 +286,7 @@ public:
 		
 		float zgyrBankAngle = atan(l.gz * tas / 1091) * 180/M_PI;
 		bankAngle = (isnan(zgyrBankAngle) ? 0 : zgyrBankAngle);
+		bankAngle = max(-20.0, min(20.0, (double)bankAngle));
 		//bankAngle =0;
 	
 		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio1) + (bankAngle * compRatio1);

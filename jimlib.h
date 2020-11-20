@@ -26,6 +26,7 @@ class DigitalDebounce {
 	bool recentlyPressed;
 	long startPress;
 	int lastDuration;
+	int lastVal;
 public:
 	int duration;
 	int count;
@@ -33,6 +34,8 @@ public:
 	bool checkOneshot(bool button) {
 		bool rval = false; 
 		if (button == true) {
+			if (timer.tick() && lastVal == false) 
+				recentlyPressed = false;
 			rval = !recentlyPressed;
 			if (rval) {
 				count++;
@@ -46,6 +49,7 @@ public:
 			if (timer.tick()) 
 				recentlyPressed = false;
 		}
+		lastVal = button;
 		return rval;
 	}
 	int checkEndPress() {
@@ -65,6 +69,7 @@ public:
 	int limMin, limMax;
 	int value;
 	bool wrap;
+	int count = 0;
 	unsigned long lastChange;
 
 #ifndef UBUNTU
@@ -97,19 +102,24 @@ public:
 		this->wrap = wrap;
 	}
 	void check() {
+		unsigned long now = millis();
+		//if (now - lastChange > 500)
+		//	Serial.printf("\n\n");
+		count++;
 		int buta = !digitalRead(pin1);
 		int butb = !digitalRead(pin3);
+		int oa = a.checkOneshot(buta);
+		int ob = b.checkOneshot(butb);
 		int delta = 0;
-		//Serial.printf("%d %d\n", buta, butb);
-		if (a.checkOneshot(buta) && !butb) 
+		if (oa && !butb) 
 			delta = -1;
-		if (b.checkOneshot(butb) && !buta)
+		if (ob && !buta)
 			delta = +1;
+		//Serial.printf("%d/%d %d/%d %d\n", buta, oa, butb, ob, delta );
 		
 		if (delta != 0) {
-			unsigned long now = millis();
-			if(lastChange > 0 && now - lastChange < 30)
-				delta *= 5;
+			//if(lastChange > 0 && now - lastChange < 30)
+			//	delta *= 5;
 			lastChange = now;
 		}
 		value += delta;
