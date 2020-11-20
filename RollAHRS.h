@@ -321,7 +321,7 @@ public:
 		float zgyrBankAngle = 
 			//-atan((l.gz / abs(l.gz) * 2*M_PI*tas)/(9.81*360 / (sqrt(l.gz*l.gz + l.gx*l.gx))))*180/M_PI;
 			//-atan(l.gz / abs(l.gz) * sqrt(l.gz*l.gz +l.gx + l.gx) * tas / 1091) * 180/M_PI;
-			-atan(l.gz * tas / 1091) * 180/M_PI;
+			atan(l.gz * tas / 1091) * 180/M_PI;
 		//lastGz = gyrOffZ;
 		bankAngle = (isnan(zgyrBankAngle) ? 0 : zgyrBankAngle);
 		//bankAngle =0;
