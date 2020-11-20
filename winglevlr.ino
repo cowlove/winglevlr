@@ -6,10 +6,10 @@
  * 	33 (PWM)	RST
  * 	27 			32  (KNOB)
  * 	GND(GND)	26  (ROT)
- * 	0			GND 		
+ * 	0 (ROT)		GND 		
  * 	GND			3.3V
- * 	RXD			21  (ROT)
- * 	TXD			22	
+ * 	RXD			21  (used by I2c?)
+ * 	TXD			22	(used by I2c?)
  * 	VBAT		5V
  * 
  * 
@@ -175,9 +175,8 @@ void imuInit() {
 static AhrsInput ahrsInput;
 
 bool imuRead() { 
-	
 	//if (imu.fifoAvailable() && imu.updateFifo() == INV_SUCCESS) { // FIFO is slow
-	if(true){
+	if(1){
 		AhrsInput &x = ahrsInput;
 		x.sec = millis() / 1000.0;
 #if 0
@@ -206,11 +205,16 @@ bool imuRead() {
 		x.gx = imu.gyroX();
 		x.gy = imu.gyroY();
 		x.gz = imu.gyroZ();
-
-		imu.magUpdate();
-		x.mx = imu.magX();
-		x.my = imu.magY();
-		x.mz = imu.magZ();
+	
+		// limit magnometer update to 100Hz 
+		static uint64_t lastUsec = 0;
+		if (lastUsec / 10000 != micros() / 10000) { 
+			imu.magUpdate();
+			x.mx = imu.magX();
+			x.my = imu.magY();
+			x.mz = imu.magZ();
+		}
+		lastUsec = micros();
 #endif
 
 		// remaining items set (alt, hdg, speed) set by main loop
@@ -267,7 +271,8 @@ public:
 	JDisplayEditableItem pidg = JDisplayEditableItem(NULL, .1);
 	JDisplayEditableItem mtin = JDisplayEditableItem(&Display::mtin, .1);
 	
-	MyEditor() : JDisplayEditor(26, 21) { // add in correct knob selection order
+	//MyEditor() : JDisplayEditor(26, 21) { // add in correct knob selection order
+	MyEditor() : JDisplayEditor(26, 0) { // add in correct knob selection order
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
@@ -550,17 +555,17 @@ void loop() {
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	PidControl *pid = &rollPID;
-	if (serialReportTimer.tick()) {
-		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f but %d%d%d%d loop %d/%d/%d heap %d\n", 
+	if (true && serialReportTimer.tick()) {
+		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f but %d%d%d%d loop %d/%d/%d heap %d re.count %d\n", 
 			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, 
 			crossTrackError.average()
 			,digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
-			(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap()
+			(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count
 		);
 		serialLogFlags = 0;
 	}
 
-	ed.re.check();
+	//ed.re.check();
 	if (buttonCheckTimer.tick()) { 
 		//printMag(); 
 		buttonISR();
