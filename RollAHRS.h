@@ -4,9 +4,13 @@
 
 using namespace std;
 
+
+#undef USE_ACCEL
+
 struct AhrsInput { 
-	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax;
-	float ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track;
+	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y;
+	float ax, ay, az;  // accel updates removed from imuRead() to speed up loop, drops about 1.2ms 
+	float gx, gy, gz, mx, my, mz, dtk, g5Track;
 	float q3, palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
 	String toString() { 
 		static char buf[512];
@@ -137,9 +141,9 @@ public:
 
 	typedef TwoStageRunningLeastSquares<float> TwoStageRLS;
 	RunningLeastSquares // all at about 200 HZ */
-		accelPitchFit = RunningLeastSquares(100), 
-		altFit = RunningLeastSquares(200), // 10Hz
-		gpsHdgFit = RunningLeastSquares(200),  // TODO run GPS histories at lower rate 
+		//accelPitchFit = RunningLeastSquares(100), 
+		//altFit = RunningLeastSquares(200), // 10Hz
+		//gpsHdgFit = RunningLeastSquares(200),  // TODO run GPS histories at lower rate 
 		magHdgFit = RunningLeastSquares(50), 
 		//magHdgRawFit = RunningLeastSquares(50),
 		//magMagnitudeFit = RunningLeastSquares(300),  
@@ -148,11 +152,11 @@ public:
 		//gyZFit = RunningLeastSquares(100),
 		//gyXFit = RunningLeastSquares(100),
 		//gyYFit = RunningLeastSquares(100),
-		dipBankFit = RunningLeastSquares(100),
-		gyroTurnBankFit = RunningLeastSquares(100),
-		gyroDriftFit = RunningLeastSquares(300), // 10HZ 
-		pitchDriftFit = RunningLeastSquares(300);  // 10HZ
-
+		//dipBankFit = RunningLeastSquares(100),
+		//gyroTurnBankFit = RunningLeastSquares(100),
+		//pitchDriftFit = RunningLeastSquares(300),  // 10HZ
+		gyroDriftFit = RunningLeastSquares(300); // 10HZ 
+		
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
 	
@@ -194,9 +198,9 @@ public:
 		
 		bool tick10HZ = (floor(l.sec / .1) != floor(prev.sec / .1));
 
-		zeroAverages.ax.add(l.ax);
-		zeroAverages.ay.add(l.ay);
-		zeroAverages.az.add(l.az);
+		//zeroAverages.ax.add(l.ax);
+		//zeroAverages.ay.add(l.ay);
+		//zeroAverages.az.add(l.az);
 		zeroAverages.gx.add(l.gx);
 		zeroAverages.gy.add(l.gy);
 		zeroAverages.gz.add(l.gz);
@@ -204,11 +208,13 @@ public:
 		l.mx = (l.mx - magOffX) / magScaleX;
 		l.my = (l.my - magOffY) / magScaleY;
 		l.mz = -l.mz + magOffZ;
-		
+	
+#ifdef USE_ACCEL
 		l.ax -= accOffX;
 		l.ay -= accOffY;
 		l.az -= accOffZ;
-		
+#endif
+	
 		if (gyrZOffsetFit.full()) { 
 			l.gx -= gyrXOffsetFit.average();
 			l.gy -= gyrOffY;
@@ -219,7 +225,7 @@ public:
 			l.gy -= gyrOffY;
 		}
 		
-		magHdg = atan(l.my/l.mx) * 180 / M_PI;
+	   magHdg = atan(l.my/l.mx) * 180 / M_PI;
 		if (l.mx < 0) 
 			magHdg += 180;
 
@@ -258,71 +264,27 @@ public:
 			}
 		}
 		
-		//magStability = abs(magZFit.slope()) * magZFit.rmsError() + abs(magXFit.slope()) * magXFit.rmsError() + abs(magYFit.slope()) * magYFit.rmsError(); 
-		//magXyAngFit.slope() * magXyAngFit.slope() * magXyAngFit.rmsError() + magZAngFit.slope() * magZAngFit.slope() * magZAngFit.rmsError();
-		
-		
-		/*
-		float dipBank = (asin(levelBankZComponent / yzMagnitude) - asin(l.mz / yzMagnitude)) * 180 / M_PI;
-		dipBankAngle2 = (M_PI - asin(levelBankZComponent / yzMagnitude) - asin(l.mz / yzMagnitude)) * 180 / M_PI;
-		if (!isnan(dipBank))
-			dipBankFit.add(l.sec, dipBank);
-		*/
-		// correct magHdg for dip error 
-
-#if 0
-		float y1 = sqrt(yzMagnitude*yzMagnitude - levelBankZComponent*levelBankZComponent);
-		float y2 = sqrt(yzMagnitude*yzMagnitude - l.mz * l.mz);
-		y1 = min(y1, xyMagnitude);
-		y2 = min(y2, xyMagnitude);
-		if (y2 > xyMagnitude) y2 = xyMagnitude;
-		bankCorrection = (acos(y1/xyMagnitude) - acos(y2/xyMagnitude)) * 180 / M_PI;
-		if (isnan(bankCorrection)) {
-			bankCorrection = 0;
-		}
-		magHdg += bankCorrection;
-#endif
-	
-		//rawMagHdg = fit360(magHdg);
-		//magHdg += bankCorrection;
-		//magHdg = fit360(magHdg);
-
-		//printf("MH %+08.3f actualZ %+08.3f levelZ %+08.3f y1:%+08.3f y2:%+08.3f yzM:%+08.3f xyM:%+08.3f mz:%+08.3f lzBC:%+08.3f %+08.3f %+08.3f %+08.3f\n", magHdg, actualYZAngle, levelYZAngle, y1, y2, 
-		//	yzMagnitude, xyMagnitude, l.mz, levelBankZComponent, l.mx, l.my, l.mz);
-
-	
+					
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
 		if (count > 0) { 	
 			l.gpsTrack = windup360(l.gpsTrack, prev.gpsTrack);
 		}
 
 		//magHdgRawFit.add(l.sec, rawMagHdg);
-		gpsHdgFit.add(l.sec, l.gpsTrack);
-
+		//gpsHdgFit.add(l.sec, l.gpsTrack);
 		
 		if (count % 3217 == 0) { 
-			gpsHdgFit.rebaseX();
+			//gpsHdgFit.rebaseX();
 			magHdgFit.rebaseX();
 			gyroDriftFit.rebaseX();
 		}
 
-		float tas = 100; // true airspeed in knots
-		
-		gpsBankAngle = -atan((2*M_PI*tas)/(9.81*360 / gpsHdgFit.slope()))*180/M_PI;
-		magBankAngle = -atan((2*M_PI*tas)/(9.81*360 / magHdgFit.slope()))*180/M_PI;
-		//dipBankAngle = dipBank; //dipBankFit.averageY();
-		
-		//bankAngle = (isnan(gpsBankAngle) ? 0 : (1.0 * gpsBankAngle)) +
-		//				  (isnan(magBankAngle) ? 0 : (0.0 * magBankAngle)) + 
-		//				  (isnan(dipBankAngle) ? 0 : (0.0 * dipBankAngle));
+		float tas = 100; // true airspeed in knots		
+
 		const float compRatio1 = 0.0012	;
 		const float driftCorrCoeff1 = pow(1 - compRatio1, 200) * 7;
 		
-		float zgyrBankAngle = 
-			//-atan((l.gz / abs(l.gz) * 2*M_PI*tas)/(9.81*360 / (sqrt(l.gz*l.gz + l.gx*l.gx))))*180/M_PI;
-			//-atan(l.gz / abs(l.gz) * sqrt(l.gz*l.gz +l.gx + l.gx) * tas / 1091) * 180/M_PI;
-			atan(l.gz * tas / 1091) * 180/M_PI;
-		//lastGz = gyrOffZ;
+		float zgyrBankAngle = atan(l.gz * tas / 1091) * 180/M_PI;
 		bankAngle = (isnan(zgyrBankAngle) ? 0 : zgyrBankAngle);
 		//bankAngle =0;
 	
@@ -335,57 +297,15 @@ public:
 		*/
 		compYH = compR + gyroDrift * driftCorrCoeff1;
 		if (abs(bankAngle) < 4) {			
-			gyroDrift += (bankAngle -compYH) * 0.00001;
+			gyroDrift += (bankAngle - compYH) * 0.00001;
 		}
-		if (tick10HZ) { 
-			altFit.add(l.sec, l.alt);
-		}
-		//accelPitch = atan(-l.ax / sqrt(l.ay * l.ay + l.az * l.az)) * 180 / M_PI;
-		//float ap = atan(-l.ay / sqrt(l.ax * l.ax + l.az * l.az)) * 180 / M_PI;
-		float ap = atan(l.ay / l.az) * 180 / M_PI;
-		accelPitchFit.add(l.sec, ap);
-		accelPitch = accelPitchFit.predict(l.sec);
-		
-		gpsPitch = asin((altFit.slope() / .5144) / 90) * 180  / M_PI; 
-		if (isnan(gpsPitch)) gpsPitch = 0;
-		gpsPitch = min(5.0, max(-5.0, (double)gpsPitch));
-	
-		float gyroTurnBank = atan(l.gx/l.gz) * 180 / M_PI;
-		float gtmag = sqrt(l.gx * l.gx + l.gz * l.gz);
-		//pG = sin(abs(compYH) * M_PI / 180) * gtmag;
-		pG = l.gx - sin(abs(compYH) * M_PI / 180) * gtmag;
-		
-		const float compRatio2 = 0.003	;
-		const float driftCorrCoeff = pow(1 - compRatio2, 200) * 7;
-		pitchRaw += pG * dt;
-		//pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2/2) + (gpsPitch  * compRatio2/2);
-		//pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (accelPitch  * compRatio2) ;
-		pitchComp = (pitchComp + pG * dt) * (1-compRatio2) + (l.g5Pitch  * compRatio2) ;
-				
-		if (tick10HZ) { 
-			pitchDriftFit.add(l.sec, pitchComp - pitchRaw);
-			pitchDrift = pitchDriftFit.slope();
-		}
-		pitchCompDriftCorrected = pitchComp;
-		//pitchCompDriftCorrected += pitchDrift * driftCorrCoeff;
-	
+			
 		avgRoll.add(compYH);
-		//magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 250;
 
-		if (magHdg < 0) magHdg += 360;
-		
-		
-		if (0) { 
-			const float dip = -62;
-			float x = sin(magHdg/180*M_PI);
-			float y = cos(magHdg/180*M_PI);
-			float z = sin(dip/180*M_PI);
-			float roll = -compYH/180*M_PI; //-avgRoll.average()/180*M_PI;
-			float y1 = y * cos(roll) - z * sin(roll);
-			magHdg = atan2(x, y1) / M_PI * 180;
-		}
-		
+		// TODO replace this kinda-help heuristic until we get proper dip correction 
+		magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 150;
 
+		if (magHdg < 0) magHdg += 360;		
 		magHdg360 = magHdg;
 		if (1) { 
 			static int skipped = 0;
@@ -406,7 +326,6 @@ public:
 	
 	void reset() {
 		pitchRaw = pitchComp = 0;
-		pitchDriftFit.reset();
 	}
 };
 
