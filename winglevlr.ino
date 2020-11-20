@@ -195,16 +195,19 @@ bool imuRead() {
 		x.my = imu.calcMag(imu.my);
 		x.mz = imu.calcMag(imu.mz);
 #else
+#ifdef USE_ACCEL
 		imu.accelUpdate();
-		imu.gyroUpdate();
-		imu.magUpdate();
-
 		x.ax = imu.accelX();
 		x.ay = imu.accelY();
 		x.az = imu.accelZ();
+#endif
+
+		imu.gyroUpdate();
 		x.gx = imu.gyroX();
 		x.gy = imu.gyroY();
 		x.gz = imu.gyroZ();
+
+		imu.magUpdate();
 		x.mx = imu.magX();
 		x.my = imu.magY();
 		x.mz = imu.magZ();
@@ -214,7 +217,8 @@ bool imuRead() {
 		return true;
 	} else { 
 		AhrsInput &x = ahrsInput;
-		x.ax = x.gx = x.mx = -1;
+		x.gx = x.mx = -1;
+		// x.ax = -1;
 	}
 	return false;
 }
@@ -682,7 +686,7 @@ void loop() {
 		else if (hdgSelect == 2) ahrsInput.gpsTrack = ahrsInput.gpsTrackGDL90;
 		else if (hdgSelect == 3) ahrsInput.gpsTrack = ahrs.magHdg;
 		
-		if (floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
+		if (false && floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pset = 0;
 			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - pset, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
 			float trimCmd = ed.tzer.value - pCmd;
