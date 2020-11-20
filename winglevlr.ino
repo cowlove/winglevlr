@@ -68,8 +68,8 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), navPID(50); /*20Hz*/
-PidControl *knobPID = &navPID;
+PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(200); /*20Hz*/
+PidControl *knobPID = &hdgPID;
 static int servoTrim = 1325;
 
 WiFiUDP udpSL30;
@@ -115,7 +115,7 @@ namespace Display {
 	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<float>    obs(&jd,70,y,    " OBS:", "%05.1f ");
 	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%05d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  maghdg(&jd,70,y,  " MAG:", "%05.1f ");
-	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    " RLL:", "%+05.1f ");
+	JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
@@ -361,9 +361,12 @@ void setup() {
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	navPID.setGains(0.12, 0.00, 0.04);
-	navPID.maxerr.i = 20;
-	navPID.finalGain = 2.2;
+	hdgPID.setGains(0.12, 0.00, 0.04);
+	hdgPID.maxerr.i = 20;
+	hdgPID.finalGain = 2.2;
+	xtePID.setGains(50, 1, 5);
+	xtePID.maxerr.i = 30.0;
+	xtePID.finalGain = 1.0;
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
 	pitchPID.finalGain = 0.2;
 	pitchPID.maxerr.i = .5;
@@ -498,9 +501,10 @@ void pitchTrimRelay(int relay, int ms) {
 
 void setKnobPid(int f) { 
 	Serial.printf("Knob PID %d\n", f);
-	if      (f == 0) { knobPID = &navPID; }
+	if      (f == 0) { knobPID = &hdgPID; }
 	else if (f == 1) { knobPID = &rollPID; }
-	else if (f == 2) { knobPID = &pitchPID; }
+	else if (f == 2) { knobPID = &xtePID; }
+	else if (f == 3) { knobPID = &pitchPID; }
 	
 	ed.pidp.setValue(knobPID->gain.p);
 	ed.pidi.setValue(knobPID->gain.i);
@@ -515,6 +519,7 @@ static bool testTurnAlternate = false;
 static float testTurnLastTurnTime = 0;
 static RollingAverage<float,5> crossTrackError;
 static RollingAverage<float,10> windCorrectionAngle;
+static float xteCorrection = 0;
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
@@ -537,7 +542,7 @@ void loop() {
 	static uint64_t lastLoop = micros();
 	static int armServo = 0;
 	static TwoStageRollingAverage<int,40,40> loopTime;
-	static EggTimer serialReportTimer(200), navPIDTimer(50), buttonCheckTimer(10);
+	static EggTimer serialReportTimer(200), hdgPIDTimer(50), buttonCheckTimer(10);
 	static bool selEditing = false;
 	static int pwmOutput = 0, servoOutput = 0;
 	static float roll = 0, pitch = 0;
@@ -632,7 +637,7 @@ void loop() {
 			if (butFilt4.wasLong && butFilt4.wasCount == 1) {			// LONG: arm servos
 				armServo = !armServo; 
 				rollPID.reset();
-				navPID.reset();
+				hdgPID.reset();
 				pitchPID.reset();
 				ahrs.reset();
 			}
@@ -719,23 +724,24 @@ void loop() {
 
 		pwmOutput = 0;
 		if (1 /*ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0*/) { // hold down button to override and make servo work  
-			if (ahrsInput.dtk != -1) {
-				float xteCorrection = 0;
+			if (hdgPIDTimer.tick() && ahrsInput.dtk != -1) {
 				if (apMode == 4) {
-					xteCorrection = max(-20.0, min(20.0, crossTrackError.average() * -50.0));
-				} 
+					xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+					xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+				} else { 
+					xteCorrection = 0;
+				}
 				double hdgErr = 0;
-				if (ahrs.valid() != false && ahrsInput.gpsTrack != -1) {
+				if (ahrs.valid() != false && ahrsInput.gpsTrack != -1) { // gpsTrack is misnomer if headingSel is set to magHdg
 					hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk + xteCorrection);
 					currentHdg = ahrsInput.gpsTrack;
 				} else { 
 					// lost course guidance, just keep current heading
 					hdgErr = 0;
 				}
-				if (navPIDTimer.tick()) {
-					desRoll = -navPID.add(hdgErr, currentHdg, ahrsInput.sec);
-					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
-				}
+				desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
+				desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
+				
 			} else {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}
@@ -752,13 +758,13 @@ void loop() {
 		}
 		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
-		logItem.pidP = navPID.err.p;
-		logItem.pidI = navPID.err.i;
-		logItem.pidD = navPID.err.d;
-		logItem.finalGain = navPID.finalGain;
-		logItem.gainP = navPID.gain.p;
-		logItem.gainI = navPID.gain.i;
-		logItem.gainD = navPID.gain.d;
+		logItem.pidP = hdgPID.err.p;
+		logItem.pidI = hdgPID.err.i;
+		logItem.pidD = hdgPID.err.d;
+		logItem.finalGain = hdgPID.finalGain;
+		logItem.gainP = hdgPID.gain.p;
+		logItem.gainI = hdgPID.gain.i;
+		logItem.gainD = hdgPID.gain.d;
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
@@ -816,7 +822,8 @@ void loop() {
 		Display::maghdg = (float)ahrs.magHdg;
 		Display::rmc = (float)gpsTrackRMC; 
 		Display::roll = roll; 
-		Display::pitc = pitch; 
+		//Display::pitc = pitch;
+		Display::xtec = xteCorrection; 
 		Display::log = logFilename.c_str();
 		Display::roll.setInverse(false, (logFile != NULL));
 		
@@ -873,8 +880,8 @@ void loop() {
 				index = 0;
 				float f;
 				int relay, ms;
-				if (sscanf(line, "navhi=%f", &f) == 1) { navPID.hiGain.p = f; }
-				else if (sscanf(line, "navtr=%f", &f) == 1) { navPID.hiGainTrans.p = f; }
+				if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
+				else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
 				else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
 				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
 				else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
@@ -962,7 +969,7 @@ void loop() {
 				gpsFixes++;
 			}
 			if (desiredHeading.isUpdated()) { 
-				navDTK = 0.01 * gps.parseDecimal(desiredHeading.value()) - windCorrectionAngle.average();
+				navDTK = 0.01 * gps.parseDecimal(desiredHeading.value());// - windCorrectionAngle.average();
 				if (navDTK < 0)
 					navDTK += 360;
 				if (canMsgCount.isValid() == false) {
