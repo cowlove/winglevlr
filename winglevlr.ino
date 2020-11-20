@@ -93,6 +93,9 @@ LongShortFilter butFilt2(1500,600);
 LongShortFilter butFilt3(1500,600);
 LongShortFilter butFilt4(1500,600);
 
+
+void setKnobPid(int f); 
+
 void buttonISR() { 
 	button.check();
 	button2.check();
@@ -111,7 +114,7 @@ namespace Display {
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
 	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<float>    obs(&jd,70,y,    " OBS:", "%05.1f ");
 	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%05d ");
-	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  vtg(&jd,70,y,    " VTG:", "%05.1f ");
+	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  maghdg(&jd,70,y,  " MAG:", "%05.1f ");
 	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
 
@@ -120,7 +123,7 @@ namespace Display {
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> ttsc(&jd,70,y,    "TTSC:", "%04.0f ");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> ttde(&jd,70,y,    "TTDE:", "%04.0f ");;
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> mtin(&jd,70,y,    "MTIN:", "%03.1f ");
+	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> pidsel(&jd,70,y,    " PID:", "%1.0f ");
 }
 
 void ESP32sim_JDisplay_forceUpdate() { 
@@ -269,7 +272,7 @@ public:
 	JDisplayEditableItem ttde = JDisplayEditableItem(&Display::ttde, 1);
 	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);;
 	JDisplayEditableItem pidg = JDisplayEditableItem(NULL, .1);
-	JDisplayEditableItem mtin = JDisplayEditableItem(&Display::mtin, .1);
+	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 3);
 	
 	//MyEditor() : JDisplayEditor(26, 21) { // add in correct knob selection order
 	MyEditor() : JDisplayEditor(26, 0) { // add in correct knob selection order
@@ -280,7 +283,7 @@ public:
 		add(&ttsc);
 		add(&ttde);	
 		add(&maxb);
-		add(&mtin);
+		add(&pidsel);
 	}
 } ed;
 
@@ -369,16 +372,13 @@ void setup() {
 #ifndef UBUNTU
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
-	ed.pidp.value = knobPID->gain.p;
-	ed.pidi.value = knobPID->gain.i;
-	ed.pidd.value = knobPID->gain.d;
-	ed.pidl.value = knobPID->gain.l;
-	ed.pidg.value = knobPID->finalGain;
 	ed.maxb.value = 12;
 	ed.ttsc.value = 45; // seconds to make each test turn 
 	ed.ttde.value = 40; // degrees of each test turn 
 	ed.tzer.value = 1000;
-	ed.mtin.value = 10;
+	ed.pidsel.value = 0;
+	setKnobPid(ed.pidsel.value);
+	ed.update();
 	
 	//ed.rlhz.value = 3; // period for relay activation, in seconds
 	//ed.mnrl.value = 70;
@@ -496,6 +496,18 @@ void pitchTrimRelay(int relay, int ms) {
 	udpSendString(l);
 }
 
+void setKnobPid(int f) { 
+	Serial.printf("Knob PID %d\n", f);
+	if      (f == 0) { knobPID = &navPID; }
+	else if (f == 1) { knobPID = &rollPID; }
+	else if (f == 2) { knobPID = &pitchPID; }
+	
+	ed.pidp.setValue(knobPID->gain.p);
+	ed.pidi.setValue(knobPID->gain.i);
+	ed.pidd.setValue(knobPID->gain.d);
+	ed.pidl.setValue(knobPID->gain.l);
+	ed.pidg.setValue(knobPID->finalGain);
+}	
 	
 static int servoOverride = 0, pitchTrimOverride = -1;
 static bool testTurnActive = false;
@@ -566,7 +578,7 @@ void loop() {
 	}
 
 	//ed.re.check();
-	if (buttonCheckTimer.tick()) { 
+	if (true) { // (buttonCheckTimer.tick()) { 
 		//printMag(); 
 		buttonISR();
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
@@ -772,6 +784,11 @@ void loop() {
 		lastAhrsInput = ahrsInput;
 	}
 
+
+	if (ed.pidsel.changed()) {
+		setKnobPid(ed.pidsel.value);
+	}
+	
 	if (screenEnabled) { 
 		ed.update();
 		knobPID->gain.p = ed.pidp.value;
@@ -780,6 +797,8 @@ void loop() {
 		knobPID->gain.l = ed.pidl.value;
 		knobPID->finalGain = ed.pidg.value;
 	}
+
+
 	
 	if (screenEnabled && screenTimer.tick()) {
 		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
@@ -794,7 +813,7 @@ void loop() {
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)logActive; 
 		Display::gdl = (float)gpsTrackGDL90;
-		Display::vtg = (float)gpsTrackVTG;
+		Display::maghdg = (float)ahrs.magHdg;
 		Display::rmc = (float)gpsTrackRMC; 
 		Display::roll = roll; 
 		Display::pitc = pitch; 
@@ -864,28 +883,15 @@ void loop() {
 				else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
 				//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
-				else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
+				//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
 				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
 				else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
-				else if (sscanf(line, "knob=%f", &f) == 1) {
-					if (f == 1) {
-						knobPID = &pitchPID;
-					} else if (f == 2) { 
-						knobPID = &rollPID;
-					} else if (f == 3) { 
-						knobPID = &navPID;
-					}
-				} else {
+				else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
+				else {
 					Serial.printf("UNKNOWN COMMAND: %s", line);
 				}
-				// in case we changed the PID values or the knob selection 
-				ed.pidp.value = knobPID->gain.p;
-				ed.pidi.value = knobPID->gain.i;
-				ed.pidd.value = knobPID->gain.d;
-				ed.pidl.value = knobPID->gain.l;
-				ed.pidg.value = knobPID->finalGain;
 
 				//Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
 				//printMag();

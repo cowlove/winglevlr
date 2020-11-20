@@ -638,10 +638,19 @@ class JDisplayEditableItem {
 protected:
 	JDisplayItemBase *di; 
 public:
-	float value, newValue, increment;
-	enum { UNSELECTED, SELECTED, EDITING } state;
-	JDisplayEditableItem(JDisplayItemBase *i, float inc) : di(i), increment(inc) {
+	bool recentChange = false;
+	bool changed() { 
+		if (recentChange) {
+			recentChange = false;
+			return true;
+		}
+		return false;
 	}
+	float value, newValue, increment;
+	float min, max;
+	enum { UNSELECTED, SELECTED, EDITING } state;
+	JDisplayEditableItem(JDisplayItemBase *i, float inc, float mi = -100000, float ma = +10000) : 
+		di(i), increment(inc), min(mi), max(ma) {}
 	void update() {
 		if (di == NULL)
 			return;
@@ -654,6 +663,10 @@ public:
 		}
 		di->update(false);
 	};
+	void setValue(float v) { 
+		value = v;
+		update();
+	}
 };
 
 inline void JDisplayEditor::negateSelectedValue() { 
@@ -679,23 +692,29 @@ inline void JDisplayEditor::update() {
 		items[selectedItem]->newValue = items[selectedItem]->value + re.value * items[selectedItem]->increment;
 		items[selectedItem]->update();
 	}
+	//for(int n = 0; n < items.size(); n++) 
+	//	items[n]->update();
 }
 			
 inline void JDisplayEditor::buttonPress(bool longpress) { 
 	if (!editing) { 
 		editing = true;
 		selectedItem = re.value;
-		items[selectedItem]->state = JDisplayEditableItem::EDITING;
-		items[selectedItem]->newValue = items[selectedItem]->value;
-		items[selectedItem]->update();
-		re.limMin = -10000;
-		re.limMax = +10000;
+		JDisplayEditableItem *it = items[selectedItem];
+		it->state = JDisplayEditableItem::EDITING;
+		it->newValue = it->value;
+		it->update();
+		re.limMin = (it->min - it->value) / it->increment;
+		re.limMax = (it->max - it->value) / it->increment;
 		re.wrap = false;
 		re.value = 0;
 	} else { 
 		editing = false;
-		if (longpress == false) 
+		if (longpress == false) { 
+			if (items[selectedItem]->newValue != items[selectedItem]->value) 
+				items[selectedItem]->recentChange = true;
 			items[selectedItem]->value = items[selectedItem]->newValue;
+		}
 		items[selectedItem]->state = JDisplayEditableItem::SELECTED;
 		re.limMin = 0;
 		re.limMax = items.size() - 1;
