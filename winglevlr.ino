@@ -362,12 +362,12 @@ void setup() {
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	hdgPID.setGains(0.12, 0.00, 0.04);
+	hdgPID.setGains(0.12, 0.01, 0.04);
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 2.2;
-	xtePID.setGains(50, 1, 5);
+	xtePID.setGains(5.0, 0.01, 0.5);
 	xtePID.maxerr.i = 30.0;
-	xtePID.finalGain = 1.0;
+	xtePID.finalGain = 10.0;
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
 	pitchPID.finalGain = 0.2;
 	pitchPID.maxerr.i = .5;
