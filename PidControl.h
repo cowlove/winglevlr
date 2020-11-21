@@ -60,6 +60,7 @@ public:
 		histMeasurement.reset();
         starttime = 0;
         corr = 0;
+        i = 0;
     }
     
     PidControl(int histSize, int cSize = 1, String name = "") : histError(histSize), histMeasurement(histSize), histCorrection(cSize) { 
