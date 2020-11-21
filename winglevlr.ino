@@ -123,7 +123,7 @@ namespace Display {
 	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> ttsc(&jd,70,y,    "TTSC:", "%04.0f ");
 	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> ttde(&jd,70,y,    "TTDE:", "%04.0f ");;
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float> pidl(&jd,10,y+=10,"   L:", "%04.2f "); JDisplayItem<float> pidsel(&jd,70,y,    " PID:", "%1.0f ");
+	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.2f "); JDisplayItem<float> pidsel(&jd,70,y,    " PID:", "%1.0f ");
 }
 
 void ESP32sim_JDisplay_forceUpdate() { 
@@ -263,15 +263,15 @@ void printMag() {
 
 class MyEditor : public JDisplayEditor {
 public:
-	JDisplayEditableItem pidp = JDisplayEditableItem(&Display::pidp, .01);
-	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
-	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
-	JDisplayEditableItem pidl = JDisplayEditableItem(&Display::pidl, .01);
+	JDisplayEditableItem pidp = JDisplayEditableItem(&Display::pidp, .1);
+	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .01);
+	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .1);
+	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
+	JDisplayEditableItem pidl = JDisplayEditableItem(NULL, .1);
 	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
 	JDisplayEditableItem ttsc = JDisplayEditableItem(&Display::ttsc, 1);
 	JDisplayEditableItem ttde = JDisplayEditableItem(&Display::ttde, 1);
-	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);;
-	JDisplayEditableItem pidg = JDisplayEditableItem(NULL, .1);
+	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
 	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 3);
 	
 	//MyEditor() : JDisplayEditor(26, 21) { // add in correct knob selection order
@@ -280,6 +280,7 @@ public:
 		add(&pidi);	
 		add(&pidd);	
 		add(&pidl);	
+		add(&pidg);	
 		add(&ttsc);
 		add(&ttde);	
 		add(&maxb);
@@ -724,30 +725,31 @@ void loop() {
 
 		pwmOutput = 0;
 		if (1 /*ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0*/) { // hold down button to override and make servo work  
-			if (hdgPIDTimer.tick() && ahrsInput.dtk != -1) {
-				if (apMode == 4) {
-					xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
-					xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
-				} else { 
-					xteCorrection = 0;
-				}
-				double hdgErr = 0;
-				if (ahrs.valid() != false && ahrsInput.gpsTrack != -1) { // gpsTrack is misnomer if headingSel is set to magHdg
-					hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk + xteCorrection);
-					currentHdg = ahrsInput.gpsTrack;
-				} else { 
-					// lost course guidance, just keep current heading
-					hdgErr = 0;
-				}
-				desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
-				desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
-				
-			} else {
-				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
-			}
+			if (hdgPIDTimer.tick()) {
+				if (ahrsInput.dtk != -1) { 
+					if (apMode == 4) {
+						xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+						xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+					} else { 
+						xteCorrection = 0;
+					}
+					double hdgErr = 0;
+					if (ahrs.valid() != false && ahrsInput.gpsTrack != -1) { // gpsTrack is misnomer if headingSel is set to magHdg
+						hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk - xteCorrection);
+						currentHdg = ahrsInput.gpsTrack;
+					} else { 
+						// lost course guidance, just keep wings level by leaving currentHdg unchanged and no error 
+						hdgErr = 0;
+					}
+					desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
+					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
+				} else {
+					desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
+				}				
+			} 
 
 			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-			//Serial.printf("%05.2f %05.2f %04d\n", desRoll, roll);
+
 			if (armServo) {  
 				servoOutput = servoTrim + rollPID.corr;
 				if (servoOverride > 0)

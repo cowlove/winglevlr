@@ -5,7 +5,7 @@
 using namespace std;
 
 
-#undef USE_ACCEL
+#define USE_ACCEL
 
 struct AhrsInput { 
 	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y;
@@ -159,6 +159,7 @@ public:
 		
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
+	RollingAverage<float,50> avgGZ;
 	
 	TwoStageRLS 
 		magZFit = TwoStageRLS(20, 60),
@@ -224,8 +225,9 @@ public:
 			l.gz -= gyrOffZ;
 			l.gy -= gyrOffY;
 		}
+		avgGZ.add(l.gz);
 		
-	   magHdg = atan(l.my/l.mx) * 180 / M_PI;
+		magHdg = atan(l.my/l.mx) * 180 / M_PI;
 		if (l.mx < 0) 
 			magHdg += 180;
 
@@ -284,9 +286,11 @@ public:
 		const float compRatio1 = 0.0012	;
 		const float driftCorrCoeff1 = pow(1 - compRatio1, 200) * 7;
 		
-		float zgyrBankAngle = atan(l.gz * tas / 1091) * 180/M_PI;
+		float zgyrBankAngle = atan(avgGZ.average() * tas / 1091) * 180/M_PI;
 		bankAngle = (isnan(zgyrBankAngle) ? 0 : zgyrBankAngle);
-		bankAngle = max(-20.0, min(20.0, (double)bankAngle));
+		bankAngle *= 1.00;
+		//bankAngle = max(-30.0, min(30.0, (double)bankAngle));
+		//bankAngle = max(avgRoll.average() - 20.0, min(avgRoll.average() + 20.0, (double)bankAngle));
 		//bankAngle =0;
 	
 		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio1) + (bankAngle * compRatio1);
