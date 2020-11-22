@@ -99,13 +99,14 @@ class RollAHRS {
 		  magOffZ = (-82 + 32) / 2; // + is up
 */
 
-	float magOffX = 15,//(-30.0 + 10) / 2,  // + is to the rear  
-		  magOffY = 8,//(33 + 72) / 2 - 3, //  + is left
-		  magOffZ = (-82 + 32) / 2; // + is up
+	float magOffX = 15.4,//(-30.0 + 10) / 2,  // + is to the rear  
+		  magOffY = 8.6,//(33 + 72) / 2 - 3, //  + is left
+		  magOffZ = -30;//(-82 + 32) / 2; // + is up
 
 
 	float magScaleX = (10.0 - (-30.0)) / 100.0;
 	float magScaleY = (72.0 - 33.0) / 100.0;
+	float magScaleZ = 1.0;
 	
 	
 //ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
@@ -174,7 +175,7 @@ public:
 	float compR = 0, compYH =0, rollG = 0;
 	float gyroDrift = 0;
 	float gpsPitch = 0, accelPitch = 0;
-	float lastGz;
+	float lastGz, magCorr = 0;
 	bool valid() { 
 		return prev.gpsTrack != -1;
 	}
@@ -208,7 +209,7 @@ public:
 		
 		l.mx = (l.mx - magOffX) / magScaleX;
 		l.my = (l.my - magOffY) / magScaleY;
-		l.mz = -l.mz + magOffZ;
+		l.mz = (l.mz - magOffZ) / magScaleZ;
 	
 #ifdef USE_ACCEL
 		l.ax -= accOffX;
@@ -227,9 +228,7 @@ public:
 		}
 		avgGZ.add(l.gz);
 		
-		magHdg = atan(l.my/l.mx) * 180 / M_PI;
-		if (l.mx < 0) 
-			magHdg += 180;
+		magHdg = atan2(l.my, l.mx) * 180 / M_PI;
 
 #if 0
 		// calculate bank from magnetic dip effect
@@ -308,8 +307,22 @@ public:
 		avgRoll.add(compYH);
 
 		// TODO replace this kinda-help heuristic until we get proper dip correction 
-		magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 150;
+		//magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 150;
 
+		// recalculate magHdg w/ bank correction 
+		// scoring the ra coefficnet with quartile-quartile metric: ./loglook.sh 112 -q3 -range '[50:100]' -stats 21
+		// off=36, 1.0=29 2.0=23, 4.0=19, 5.0=18, 6.0=22
+		float ra = 4.0 * avgRoll.average() / 180 * M_PI;   
+		float my1 = l.my * cos(ra) + l.mz * sin(ra);		
+		float magHdg2 = atan2(my1, l.mx) * 180 / M_PI;
+
+		//magCorr = magHdg2 - magHdg;		
+		magCorr = l.g5Hdg - magHdg2;
+		if (magCorr > 180) magCorr -= 360;
+		if (magCorr < -180) magCorr += 360;
+
+		magHdg = magHdg2;
+		
 		if (magHdg < 0) magHdg += 360;		
 		magHdg360 = magHdg;
 		if (1) { 

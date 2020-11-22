@@ -253,7 +253,7 @@ void printMag() {
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcAccel(imu.ax), (float)imu.calcAccel(imu.ay), (float)imu.calcAccel(imu.az) );
 #else
-      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.gyroX(), (float)imu.gyroY(), (float)imu.gyroZ() );
+//      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.gyroX(), (float)imu.gyroY(), (float)imu.gyroZ() );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.magX(), (float)imu.magY(), (float)imu.magZ() );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.accelX(), (float)imu.accelY(), (float)imu.accelZ() );
 #endif
@@ -585,7 +585,7 @@ void loop() {
 
 	//ed.re.check();
 	if (true) { // (buttonCheckTimer.tick()) { 
-		//printMag(); 
+		printMag(); 
 		buttonISR();
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
@@ -771,7 +771,7 @@ void loop() {
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
 		logItem.ai = ahrsInput;
-		logItem.ai.q3 = 
+		logItem.ai.q3 = ahrs.magCorr; 
 			//ahrs.magStability; 
 			//ahrs.bankAngle; 
 			//ahrs.lastGz;
@@ -988,8 +988,4 @@ void loop() {
 			}
 		}
 	}
-}
-
-float ESP32sim_getPitchCmd() { 
-	return logItem.pitchCmd;
 }
