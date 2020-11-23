@@ -253,7 +253,7 @@ void printMag() {
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcAccel(imu.ax), (float)imu.calcAccel(imu.ay), (float)imu.calcAccel(imu.az) );
 #else
-//      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.gyroX(), (float)imu.gyroY(), (float)imu.gyroZ() );
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.gyroX(), (float)imu.gyroY(), (float)imu.gyroZ() );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.magX(), (float)imu.magY(), (float)imu.magZ() );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.accelX(), (float)imu.accelY(), (float)imu.accelZ() );
 #endif
@@ -263,9 +263,9 @@ void printMag() {
 
 class MyEditor : public JDisplayEditor {
 public:
-	JDisplayEditableItem pidp = JDisplayEditableItem(&Display::pidp, .1);
-	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .01);
-	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .1);
+	JDisplayEditableItem pidp = JDisplayEditableItem(&Display::pidp, .01);
+	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
+	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
 	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
 	JDisplayEditableItem pidl = JDisplayEditableItem(NULL, .1);
 	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
@@ -295,6 +295,7 @@ bool bApplicationIdleHook() {
 }
 #endif
 
+void DisplayUpdateThread(void *); 
 
 static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
 
@@ -393,6 +394,17 @@ void setup() {
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
 
 	ArduinoOTA.begin();
+
+#ifndef UBUNTU	
+	xTaskCreate(
+			DisplayUpdateThread,       /* Function that implements the task. */
+			"DisplayUpdateThread",          /* Text name for the task. */
+			8192,      /* Stack size in words, not bytes. */
+			NULL,    /* Parameter passed into the task. */
+			tskIDLE_PRIORITY,/* Priority at which the task is created. */
+			NULL );      /* Used to pass out the created task's handle. */
+
+#endif 
 }
 
 
@@ -524,30 +536,32 @@ static float xteCorrection = 0;
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
+static float navDTK = -1;
+static bool logActive = false;
+static float roll = 0, pitch = 0;
+static String logFilename("none");
+static int pwmOutput = 0, servoOutput = 0;
+static TwoStageRollingAverage<int,40,40> loopTime;
+static EggTimer serialReportTimer(200), hdgPIDTimer(50), loopTimer(5), buttonCheckTimer(10);
+static int armServo = 0;
+static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
+static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
+static float obs = -1, lastObs = -1;
+static bool screenReset = false, screenEnabled = true;
+
+
 
 void loop() {
 	uint16_t len;
 	static int ledOn = 0;
 	static int manualRelayMs = 60;
 	static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
-	static int buildNumber = 12;
-	static int mavBytesIn = 0;
-	static char lastParam[64];
-	static int lastHdg;
-	static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-	static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
-	static float obs = -1, lastObs = -1;
-	static float navDTK = -1;
-	static bool logActive = false;
-	static bool screenEnabled = true;
+	//static int buildNumber = 12;
+	//static int mavBytesIn = 0;
+	//static char lastParam[64];
+	//static int lastHdg;
 	static uint64_t lastLoop = micros();
-	static int armServo = 0;
-	static TwoStageRollingAverage<int,40,40> loopTime;
-	static EggTimer serialReportTimer(200), hdgPIDTimer(50), buttonCheckTimer(10);
 	static bool selEditing = false;
-	static int pwmOutput = 0, servoOutput = 0;
-	static float roll = 0, pitch = 0;
-	static String logFilename("none");
 	
 	esp_task_wdt_reset();
 	ArduinoOTA.handle();
@@ -567,6 +581,9 @@ void loop() {
 	delayMicroseconds(1);
 	//yield();
 	
+	if (!loopTimer.tick())
+		return;
+		
 	uint64_t now = micros();
 	double nowSec = millis() / 1000.0;
 	
@@ -574,18 +591,21 @@ void loop() {
 	lastLoop = now;
 	PidControl *pid = &rollPID;
 	if (true && serialReportTimer.tick()) {
-		Serial.printf("%06.3f R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f but %d%d%d%d loop %d/%d/%d heap %d re.count %d\n", 
-			millis()/1000.0, roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, 
-			crossTrackError.average()
-			,digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), 
-			(int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count
+		Serial.printf(
+			"%06.3f "
+			//"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f "
+			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d\n", 
+			millis()/1000.0, 
+			//roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, crossTrackError.average(),
+			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count,
+			0
 		);
 		serialLogFlags = 0;
 	}
 
 	//ed.re.check();
 	if (true) { // (buttonCheckTimer.tick()) { 
-		printMag(); 
+		//printMag(); 
 		buttonISR();
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
@@ -604,7 +624,8 @@ void loop() {
 		}
 		if (butFilt2.newEvent()) { // BOTTOM or LEFT button
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {	// LONG: zero AHRS sensors
-				ahrs.zeroSensors();
+				//ahrs.zeroSensors();
+				screenReset = true;
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	// SHORT: arm servo
 				desiredTrk = angularDiff(desiredTrk + 10);
@@ -621,14 +642,6 @@ void loop() {
 			}
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {		// LONG: stop/start logging
 				logActive = !logActive;
-				if (logActive == true) {
-					screenEnabled = false;
-					Display::jd.clear();
-				} else {
-					screenEnabled = true;
-					Display::jd.begin();
-					Display::jd.forceUpdate();
-				}
 			}
 		}
 		if (butFilt4.newEvent()) { 	// main knob button
@@ -660,17 +673,6 @@ void loop() {
 	}
 	
 	
-	if (logActive == true && logFile == NULL) {
-		logFile = new SDCardBufferedLog<LogItem>(logFileName, 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
-		logFilename = logFile->currentFile;
-		Serial.printf("Opened log file '%s'\n", logFile->currentFile.c_str());
-	} 
-	if (logActive == false && logFile != NULL) {
-		Serial.printf("Closing log file '%s'\n", logFile->currentFile.c_str());
-		delete logFile;
-		logFile = NULL;
-		Serial.printf("Closed\n");
-	}
 
 #ifndef UBUNTU
 	// TODO - stale/changed data not set by logfile playback
@@ -792,7 +794,6 @@ void loop() {
 		lastAhrsInput = ahrsInput;
 	}
 
-
 	if (ed.pidsel.changed()) {
 		setKnobPid(ed.pidsel.value);
 	}
@@ -804,15 +805,6 @@ void loop() {
 		knobPID->gain.d = ed.pidd.value;
 		knobPID->gain.l = ed.pidl.value;
 		knobPID->finalGain = ed.pidg.value;
-	}
-
-
-	
-	if (screenEnabled && screenTimer.tick()) {
-		Display::mode.color.vb = (apMode == 4) ? ST7735_RED : ST7735_GREEN;
-		Display::mode.color.vf = ST7735_BLACK;
-		//Display::roll.color.vf = ST7735_RED;
-		//Display::pitc.color.vf = ST7735_RED;
 
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = desiredTrk; 
@@ -824,13 +816,10 @@ void loop() {
 		Display::maghdg = (float)ahrs.magHdg;
 		Display::rmc = (float)gpsTrackRMC; 
 		Display::roll = roll; 
-		//Display::pitc = pitch;
+		//Display::pitch = pitch;
 		Display::xtec = xteCorrection; 
 		Display::log = logFilename.c_str();
-		Display::roll.setInverse(false, (logFile != NULL));
-		
-		//Display::pidc = pid.corr;
-		//Display::serv = pwmOutput;
+		Display::log.setInverse(false, (logFile != NULL));
 	}
 	
 	if (blinkTimer.tick()) 
@@ -987,5 +976,44 @@ void loop() {
 				crossTrackError.add(err);
 			}
 		}
+	}
+}
+
+
+
+void DisplayUpdateThread(void *) { 
+	Display::jd.forceUpdate();
+	ed.update();
+	
+	while(1) { 
+		delayMicroseconds(10000);		
+		if (screenReset) {
+			screenReset = false; 
+			Display::jd.begin();
+			Display::jd.forceUpdate();
+		}
+		if (screenEnabled) {
+			Display::jd.update(false);
+		}
+		if (logActive == true && logFile == NULL) {
+			delayMicroseconds(100000);
+			logFile = new SDCardBufferedLog<LogItem>(logFileName, 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+			logFilename = logFile->currentFile;
+			screenEnabled = true;
+		} 
+		if (logActive == false && logFile != NULL) {
+			SDCardBufferedLog<LogItem> *l = logFile;
+			logFile = NULL;
+			delayMicroseconds(50000);
+			delete l;
+			delayMicroseconds(500000);
+			screenReset = true;
+			screenEnabled = true;
+			
+		}
+		
+		//Display::pidc = pid.corr;
+		//Display::serv = pwmOutput;
+		//Display::jd.forceUpdate();
 	}
 }
