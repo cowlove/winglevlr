@@ -8,8 +8,9 @@ public:
 		uint64_t now = micros();
 		if (now - last >= interval * 1000) { 
 			last += interval * 1000;
-			//if (now - last >= interval * 1000) 
-			//	last = now + interval;
+			// reset last to now if more than one full interval behind 
+			if (now - last >= interval * 1000) 
+				last = now + interval;
 			return true;
 		} 
 		return false;
