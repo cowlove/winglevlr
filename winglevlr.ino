@@ -996,18 +996,17 @@ void DisplayUpdateThread(void *) {
 			Display::jd.update(false);
 		}
 		if (logActive == true && logFile == NULL) {
+			screenEnabled = false;
 			delayMicroseconds(100000);
 			logFile = new SDCardBufferedLog<LogItem>(logFileName, 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
 			logFilename = logFile->currentFile;
-			screenEnabled = true;
 		} 
 		if (logActive == false && logFile != NULL) {
 			SDCardBufferedLog<LogItem> *l = logFile;
 			logFile = NULL;
 			delayMicroseconds(50000);
 			delete l;
-			delayMicroseconds(500000);
-			screenReset = true;
+			delayMicroseconds(50000);
 			screenEnabled = true;
 			
 		}
