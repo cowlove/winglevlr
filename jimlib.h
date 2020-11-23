@@ -5,15 +5,17 @@ class EggTimer {
 public:
 	EggTimer(int ms) : interval(ms), last(0) { reset(); }
 	bool tick() { 
-		uint64_t now = millis();
-		if (now - last > interval) { 
-			last = now;
+		uint64_t now = micros();
+		if (now - last >= interval * 1000) { 
+			last += interval * 1000;
+			//if (now - last >= interval * 1000) 
+			//	last = now + interval;
 			return true;
 		} 
 		return false;
 	}
 	void reset() { 
-		last = millis();
+		last = micros();
 	}
 	void alarmNow() { 
 		last = 0;
@@ -118,8 +120,8 @@ public:
 		//Serial.printf("%d/%d %d/%d %d\n", buta, oa, butb, ob, delta );
 		
 		if (delta != 0) {
-			//if(lastChange > 0 && now - lastChange < 30)
-			//	delta *= 5;
+			if(lastChange > 0 && now - lastChange < 20)
+				delta *= 5;
 			lastChange = now;
 		}
 		value += delta;
@@ -431,7 +433,6 @@ void SDCardBufferedLogThread(void *p) {
 	((SDCardBufferedLog<T> *)p)->thread(); 
 }
 
-
 class ChangeTimer { 
 	public:
 	float lastVal = 0;
@@ -447,11 +448,6 @@ class ChangeTimer {
 		}
 	}
 };
-
-
-
-
-
 
 // JDisplay jd;
 // JDisplayItem<float> f1(&jd,10,10,"LABEL1:", "%+02.2f");
@@ -531,6 +527,7 @@ public:
 		items.push_back(i);
 	}
 	inline void forceUpdate();	
+	inline void update(bool update);	
 };
 
 
@@ -550,6 +547,7 @@ class JDisplayItemBase {
 	bool labelInverse = false, valueInverse = false;
 	bool first = true;
 public:
+	bool changed = false;
 	const char *label, *fmt;
 	JDisplay::Colors color;
 	JDisplayItemBase(JDisplay *d, int x, int y, const char *label, const char *fmt, JDisplay::Colors colors) {
@@ -564,20 +562,26 @@ public:
 			d->addItem(this);
 	}
 	void setInverse(bool li, bool vi) {
-		bool changed = (li != labelInverse || vi != valueInverse);
-		labelInverse = li;
-		valueInverse = vi;
-		update(changed);
+		if (li != labelInverse || vi != valueInverse) {
+			labelInverse = li;
+			valueInverse = vi;
+			changed = true;
+		}
+		//update(changed);
 	}
 	void update(bool force) {
 		if (d == NULL)
 			return;
 		if (first || ++updates % 1000 == 1) 
 			force = true;
+		if (changed) { 
+			force = true;
+			changed = false; 
+		}
 		first = false;
 		if (force)
 			d->printAt(x, y, label, labelInverse ? color.lb : color.lf , labelInverse ? color.lf : color.lb);
-		if (force || val != lastVal) { 
+		if (force || val != lastVal) {
 			d->printAt(x + 6 * strlen(label), y, val.c_str(), valueInverse ? color.vb : color.vf, valueInverse ? color.vf : color.vb);
 			lastVal = val;
 		}
@@ -587,14 +591,18 @@ public:
 		char buf[64];
 		sprintf(buf, fmt, v);
 		val = String(buf);
-		update(false);
+		//update(false);
 	}
 };
 
-inline void JDisplay::forceUpdate() { 
+inline void JDisplay::update(bool force) { 
 	for (std::vector<JDisplayItemBase *>::iterator it = items.begin(); it != items.end(); it++) { 
-		(*it)->update(true);
+		(*it)->update(force);
 	}
+}
+
+inline void JDisplay::forceUpdate() { 
+	update(true);
 }
 
 template<class T>
@@ -661,7 +669,7 @@ public:
 			di->setValue(value);
 			di->setInverse(state == SELECTED, false);
 		}
-		di->update(false);
+		//di->update(false);
 	};
 	void setValue(float v) { 
 		value = v;
