@@ -1,4 +1,34 @@
 
+class Mutex {
+	SemaphoreHandle_t xSem;
+ public:
+	Mutex() { 
+		xSem = xSemaphoreCreateCounting(1,1);
+		unlock();
+	}
+	void lock() { xSemaphoreTake(xSem, portMAX_DELAY); } 
+	void unlock() { xSemaphoreGive(xSem); }
+};
+
+class ScopedMutex {
+	Mutex &mutex; 
+  public:
+	ScopedMutex(Mutex &m) : mutex(m) { mutex.lock(); } 
+	~ScopedMutex() { mutex.unlock(); } 
+};
+
+
+class Semaphore { 
+	SemaphoreHandle_t xSem;
+ public:
+	Semaphore() { 
+		xSem = xSemaphoreCreateCounting(1,1);
+	}
+	void take() { xSemaphoreTake(xSem, portMAX_DELAY); } 
+	void give() { xSemaphoreGive(xSem); }
+};
+
+
 class EggTimer {
 	uint64_t last;
 	int interval; 
@@ -244,8 +274,12 @@ class DigitalButtonLongShort {
 };
 
 #ifdef ESP32
+// mutex to serialize SD card and TFT writes. 
+Mutex mutex;
+
 void open_TTGOTS_SD() { 
 	for (int retries = 0; retries < 2; retries++) { 	
+		ScopedMutex lock(mutex);
 		Serial.print("Initializing SD card...");
 		if (SD.begin(13, 15, 2, 14)) { 
 			Serial.println("initialization done.");
@@ -362,6 +396,7 @@ public:
 		if (strchr(filename, '%')) { // if filename contains '%', scan for existing files  
 			for(fileVer = 1; fileVer < 999; fileVer++) {
 				snprintf(fname, sizeof(fname), filename, fileVer);
+				ScopedMutex lock(mutex);
 				if (!(f = SD.open(fname, (F_READ)))) {
 					f.close();
 					break;
@@ -375,10 +410,12 @@ public:
 	void *thread() {
 		uint64_t lastWrite, startTime, lastFlush;
 		lastFlush = lastWrite = startTime = millis();
-
-		SD.remove((char *)currentFile.c_str());
-		msdFile f = SD.open((char *)currentFile.c_str(), (F_READ | F_WRITE | F_CREAT));
-		
+		msdFile f;
+		{
+			ScopedMutex lock(mutex);
+			SD.remove((char *)currentFile.c_str());
+			f = SD.open((char *)currentFile.c_str(), (F_READ | F_WRITE | F_CREAT));
+		}
 		//Serial.printf("Opened %s\n", fname);
 		while(!exitNow) { // TODO: doesn't flush queue before exiting 	
 			T v;
@@ -386,6 +423,7 @@ public:
 				if (!exitNow) {
 					uint64_t now = millis();
 					if (f) {
+						ScopedMutex lock(mutex);
 						if (textMode)  
 							f.println(v.toString());
 						else 
@@ -397,13 +435,17 @@ public:
 			}
 			uint64_t now = millis();
 			if (now - lastFlush >= flushInterval) {
-				if (f) 
+				if (f) {
+					ScopedMutex lock(mutex);
 					f.flush();
+				}
 				lastFlush = now;
 			}
 		}
-		if (f) 
+		if (f) {
+			ScopedMutex lock(mutex);
 			f.close();
+		}
 		exitNow = false;
 		Serial.printf("task out\n");
 		vTaskDelete(NULL);
@@ -473,9 +515,13 @@ class ChangeTimer {
 
 
 
+
+
+
 class JDisplayItemBase;
 class JDisplay {
 	std::vector<JDisplayItemBase *> items;
+	Semaphore changeSem;
 public:
 	static const struct Colors { 
 		int lf, lb, vf, vb; 
@@ -483,18 +529,23 @@ public:
 #ifndef UBUNTU 
 	Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 	void begin() { 
-		//pinMode(27,OUTPUT); 		//Backlight:27  TODO:JIM 27 appears to be an external pin 
-		//digitalWrite(27,HIGH);	//New version added to backlight control
-		tft.initR(INITR_18GREENTAB);                             // 1.44 v2.1
-		tft.fillScreen(ST7735_BLACK);                            // CLEAR
-		tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);           // GREEN
-		tft.setRotation(1);                                      // 
+		{
+			ScopedMutex lock(mutex);
+			//pinMode(27,OUTPUT); 		//Backlight:27  TODO:JIM 27 appears to be an external pin 
+			//digitalWrite(27,HIGH);	//New version added to backlight control
+			tft.initR(INITR_18GREENTAB);                             // 1.44 v2.1
+			tft.fillScreen(ST7735_BLACK);                            // CLEAR
+			tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);           // GREEN
+			tft.setRotation(1);                                      // 
+		}
 		forceUpdate();
 	}
-	void clear() { 
+	void clear() {
+		ScopedMutex lock(mutex);
 		tft.fillScreen(ST7735_BLACK);                            // CLEAR
 	}
 	void printAt(int x, int y, const char *s, int fg, int bg) { 
+		ScopedMutex lock(mutex);
 		tft.setTextColor(fg, bg); 
 		tft.setCursor(x, y);
 		tft.print(s);
@@ -523,6 +574,8 @@ public:
 		}
 	}
 #endif
+	void markChange() { changeSem.give(); } 
+	void waitChange() { changeSem.take(); }
 
 	void addItem(JDisplayItemBase *i) { 
 		items.push_back(i);
@@ -567,6 +620,7 @@ public:
 			labelInverse = li;
 			valueInverse = vi;
 			changed = true;
+			d->markChange();
 		}
 		//update(changed);
 	}
@@ -592,7 +646,8 @@ public:
 		char buf[64];
 		sprintf(buf, fmt, v);
 		val = String(buf);
-		//update(false);
+		if (lastVal != val) 
+			d->markChange();
 	}
 };
 
@@ -704,6 +759,8 @@ inline void JDisplayEditor::update() {
 	//for(int n = 0; n < items.size(); n++) 
 	//	items[n]->update();
 }
+
+
 			
 inline void JDisplayEditor::buttonPress(bool longpress) { 
 	if (!editing) { 

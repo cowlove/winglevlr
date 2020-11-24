@@ -578,7 +578,7 @@ void loop() {
 	}
 	
 	//vTaskDelay(1);
-	delayMicroseconds(1);
+	delayMicroseconds(20);
 	//yield();
 	
 	if (!loopTimer.tick())
@@ -593,10 +593,10 @@ void loop() {
 	if (true && serialReportTimer.tick()) {
 		Serial.printf(
 			"%06.3f "
-			//"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f "
+			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f "
 			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d\n", 
 			millis()/1000.0, 
-			//roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, crossTrackError.average(),
+			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, crossTrackError.average(),
 			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count,
 			0
 		);
@@ -985,8 +985,8 @@ void DisplayUpdateThread(void *) {
 	Display::jd.forceUpdate();
 	ed.update();
 	
-	while(1) { 
-		delayMicroseconds(10000);		
+	while(true) {
+		Display::jd.waitChange(); 
 		if (screenReset) {
 			screenReset = false; 
 			Display::jd.begin();
@@ -996,17 +996,17 @@ void DisplayUpdateThread(void *) {
 			Display::jd.update(false);
 		}
 		if (logActive == true && logFile == NULL) {
-			screenEnabled = false;
-			delayMicroseconds(100000);
+			//screenEnabled = false;
+			//delayMicroseconds(100000);
 			logFile = new SDCardBufferedLog<LogItem>(logFileName, 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
 			logFilename = logFile->currentFile;
 		} 
 		if (logActive == false && logFile != NULL) {
 			SDCardBufferedLog<LogItem> *l = logFile;
 			logFile = NULL;
-			delayMicroseconds(50000);
+			//delayMicroseconds(50000);
 			delete l;
-			delayMicroseconds(50000);
+			//delayMicroseconds(50000);
 			screenEnabled = true;
 			
 		}
@@ -1014,5 +1014,6 @@ void DisplayUpdateThread(void *) {
 		//Display::pidc = pid.corr;
 		//Display::serv = pwmOutput;
 		//Display::jd.forceUpdate();
+		delayMicroseconds(10);
 	}
 }
