@@ -13,6 +13,14 @@
 #include <algorithm>
 #include "RunningLeastSquares.h"
 
+
+typedef int SemaphoreHandle_t;
+int xSemaphoreCreateCounting(int, int) { return 0; } 
+int xSemaphoreGive(int) { return 0; } 
+int xSemaphoreTake(int, int) { return 0; }
+#define portMAX_DELAY 0 
+
+
 using namespace std;
 static uint64_t _micros = 0;
 uint64_t micros() { return ++_micros & 0xffffffff; }
