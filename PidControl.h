@@ -39,8 +39,7 @@ public:
     }
     PID err, gain, maxerr, hiGain, hiGainTrans;
     double finalGain = 1.0;
-    
-
+   
 	float calcGain(float err, float loGain, float hiGain, float transition) {
 		float c =  err * loGain;
 		if (hiGain > 0 && (abs(err) > transition))
@@ -98,5 +97,8 @@ public:
 	    histCorrection.add(time, corr / finalGain);
 	    return corr;
     }
+    
+    void resetI() { i = 0; } 
+    
 };
  

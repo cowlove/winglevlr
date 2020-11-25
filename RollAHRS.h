@@ -136,6 +136,7 @@ public:
 		TwoStageRollingAverage<float,20,20> ax,ay,az,gx,gy,gz;
 	} zeroAverages;
 
+
 	TwoStageRollingAverage<float,20,150>
 		gyrZOffsetFit,
 		gyrXOffsetFit,
@@ -152,7 +153,6 @@ public:
 		//accelPitchFit = RunningLeastSquares(100), 
 		//altFit = RunningLeastSquares(200), // 10Hz
 		//gpsHdgFit = RunningLeastSquares(200),  // TODO run GPS histories at lower rate 
-		magHdgFit = RunningLeastSquares(50), 
 		//magHdgRawFit = RunningLeastSquares(50),
 		//magMagnitudeFit = RunningLeastSquares(300),  
 		//magXyAngFit = RunningLeastSquares(10), 
@@ -163,11 +163,14 @@ public:
 		//dipBankFit = RunningLeastSquares(100),
 		//gyroTurnBankFit = RunningLeastSquares(100),
 		//pitchDriftFit = RunningLeastSquares(300),  // 10HZ
-		gyroDriftFit = RunningLeastSquares(300); // 10HZ 
+		//gyroDriftFit = RunningLeastSquares(300); // 10HZ 
+		magHdgFit = RunningLeastSquares(50);
+		
 		
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
 	RollingAverage<float,50> avgGZ;
+	RollingAverage<float,200> gyroZeroCount;
 	
 	TwoStageRLS 
 		magZFit = TwoStageRLS(20, 20),
@@ -252,9 +255,13 @@ public:
 					gyrZOffsetFit.add(zeroAverages.gz.average());
 					gyrXOffsetFit.add(zeroAverages.gx.average());
 					gyrYOffsetFit.add(zeroAverages.gy.average());
-					zeroSampleCount = (zeroSampleCount + 1) % 1000;
+					zeroSampleCount++;
 				}
 			}
+		}
+		if (tick10HZ) { 
+			gyroZeroCount.add(zeroSampleCount);
+			zeroSampleCount = 0;
 		}
 					
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
@@ -268,7 +275,7 @@ public:
 		if (count % 3217 == 0) { 
 			//gpsHdgFit.rebaseX();
 			magHdgFit.rebaseX();
-			gyroDriftFit.rebaseX();
+			//gyroDriftFit.rebaseX();
 		}
 
 		float tas = 100; // true airspeed in knots		
@@ -343,6 +350,9 @@ public:
 		return compYH;
 	}
 	
+	float getGyroQuality() {
+		return gyroZeroCount.average();
+	}
 	void reset() {
 		pitchRaw = pitchComp = 0;
 	}
