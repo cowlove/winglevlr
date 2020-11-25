@@ -256,7 +256,6 @@ public:
 				}
 			}
 		}
-		
 					
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
 		if (count > 0) { 	
