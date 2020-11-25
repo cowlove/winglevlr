@@ -92,10 +92,10 @@ public:
 
 template <class T, int SIZE1, int SIZE2>
 class TwoStageRollingAverage {
+public:
 	RollingAverage<T,SIZE1> stage1;
 	RollingAverage<T,SIZE2> stage2;
 	T maxs[SIZE2] = {0}, mins[SIZE2] = {0};
-public:
 
 	TwoStageRollingAverage() {}
 	void add(const T &v) {
@@ -107,6 +107,7 @@ public:
 			stage1.reset();
 		}
 	}
+
 	T min() { 
 		if (stage2.count < 1)
 			return stage1.min();

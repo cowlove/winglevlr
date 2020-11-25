@@ -99,10 +99,14 @@ class RollAHRS {
 		  magOffZ = (-82 + 32) / 2; // + is up
 */
 
+/*
 	float magOffX = 15.4,//(-30.0 + 10) / 2,  // + is to the rear  
 		  magOffY = 8.6,//(33 + 72) / 2 - 3, //  + is left
 		  magOffZ = -30;//(-82 + 32) / 2; // + is up
+*/
 
+	float magOffX = 20, magOffY = 40, magOffZ = -30;
+	
 
 	float magScaleX = (10.0 - (-30.0)) / 100.0;
 	float magScaleY = (72.0 - 33.0) / 100.0;
@@ -113,7 +117,7 @@ class RollAHRS {
 	
 	float gyrOffX = -0.87, 
 		  gyrOffY = -0.99, 
-		  gyrOffZ = +0.95;
+		  gyrOffZ = 1.1;
 		  
 	float accOffX = +0.171,
 		  accOffY = -0.856,
@@ -121,10 +125,12 @@ class RollAHRS {
 		  
 public:
 	RollAHRS() { 
+		gyrYOffsetFit.add(gyrOffY);
 		gyrZOffsetFit.add(gyrOffZ);
 		gyrXOffsetFit.add(gyrOffX);
 	}
 		
+	int zeroSampleCount = 0; 
 	float g5LastTimeStamp = 0; 
 	struct { 
 		TwoStageRollingAverage<float,20,20> ax,ay,az,gx,gy,gz;
@@ -132,7 +138,8 @@ public:
 
 	TwoStageRollingAverage<float,20,150>
 		gyrZOffsetFit,
-		gyrXOffsetFit;
+		gyrXOffsetFit,
+		gyrYOffsetFit;
 
 
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, /*bankCorrection,*/ bankAngle;
@@ -163,9 +170,9 @@ public:
 	RollingAverage<float,50> avgGZ;
 	
 	TwoStageRLS 
-		magZFit = TwoStageRLS(20, 60),
-		magXFit = TwoStageRLS(20, 60),
-		magYFit = TwoStageRLS(20, 60),
+		magZFit = TwoStageRLS(20, 20),
+		magXFit = TwoStageRLS(20, 20),
+		magYFit = TwoStageRLS(20, 20),
 		magHdgAvg = TwoStageRLS(20,20);
 		
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
@@ -219,7 +226,7 @@ public:
 	
 		if (gyrZOffsetFit.full()) { 
 			l.gx -= gyrXOffsetFit.average();
-			l.gy -= gyrOffY;
+			l.gy -= gyrYOffsetFit.average();
 			l.gz -= gyrZOffsetFit.average();
 		} else { 
 			l.gx -= gyrOffX;
@@ -230,23 +237,6 @@ public:
 		
 		magHdg = atan2(l.my, l.mx) * 180 / M_PI;
 
-#if 0
-		// calculate bank from magnetic dip effect
-		float magTotalMagnitude = sqrt(l.mx*l.mx + l.my*l.my + l.mz*l.mz);
-		float yzMagnitude = sqrt(l.my*l.my + l.mz*l.mz);
-		float xyMagnitude = sqrt(l.mx*l.mx + l.my*l.my);
-		float localDip = 62; //deg
-		float levelBankZComponent = sin(localDip * M_PI/180) * magTotalMagnitude;  // constant Z component at all level headings, due to dip
-		levelBankZComponent = min(levelBankZComponent, yzMagnitude);
-		float levelYZAngle = asin(levelBankZComponent / yzMagnitude) * 180 / M_PI;
-		float actualYZAngle = asin(l.mz / yzMagnitude) * 180 / M_PI;
-		dipBankAngle = actualYZAngle - levelYZAngle;
-		dipBankAngle2 = actualYZAngle - (180 - levelYZAngle);
-
-		magXyAngFit.add(l.sec, atan(l.my/l.mx));
-		magZAngFit.add(l.sec, atan(xyMagnitude/l.mz));
-#endif
-
 		//magMagnitudeFit.add(l.sec, magTotalMagnitude);
 		magZFit.add(l.sec, l.mz);
 		magXFit.add(l.sec, l.mx);
@@ -255,12 +245,14 @@ public:
 		if (magZFit.full()) {
 			magStabFit.add(abs(magZFit.slope()) + abs(magXFit.slope()) + abs(magYFit.slope()));
 			if (magStabFit.full()) {
-				magStability = min(5.0, (double)magStabFit.average()); 
-				const float stabThreshold = .2;
+				magStability = min(15.0, (double)magStabFit.average()); 
+				const float stabThreshold = 2.0;
 				if (magStability < stabThreshold) { 
 					//gyrZOffsetFit.add(l.sec, magZFit.stage1.averageY(), max(stabThreshold/2, (stabThreshold/2 - magStability)*100));
 					gyrZOffsetFit.add(zeroAverages.gz.average());
 					gyrXOffsetFit.add(zeroAverages.gx.average());
+					gyrYOffsetFit.add(zeroAverages.gy.average());
+					zeroSampleCount = (zeroSampleCount + 1) % 1000;
 				}
 			}
 		}
@@ -282,7 +274,7 @@ public:
 
 		float tas = 100; // true airspeed in knots		
 
-		const float compRatio1 = 0.0012	;
+		const float compRatio1 = 0.0003 ;
 		const float driftCorrCoeff1 = pow(1 - compRatio1, 200) * 7;
 		
 		float zgyrBankAngle = atan(avgGZ.average() * tas / 1091) * 180/M_PI;
@@ -299,7 +291,7 @@ public:
 			gyroDriftFit.add(l.sec, compR - rollG);
 			gyroDrift = gyroDriftFit.slope();
 		*/
-		compYH = compR + gyroDrift * driftCorrCoeff1;
+		compYH = compR;//+ gyroDrift * driftCorrCoeff1;
 		if (abs(bankAngle) < 4) {			
 			gyroDrift += (bankAngle - compYH) * 0.00001;
 		}
@@ -309,17 +301,27 @@ public:
 		// TODO replace this kinda-help heuristic until we get proper dip correction 
 		//magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 150;
 
-		// recalculate magHdg w/ bank correction 
-		// scoring the ra coefficnet with quartile-quartile metric: ./loglook.sh 112 -q3 -range '[50:100]' -stats 21
-		// off=36, 1.0=29 2.0=23, 4.0=19, 5.0=18, 6.0=22
-		float ra = 4.0 * avgRoll.average() / 180 * M_PI;   
-		float my1 = l.my * cos(ra) + l.mz * sin(ra);		
-		float magHdg2 = atan2(my1, l.mx) * 180 / M_PI;
-
+		float magHdg2 = magHdg;
+		if (0) { 
+			// recalculate magHdg w/ bank correction 
+			// scoring the ra coefficnet with quartile-quartile metric: ./loglook.sh 112 -q3 -range '[50:100]' -stats 21
+			// off=36, 1.0=29 2.0=23, 4.0=19, 5.0=18, 6.0=22
+			float ra = 1.0 * avgRoll.average() / 180 * M_PI;   
+			float my1 = l.my * cos(ra) + l.mz * sin(ra);		
+			magHdg2 = atan2(my1, l.mx) * 180 / M_PI;
+		}
+		if (1) { 
+			float ra = 2.8 * avgRoll.average() / 180 * M_PI;   
+			float z = sin(67.0*M_PI/180) * cos(ra); 
+			float y = sin(magHdg*M_PI/180);
+			float y1 = y * cos(ra) - z * sin(ra);
+			magCorr =  atan2(y1, cos(magHdg*M_PI/180)) * 180 / M_PI;
+		}
+		
 		//magCorr = magHdg2 - magHdg;		
-		magCorr = l.g5Hdg - magHdg2;
-		if (magCorr > 180) magCorr -= 360;
-		if (magCorr < -180) magCorr += 360;
+		//magCorr = l.g5Hdg - magHdg2;
+		if (magCorr > 360) magCorr -= 360;
+		if (magCorr < 0) magCorr += 360;
 
 		magHdg = magHdg2;
 		
@@ -401,3 +403,4 @@ struct LogItemC {
 };
 
 typedef LogItemC LogItem;
+	

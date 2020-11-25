@@ -266,7 +266,6 @@ void ESP32sim_run() {
 		WiFiUDP::inputMap[7891] = String(buf);
 	}
 
-	if (now >= 1 && lastTime < 1) ESP32sim_set_desiredTrk(90);
 	//if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
 	//if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
 
@@ -334,13 +333,16 @@ public:
 		_micros += 3500;
 		const float servoTrim = 4915.0;
 		rollCmd.add((ESP32sim_currentPwm - servoTrim) / servoTrim);
-		gy = rollCmd.average() * 10.0;
+		gy = 0.0 + rollCmd.average() * 10.0;
 		bank += gy * (3500.0 / 1000000.0);
 		bank = max(-20.0, min(20.0, (double)bank));
 		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
-			//printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
-			//ESP32sim_currentPwm, track, desRoll, bank, gy);
+			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
+			ESP32sim_currentPwm, track, desRoll, bank, gy);
 		}
+		
+		gz = -2.0 + tan(bank * M_PI/180) / 100 * 1091;
+		
 		
 		uint64_t now = millis();
 		const float bper = .05;
@@ -371,6 +373,9 @@ public:
 		ay = sin(pitch * M_PI / 180) * 1.0;
 		ax = 0;
 
+		mx = my = bank * 2;
+		mz += mx;
+		
 		lastMillis = now;
 	}
 	
@@ -428,10 +433,12 @@ int main(int argc, char **argv) {
 		}	
 	}
 	
-	bm.addPress(32, 1, 1, true);
-	//bm.addPress(34, 50, 1, true);	
+	bm.addPress(32, 1, 1, true); // knob long press - arm servo
+	bm.addPress(37, 150, 1, true); // mid long press - test turn activate 
 
-
+	//ESP32sim_set_desiredTrk(90);
 	setup();
-	while(seconds <= 0 || _micros / 1000000.0 < seconds) loop();
+	while(seconds <= 0 || _micros / 1000000.0 < seconds) {
+		loop();
+	}
 }
