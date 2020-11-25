@@ -629,7 +629,8 @@ void loop() {
 		if (butFilt2.newEvent()) { // BOTTOM or LEFT button
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {	// LONG: zero AHRS sensors
 				//ahrs.zeroSensors();
-				screenReset = true;
+				//screenReset = true;
+				armServo = !armServo;
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	// SHORT: arm servo
 				desiredTrk = angularDiff(desiredTrk + 10);
@@ -654,10 +655,10 @@ void loop() {
 			}
 			if (butFilt4.wasLong && butFilt4.wasCount == 1) {			// LONG: arm servos
 				armServo = !armServo; 
-				rollPID.reset();
-				hdgPID.reset();
-				pitchPID.reset();
-				ahrs.reset();
+				//rollPID.reset();
+				//hdgPID.reset();
+				//pitchPID.reset();
+				//ahrs.reset();
 			}
 			if (butFilt4.wasLong && butFilt4.wasCount == 2) {
 				ed.negateSelectedValue();
@@ -746,6 +747,9 @@ void loop() {
 						// lost course guidance, just keep wings level by leaving currentHdg unchanged and no error 
 						hdgErr = 0;
 					}
+					if (abs(hdgErr) > 10.0) {
+						hdgPID.resetI();
+					}
 					desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
 				} else if (!testTurnActive) {
@@ -819,7 +823,7 @@ void loop() {
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)logActive; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::maghdg = (float)ahrs.magHdg;
-		Display::zsc = (float)ahrs.zeroSampleCount; 
+		Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
 		//Display::pitch = pitch;
 		Display::xtec = xteCorrection; 
