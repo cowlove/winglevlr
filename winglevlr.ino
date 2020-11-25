@@ -113,7 +113,7 @@ namespace Display {
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
 	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<float>    obs(&jd,70,y,    " OBS:", "%05.1f ");
-	JDisplayItem<float>  rmc(&jd,10,y+=10," RMC:", "%05.1f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%05d ");
+	JDisplayItem<float>  zsc(&jd,10,y+=10," ZSC:", "%03.0f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%05d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  maghdg(&jd,70,y,  " MAG:", "%05.1f ");
 	JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
@@ -819,7 +819,7 @@ void loop() {
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)logActive; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::maghdg = (float)ahrs.magHdg;
-		Display::rmc = (float)gpsTrackRMC; 
+		Display::zsc = (float)ahrs.zeroSampleCount; 
 		Display::roll = roll; 
 		//Display::pitch = pitch;
 		Display::xtec = xteCorrection; 

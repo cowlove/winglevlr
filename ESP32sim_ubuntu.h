@@ -345,7 +345,7 @@ public:
 		
 		
 		uint64_t now = millis();
-		const float bper = .05;
+		const float bper = .07;
 		if (floor(lastMillis * bper) != floor(now * bper)) { // 10hz
 			track -= tan(bank * M_PI / 180) * 9.8 / 40 * 25 * bper;
 			if (track < 0) track += 360;
@@ -373,7 +373,8 @@ public:
 		ay = sin(pitch * M_PI / 180) * 1.0;
 		ax = 0;
 
-		mx = my = bank * 2;
+		// simulate meaningless mag readings that stabilize when bank == 0 
+		mx = my = bank * 1.4;
 		mz += mx;
 		
 		lastMillis = now;
@@ -434,9 +435,9 @@ int main(int argc, char **argv) {
 	}
 	
 	bm.addPress(32, 1, 1, true); // knob long press - arm servo
-	bm.addPress(37, 150, 1, true); // mid long press - test turn activate 
+	bm.addPress(37, 450, 1, true); // mid long press - test turn activate 
 
-	//ESP32sim_set_desiredTrk(90);
+	ESP32sim_set_desiredTrk(90);
 	setup();
 	while(seconds <= 0 || _micros / 1000000.0 < seconds) {
 		loop();
