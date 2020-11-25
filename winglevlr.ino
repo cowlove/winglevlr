@@ -120,11 +120,13 @@ namespace Display {
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> ttsc(&jd,70,y,    "TTSC:", "%04.0f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> ttde(&jd,70,y,    "TTDE:", "%04.0f ");;
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> tttt(&jd,70,y,    "TTTT:", "%04.0f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> ttlt(&jd,70,y,    "TTLT:", "%04.0f ");;
 	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.2f "); JDisplayItem<float> pidsel(&jd,70,y,    " PID:", "%1.0f ");
 }
+
+
 
 void ESP32sim_JDisplay_forceUpdate() { 
 	Display::jd.forceUpdate();
@@ -269,8 +271,8 @@ public:
 	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
 	JDisplayEditableItem pidl = JDisplayEditableItem(NULL, .1);
 	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
-	JDisplayEditableItem ttsc = JDisplayEditableItem(&Display::ttsc, 1);
-	JDisplayEditableItem ttde = JDisplayEditableItem(&Display::ttde, 1);
+	JDisplayEditableItem tttt = JDisplayEditableItem(&Display::tttt, 1);
+	JDisplayEditableItem ttlt = JDisplayEditableItem(&Display::ttlt, 1);
 	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
 	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 3);
 	
@@ -281,8 +283,8 @@ public:
 		add(&pidd);	
 		add(&pidl);	
 		add(&pidg);	
-		add(&ttsc);
-		add(&ttde);	
+		add(&tttt);
+		add(&ttlt);	
 		add(&maxb);
 		add(&pidsel);
 	}
@@ -378,8 +380,8 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.value = 12;
-	ed.ttsc.value = 45; // seconds to make each test turn 
-	ed.ttde.value = 40; // degrees of each test turn 
+	ed.tttt.value = 20; // seconds to make each test turn 
+	ed.ttlt.value = 30; // seconds betweeen test turn  
 	ed.tzer.value = 1000;
 	ed.pidsel.value = 0;
 	setKnobPid(ed.pidsel.value);
@@ -593,9 +595,11 @@ void loop() {
 	if (true && serialReportTimer.tick()) {
 		Serial.printf(
 			"%06.3f "
+			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
 			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f "
 			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d\n", 
-			millis()/1000.0, 
+			millis()/1000.0,
+			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
 			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, crossTrackError.average(),
 			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count,
 			0
@@ -661,17 +665,16 @@ void loop() {
 		}
 	}
 	
-	if (testTurnActive && nowSec - testTurnLastTurnTime > (testTurnAlternate ? ed.ttsc.value * 2 : ed.ttsc.value + 10)) {
-		testTurnLastTurnTime = nowSec;
-		const int deg = ed.ttde.value;
-		desiredTrk += testTurnAlternate ? -deg : deg * 2;
-		testTurnAlternate = !testTurnAlternate;
-		if (desiredTrk <= 0)
-			desiredTrk += 360;
-		if (desiredTrk > 360) 
-			desiredTrk -= 360;
+	if (testTurnActive) {
+		if (nowSec - testTurnLastTurnTime > ed.tttt.value + ed.ttlt.value) { 
+			testTurnLastTurnTime = nowSec;
+			testTurnAlternate = !testTurnAlternate;
+		}
+		if (nowSec - testTurnLastTurnTime <= ed.tttt.value)
+			desRoll = ed.maxb.value * (testTurnAlternate ? -1 : 1);
+		else 
+			desRoll = 0;
 	}
-	
 	
 
 #ifndef UBUNTU
@@ -745,7 +748,7 @@ void loop() {
 					}
 					desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
 					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
-				} else {
+				} else if (!testTurnActive) {
 					desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 				}				
 			} 
@@ -782,10 +785,12 @@ void loop() {
 			0;
 			
 #ifdef UBUNTU
-		cout << logItem.toString().c_str() << " " << 
-/*44*/	ahrs.compYH <<" "<< servoOutput <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<<  ahrs.magHdg << " " << 0 <<" "<< 
-/*49*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
-		"LOG" << endl;
+		if (logFileName == "-") { 
+			cout << logItem.toString().c_str() << " " << 
+	/*44*/	ahrs.compYH <<" "<< servoOutput <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<<  ahrs.magHdg << " " << 0 <<" "<< 
+	/*49*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
+			"LOG" << endl;
+		}
 #endif
 		if (logFile != NULL) {
 			sdLog();
@@ -798,7 +803,7 @@ void loop() {
 		setKnobPid(ed.pidsel.value);
 	}
 	
-	if (screenEnabled) { 
+	if (screenTimer.tick() && screenEnabled) { 
 		ed.update();
 		knobPID->gain.p = ed.pidp.value;
 		knobPID->gain.i = ed.pidi.value;
