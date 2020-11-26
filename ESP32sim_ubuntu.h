@@ -27,7 +27,9 @@ uint64_t micros() { return ++_micros & 0xffffffff; }
 uint64_t millis() { return ++_micros / 1000; }
 void pinMode(int, int) {}
 static int ESP32sim_currentPwm = 0;
-float ESP32sim_getPitchCmd();
+extern float ESP32sim_getPitchCmd();
+extern void ESP32sim_setLogFile(const char *);
+extern float ESP32sim_getRollErr();
 
 typedef int esp_err_t; 
 void esp_task_wdt_init(int, int) {}
@@ -351,9 +353,6 @@ public:
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
 		}
-		if (floor(now / 1000) != floor(lastMillis / 1000)) { 
-			ESP32sim_JDisplay_forceUpdate();	
-		}
 
 		float hdg = track - 35.555; // simluate mag var and WCA 
 		if (hdg < 0) hdg += 360;	
@@ -388,9 +387,10 @@ public:
 		} else {
 			while(logSkip > 0 && logSkip-- > 0) 
 				ESP32sim_replayLogItem(ifile);
-			if (ESP32sim_replayLogItem(ifile) == false)
+			if (ESP32sim_replayLogItem(ifile) == false) { 
+				printf("%f accumulated roll error\n", ESP32sim_getRollErr());
 				exit(0);
-			
+			}
 			//printf("%06.4f AX %+05.2f G5 %+05.2f\n", _micros / 1000000.0, ax, g5.roll); 			 
 		}
 	}
@@ -418,7 +418,6 @@ void setup(void);
 void loop(void);
 static void JDisplayToConsole(bool b);
 
-extern void ESP32sim_setLogFile(const char *);
 
 int main(int argc, char **argv) {
 	float seconds = 0;
@@ -439,7 +438,15 @@ int main(int argc, char **argv) {
 
 	ESP32sim_set_desiredTrk(90);
 	setup();
+	uint64_t lastMillis = 0;
+	double totalErr = 0;
 	while(seconds <= 0 || _micros / 1000000.0 < seconds) {
+		uint64_t now = millis();
 		loop();
+
+		if (floor(now / 1000) != floor(lastMillis / 1000)) { 
+			ESP32sim_JDisplay_forceUpdate();	
+		}
+		lastMillis = now;
 	}
 }
