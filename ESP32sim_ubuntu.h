@@ -30,6 +30,8 @@ static int ESP32sim_currentPwm = 0;
 extern float ESP32sim_getPitchCmd();
 extern void ESP32sim_setLogFile(const char *);
 extern float ESP32sim_getRollErr();
+extern void ESP32sim_setDebug(float);
+extern double totalRollErr, totalHdgError;
 
 typedef int esp_err_t; 
 void esp_task_wdt_init(int, int) {}
@@ -277,7 +279,7 @@ void ESP32sim_run() {
 void ESP32sim_JDisplay_forceUpdate();
 
 bool ESP32sim_replayLogItem(ifstream &);
-
+int logEntries = 0;
 const int ACC_FULL_SCALE_4_G = 0, GYRO_FULL_SCALE_250_DPS = 0, MAG_MODE_CONTINUOUS_100HZ = 0;
 
 class MPU9250_DMP {
@@ -385,12 +387,15 @@ public:
 		if (replayFile == NULL) { 
 			flightSim();
 		} else {
-			while(logSkip > 0 && logSkip-- > 0) 
+			while(logSkip > 0 && logSkip-- > 0) {
 				ESP32sim_replayLogItem(ifile);
+			}
 			if (ESP32sim_replayLogItem(ifile) == false) { 
-				printf("%f accumulated roll error\n", ESP32sim_getRollErr());
+				printf("%f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", ESP32sim_getRollErr() / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
 				exit(0);
 			}
+			logEntries++;
+
 			//printf("%06.4f AX %+05.2f G5 %+05.2f\n", _micros / 1000000.0, ax, g5.roll); 			 
 		}
 	}
@@ -425,6 +430,11 @@ int main(int argc, char **argv) {
 		if (strcmp(*a, "--serial") == 0) Serial.toConsole = true;
 		if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
 		if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
+		if (strcmp(*a, "--debug") == 0) {
+			float debug = 0;
+			sscanf(*(++a), "%f", &debug);
+			ESP32sim_setDebug(debug);
+		} 
 		if (strcmp(*a, "--replay") == 0) MPU9250_DMP::replayFile = *(++a);
 		if (strcmp(*a, "--replaySkip") == 0) MPU9250_DMP::logSkip = atoi(*(++a));
 		if (strcmp(*a, "--log") == 0) { 

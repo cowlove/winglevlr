@@ -78,6 +78,9 @@ float angularDiff(float d) {
 	return d;
 }
 
+float angularClosest(float a, float b) {
+	return b + angularDiff(a - b);
+}
 
 inline static float windup360(float now, float prev) { 
 	float hd = now - prev;
@@ -147,7 +150,9 @@ public:
 	float gyroTurnBank, pG;
 	float pitchComp = 0, pitchRaw = 0, pitchDrift = 0, pitchCompDriftCorrected = 0;
 	float magStability = -1;
-
+	float hdg;
+	bool hdgInitialized = false;
+	
 	typedef TwoStageRunningLeastSquares<float> TwoStageRLS;
 	RunningLeastSquares // all at about 200 HZ */
 		//accelPitchFit = RunningLeastSquares(100), 
@@ -168,8 +173,9 @@ public:
 		
 		
 	RollingAverage<float,200> magStabFit;
-	RollingAverage<float,50> avgRoll;
-	RollingAverage<float,50> avgGZ;
+	RollingAverage<float,20> avgRoll;
+	RollingAverage<float,20> avgMagHdg;
+	RollingAverage<float,20> avgGZ, avgGX;
 	RollingAverage<float,200> gyroZeroCount;
 	
 	TwoStageRLS 
@@ -184,6 +190,7 @@ public:
 	Windup360 magHdg360;
 	float compR = 0, compYH =0, rollG = 0;
 	float gyroDrift = 0;
+	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 	float gpsPitch = 0, accelPitch = 0;
 	float lastGz, magCorr = 0;
 	bool valid() { 
@@ -237,6 +244,7 @@ public:
 			l.gy -= gyrOffY;
 		}
 		avgGZ.add(l.gz);
+		avgGX.add(l.gx);
 		
 		magHdg = atan2(l.my, l.mx) * 180 / M_PI;
 
@@ -275,17 +283,18 @@ public:
 		if (count % 3217 == 0) { 
 			//gpsHdgFit.rebaseX();
 			magHdgFit.rebaseX();
-			//gyroDriftFit.rebaseX();
+			gyroDriftFit.rebaseX();
 		}
 
-		float tas = 100; // true airspeed in knots		
+		float tas = 100; //l.g5Ias; // true airspeed in knots		
 
 		const float compRatio1 = 0.0027 ;
 		const float driftCorrCoeff1 = 4.5;
 		//const float driftCorrCoeff1 = pow(1 - compRatio1, 200) * 9;
 		
 		//printf("DEBUG %f\n", driftCorrCoeff1);
-		float zgyrBankAngle = atan(avgGZ.average() * tas / 1091) * 180/M_PI;
+		float rollRad = avgRoll.average() * M_PI / 180;
+		float zgyrBankAngle = atan((cos(rollRad) * avgGZ.average() + (sin(abs(rollRad)) * avgGX.average())) * tas / 1091) * 180/M_PI;
 		bankAngle = (isnan(zgyrBankAngle) ? 0 : zgyrBankAngle);
 		bankAngle *= 1.00;
 		//bankAngle = max(-30.0, min(30.0, (double)bankAngle));
@@ -310,6 +319,8 @@ public:
 		// TODO replace this kinda-help heuristic until we get proper dip correction 
 		//magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 150;
 
+
+		
 		float magHdg2 = magHdg;
 		if (0) { 
 			// recalculate magHdg w/ bank correction 
@@ -324,18 +335,21 @@ public:
 			float z = sin(67.0*M_PI/180) * cos(ra); 
 			float y = sin(magHdg*M_PI/180);
 			float y1 = y * cos(ra) - z * sin(ra);
-			magCorr =  atan2(y1, cos(magHdg*M_PI/180)) * 180 / M_PI;
+			magHdg =  atan2(y1, cos(magHdg*M_PI/180)) * 180 / M_PI;
 		}
-		
-		//magCorr = magHdg2 - magHdg;		
-		//magCorr = l.g5Hdg - magHdg2;
-		if (magCorr > 360) magCorr -= 360;
-		if (magCorr < 0) magCorr += 360;
+		magHdg = angularClosest(magHdg, avgMagHdg.average());
+		avgMagHdg.add(magHdg);
+		magHdg360 = avgMagHdg.average();
 
-		magHdg = magHdg2;
+		if (hdgInitialized == false && avgMagHdg.full()) { 
+			hdgInitialized = true;
+			hdg = magHdg360;
+		}
+
+		hdg =  (hdg - (cos(rollRad) * l.gz + sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;
 		
-		if (magHdg < 0) magHdg += 360;		
-		magHdg360 = magHdg;
+		magHdg = constrain360(hdg);
+		
 		if (1) { 
 			static int skipped = 0;
 			if (skipped > 3 || !magHdgFit.full() || abs(magHdgFit.predict(l.sec) - magHdg) < 5.0) {
@@ -414,4 +428,5 @@ struct LogItemC {
 };
 
 typedef LogItemC LogItem;
+	
 	
