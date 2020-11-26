@@ -110,20 +110,21 @@ void buttonISR() {
 namespace Display {
 	JDisplay jd;
 	int y = 0;
+	const int c2x = 80;
 	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
-	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,70,y,    " TRK:", "%05.1f ");
-	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");    JDisplayItem<float>    obs(&jd,70,y,    " OBS:", "%05.1f ");
-	JDisplayItem<float>  zsc(&jd,10,y+=10," ZSC:", "%03.0f");    JDisplayItem<int>   mode(&jd,70,y,    "MODE:", "%05d ");
-	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float>  maghdg(&jd,70,y,  " MAG:", "%05.1f ");
-	JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,70,y,    " RLL:", "%+05.1f ");
+	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,c2x,y,    " TRK:", "%05.1f ");
+	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");  JDisplayItem<float>  obs(&jd,c2x,y,    " OBS:", "%05.1f ");
+	JDisplayItem<float>  zsc(&jd,10,y+=10," ZSC:", "%03.0f");   JDisplayItem<int>   mode(&jd,c2x,y,    "MODE:", "%05d ");
+	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> maghdg(&jd,c2x,y,  " MAG:", "%05.1f ");
+	JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
 
-    //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,70,y,    "SERV:", "%04d ");
+    //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,c2x,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> tttt(&jd,70,y,    "TTTT:", "%04.0f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> ttlt(&jd,70,y,    "TTLT:", "%04.0f ");;
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> maxb(&jd,70,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.2f "); JDisplayItem<float> pidsel(&jd,70,y,    " PID:", "%1.0f ");
+	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    "TTTT:", "%04.0f ");
+	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> ttlt(&jd,c2x,y,    "TTLT:", "%04.0f ");;
+	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
+	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.2f "); JDisplayItem<float> pidsel(&jd,c2x,y,    " PID:", "%1.0f ");
 }
 
 
@@ -278,7 +279,7 @@ public:
 		add(&pidp);	
 		add(&pidi);	
 		add(&pidd);	
-		add(&pidl);	
+		//add(&pidl);	
 		add(&pidg);	
 		add(&tttt);
 		add(&ttlt);	
@@ -331,31 +332,32 @@ void setup() {
 	//SCREENLINE.println("Initializing IMU...");
 	imuInit();	
 	
-	if (true || digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
-		WiFi.disconnect(true);
-		WiFi.mode(WIFI_STA);
-		WiFi.setSleep(false);
+	WiFi.disconnect(true);
+	WiFi.mode(WIFI_STA);
+	WiFi.setSleep(false);
 
-		wifi.addAP("Ping-582B", "");
-		wifi.addAP("Flora_2GEXT", "maynards");
-		wifi.addAP("Team America", "51a52b5354");
-		wifi.addAP("ChloeNet", "niftyprairie7");
-		wifi.addAP("TUK-PUBLIC", "");
+	wifi.addAP("Ping-582B", "");
+	wifi.addAP("Flora_2GEXT", "maynards");
+	wifi.addAP("Team America", "51a52b5354");
+	wifi.addAP("ChloeNet", "niftyprairie7");
+	wifi.addAP("TUK-PUBLIC", "");
 
+	if (digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
 			wifi.run();
 			delay(10);
 		}
 		
-		udpSL30.begin(7891);
-		udpG90.begin(4000);
-		udpNMEA.begin(7892);
-		
-		lastAhrsGoodG5.g5Hdg = 0;
-		lastAhrsGoodG5.gpsTrackGDL90 = 17;
-		lastAhrsGoodG5.gpsTrackRMC = 17;
 	}
+
+	udpSL30.begin(7891);
+	udpG90.begin(4000);
+	udpNMEA.begin(7892);
+	
+	lastAhrsGoodG5.g5Hdg = 0;
+	lastAhrsGoodG5.gpsTrackGDL90 = 17;
+	lastAhrsGoodG5.gpsTrackRMC = 17;
 	
 	//SCREENLINE.println("WiFi connected");
 
@@ -549,19 +551,19 @@ static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 double totalRollErr = 0.0, totalHdgError = 0.0;
 
+uint16_t len;
+static int ledOn = 0;
+static int manualRelayMs = 60;
+static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
+//static int buildNumber = 12;
+//static int mavBytesIn = 0;
+//static char lastParam[64];
+//static int lastHdg;
+static uint64_t lastLoop = micros();
+static bool selEditing = false;
 
-void loop() {
-	uint16_t len;
-	static int ledOn = 0;
-	static int manualRelayMs = 60;
-	static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
-	//static int buildNumber = 12;
-	//static int mavBytesIn = 0;
-	//static char lastParam[64];
-	//static int lastHdg;
-	static uint64_t lastLoop = micros();
-	static bool selEditing = false;
-	
+
+void loop() {	
 	esp_task_wdt_reset();
 	ArduinoOTA.handle();
 
@@ -1005,9 +1007,9 @@ void DisplayUpdateThread(void *) {
 			Display::jd.begin();
 			Display::jd.forceUpdate();
 		}
-		if (screenEnabled) {
+		if (screenEnabled) 
 			Display::jd.update(false);
-		}
+			
 		if (logActive == true && logFile == NULL) {
 			//screenEnabled = false;
 			//delayMicroseconds(100000);
