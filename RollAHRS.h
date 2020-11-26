@@ -163,7 +163,7 @@ public:
 		//dipBankFit = RunningLeastSquares(100),
 		//gyroTurnBankFit = RunningLeastSquares(100),
 		//pitchDriftFit = RunningLeastSquares(300),  // 10HZ
-		//gyroDriftFit = RunningLeastSquares(300); // 10HZ 
+		gyroDriftFit = RunningLeastSquares(300), // 10HZ 
 		magHdgFit = RunningLeastSquares(50);
 		
 		
@@ -249,7 +249,7 @@ public:
 			magStabFit.add(abs(magZFit.slope()) + abs(magXFit.slope()) + abs(magYFit.slope()));
 			if (magStabFit.full()) {
 				magStability = min(15.0, (double)magStabFit.average()); 
-				const float stabThreshold = 2.0;
+				const float stabThreshold = 0.0;
 				if (magStability < stabThreshold) { 
 					//gyrZOffsetFit.add(l.sec, magZFit.stage1.averageY(), max(stabThreshold/2, (stabThreshold/2 - magStability)*100));
 					gyrZOffsetFit.add(zeroAverages.gz.average());
@@ -280,9 +280,11 @@ public:
 
 		float tas = 100; // true airspeed in knots		
 
-		const float compRatio1 = 0.0003 ;
-		const float driftCorrCoeff1 = pow(1 - compRatio1, 200) * 7;
+		const float compRatio1 = 0.0027 ;
+		const float driftCorrCoeff1 = 4.5;
+		//const float driftCorrCoeff1 = pow(1 - compRatio1, 200) * 9;
 		
+		//printf("DEBUG %f\n", driftCorrCoeff1);
 		float zgyrBankAngle = atan(avgGZ.average() * tas / 1091) * 180/M_PI;
 		bankAngle = (isnan(zgyrBankAngle) ? 0 : zgyrBankAngle);
 		bankAngle *= 1.00;
@@ -293,13 +295,14 @@ public:
 		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio1) + (bankAngle * compRatio1);
 		rollG  += l.gy * dt;
 		
-		/*if (tick10HZ) { 
+		if (tick10HZ) { 
 			gyroDriftFit.add(l.sec, compR - rollG);
 			gyroDrift = gyroDriftFit.slope();
-		*/
-		compYH = compR;//+ gyroDrift * driftCorrCoeff1;
-		if (abs(bankAngle) < 4) {			
-			gyroDrift += (bankAngle - compYH) * 0.00001;
+		}
+		
+		compYH = compR + gyroDrift * driftCorrCoeff1;
+		if (abs(bankAngle) < 20) {			
+			gyroDrift += (bankAngle - compYH) * 0.0001;
 		}
 			
 		avgRoll.add(compYH);
@@ -357,7 +360,6 @@ public:
 		pitchRaw = pitchComp = 0;
 	}
 };
-
 
 struct LogItem0 {
 	AhrsInput ai;

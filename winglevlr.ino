@@ -365,10 +365,10 @@ void setup() {
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	hdgPID.setGains(0.12, 0.01, 0.04);
+	hdgPID.setGains(0.12, 0.00, 0.04);
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 2.2;
-	xtePID.setGains(5.0, 0.01, 0.5);
+	xtePID.setGains(5.0, 0.00, 0.5);
 	xtePID.maxerr.i = 30.0;
 	xtePID.finalGain = 10.0;
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
@@ -544,12 +544,13 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int pwmOutput = 0, servoOutput = 0;
 static TwoStageRollingAverage<int,40,40> loopTime;
-static EggTimer serialReportTimer(200), hdgPIDTimer(50), loopTimer(5), buttonCheckTimer(10);
+static EggTimer serialReportTimer(200), hdgPIDTimer(50), loopTimer(10), buttonCheckTimer(10);
 static int armServo = 0;
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
+static double totalRollErr = 0.0;
 
 
 
@@ -768,6 +769,8 @@ void loop() {
 			}			
 		}
 		
+		
+		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
 		logItem.pidP = hdgPID.err.p;
 		logItem.pidI = hdgPID.err.i;
@@ -787,9 +790,11 @@ void loop() {
 			//ahrs.gyrZOffsetFit.average();
 			//-ahrs.zeroAverages.gz.average();
 			0;
-			
+		totalRollErr += abs(roll + ahrsInput.g5Roll
+		);
+	
 #ifdef UBUNTU
-		if (logFileName == "-") { 
+		if (true || logFileName == "-") { 
 			cout << logItem.toString().c_str() << " " << 
 	/*44*/	ahrs.compYH <<" "<< servoOutput <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<<  ahrs.magHdg << " " << 0 <<" "<< 
 	/*49*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
@@ -988,6 +993,9 @@ void loop() {
 	}
 }
 
+float ESP32sim_getRollErr() { 
+	return totalRollErr;
+}
 
 
 void DisplayUpdateThread(void *) { 
