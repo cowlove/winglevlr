@@ -237,9 +237,6 @@ SDCardBufferedLog<LogItem>  *logFile = NULL;
 const char *logFileName = "AHRSD%03d.DAT";
 
 
-#ifdef UBUNTU
-void ESP32sim_setLogFile(const char *p) { logFileName = p; } 
-#endif
 
 
 void sdLog()  {
@@ -544,14 +541,13 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int pwmOutput = 0, servoOutput = 0;
 static TwoStageRollingAverage<int,40,40> loopTime;
-static EggTimer serialReportTimer(200), hdgPIDTimer(50), loopTimer(10), buttonCheckTimer(10);
+static EggTimer serialReportTimer(200), hdgPIDTimer(50), loopTimer(5), buttonCheckTimer(10);
 static int armServo = 0;
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
-static double totalRollErr = 0.0;
-
+double totalRollErr = 0.0, totalHdgError = 0.0;
 
 
 void loop() {
@@ -583,10 +579,12 @@ void loop() {
 	//vTaskDelay(1);
 	delayMicroseconds(20);
 	//yield();
-	
+
+#ifndef UBUNTU
 	if (!loopTimer.tick())
 		return;
-		
+#endif
+	
 	uint64_t now = micros();
 	double nowSec = millis() / 1000.0;
 	
@@ -627,7 +625,7 @@ void loop() {
 			}
 			
 		}
-		if (butFilt2.newEvent()) { // BOTTOM or LEFT button
+		if (butFilt2.newEvent()) { // BOTTOM or LfffEFT button
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {	// LONG: zero AHRS sensors
 				//ahrs.zeroSensors();
 				//screenReset = true;
@@ -790,11 +788,12 @@ void loop() {
 			//ahrs.gyrZOffsetFit.average();
 			//-ahrs.zeroAverages.gz.average();
 			0;
-		totalRollErr += abs(roll + ahrsInput.g5Roll
-		);
+		totalRollErr += abs(roll + ahrsInput.g5Roll);
+		totalHdgError += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
+		
 	
 #ifdef UBUNTU
-		if (true || logFileName == "-") { 
+		if (strcmp(logFilename.c_str(), "-") == 0) { 
 			cout << logItem.toString().c_str() << " " << 
 	/*44*/	ahrs.compYH <<" "<< servoOutput <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<<  ahrs.magHdg << " " << 0 <<" "<< 
 	/*49*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
@@ -993,9 +992,6 @@ void loop() {
 	}
 }
 
-float ESP32sim_getRollErr() { 
-	return totalRollErr;
-}
 
 
 void DisplayUpdateThread(void *) { 
@@ -1034,3 +1030,10 @@ void DisplayUpdateThread(void *) {
 		delayMicroseconds(10);
 	}
 }
+
+
+#ifdef UBUNTU
+float ESP32sim_getRollErr() {  return totalRollErr;}
+void ESP32sim_setLogFile(const char *p) { logFilename = p; } 
+void ESP32sim_setDebug(float x) { ahrs.hdgCompRatio = x; } 
+#endif
