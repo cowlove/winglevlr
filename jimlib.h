@@ -120,7 +120,7 @@ public:
 	void begin(void *) {};
 #endif
 	
-	RotaryEncoder(int p1, int p3, int debounce = 0) : a(debounce), b(debounce), pin1(p1), pin3(p3){
+	RotaryEncoder(int p1, int p3, int debounce = 5) : a(debounce), b(debounce), pin1(p1), pin3(p3){
 		pinMode(pin1, INPUT_PULLUP);
 		pinMode(pin3, INPUT_PULLUP);
 		limMin = 001;
