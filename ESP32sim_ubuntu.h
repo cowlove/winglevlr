@@ -30,7 +30,9 @@ static int ESP32sim_currentPwm = 0;
 extern float ESP32sim_getPitchCmd();
 extern void ESP32sim_setLogFile(const char *);
 extern float ESP32sim_getRollErr();
-extern void ESP32sim_setDebug(float);
+void ESP32sim_convertLogCtoD(ifstream &i, ofstream &o);
+
+extern void ESP32sim_setDebug(const char *);
 extern double totalRollErr, totalHdgError;
 
 typedef int esp_err_t; 
@@ -438,6 +440,8 @@ void loop(void);
 static void JDisplayToConsole(bool b);
 
 
+
+
 int main(int argc, char **argv) {
 	float seconds = 0;
 	for(char **a = argv + 1; a < argv+argc; a++) {
@@ -445,9 +449,7 @@ int main(int argc, char **argv) {
 		if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
 		if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
 		if (strcmp(*a, "--debug") == 0) {
-			float debug = 0;
-			sscanf(*(++a), "%f", &debug);
-			ESP32sim_setDebug(debug);
+			ESP32sim_setDebug(*(++a));
 		} 
 		if (strcmp(*a, "--replay") == 0) MPU9250_DMP::replayFile = *(++a);
 		if (strcmp(*a, "--replaySkip") == 0) MPU9250_DMP::logSkip = atoi(*(++a));
@@ -455,6 +457,13 @@ int main(int argc, char **argv) {
 			bm.addPress(39, 1, 1, true);  // long press top button - start log 1 second in  
 			ESP32sim_setLogFile(*(++a));
 		}	
+		if (strcmp(*a, "--logConvert") == 0) {
+			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
+			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);
+			
+			ESP32sim_convertLogCtoD(i, o);
+			exit(0);
+		}
 	}
 	
 	bm.addPress(32, 1, 1, true); // knob long press - arm servo

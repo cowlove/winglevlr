@@ -50,5 +50,7 @@ setap1:
 %.plog:  %.DAT winglevlr_ubuntu
 	./winglevlr_ubuntu --replay $< --log - > $@
         
+%R.plog:  %.DAT winglevlr_ubuntu
+	./winglevlr_ubuntu --replay $< --log + > $@
 
 

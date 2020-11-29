@@ -7,7 +7,30 @@ using namespace std;
 
 #define USE_ACCEL
 
-struct AhrsInput { 
+struct AhrsInputA { 
+	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y;
+	float ax, ay, az;  
+	float gx, gy, gz, mx, my, mz, dtk, g5Track;
+	float q3, palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
+	String toString() { 
+		static char buf[512];
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %f %f %f" /* 1 - 10 */
+			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" /* 11 - 20 */
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f",  /* 21 - 27 */ 
+		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, q3, palt, gspeed, 
+		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp);
+		return String(buf);	
+	 }
+	 AhrsInputA fromString(const char *s) { 
+		sscanf(s, "%f %f %f %f %f %f %f %f %f  %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
+		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp);
+		return *this;
+	}
+};
+
+
+struct AhrsInputB { 
 	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt; 
 	float ax, ay, az;  
 	float gx, gy, gz, mx, my, mz, dtk, g5Track;
@@ -21,14 +44,30 @@ struct AhrsInput {
 		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp);
 		return String(buf);	
 	 }
-	 AhrsInput fromString(const char *s) { 
+	 AhrsInputB fromString(const char *s) { 
 		sscanf(s, "%f %f %f %f %f %f %f %f %f  %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
 		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
 		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp);
 		return *this;
 	}
-		 
+	AhrsInputB &operator =(const AhrsInputA &a) { 
+		sec = a.sec;
+		gpsTrack = a.gpsTrack;
+		gpsTrackGDL90 = a.gpsTrackGDL90;
+		gpsTrackVTG = a.gpsTrackVTG;
+		gpsTrackRMC = a.gpsTrackRMC;
+		alt = a.alt;
+		ax = a.ax; ay = a.ay; az = a.az;
+		gx = a.gx; gy = a.gy; gz = a.gz;
+		mx = a.mx; my = a.my; mz = a.mz;
+		palt = a.palt; gspeed = a.gspeed; g5Pitch = a.g5Pitch; g5Roll = a.g5Roll; g5Hdg = a.g5Hdg; g5Ias = a.g5Ias; g5Tas = a.g5Tas;
+		g5Palt = a.g5Palt; g5TimeStamp = a.g5TimeStamp;
+		return *this;
+	}
+		
 };
+
+typedef AhrsInputB AhrsInput; 
 
 
 class Windup360 {
@@ -73,8 +112,10 @@ float constrain360(float a) {
 
 
 float angularDiff(float d) { 
-	if(d < -180) d += 360;
-	if(d > 180) d -= 360;
+	if (abs(d) > 100000) 
+		return d;
+	while(d < -180) d += 360;
+	while(d > 180) d -= 360;
 	return d;
 }
 
@@ -92,6 +133,7 @@ inline static float windup360(float now, float prev) {
 }
 	
 class RollAHRS {
+public:
 	float fit360(float h) { 
 		while(h <= 0) h += 360;
 		while(h > 360) h -= 360;
@@ -108,7 +150,9 @@ class RollAHRS {
 		  magOffZ = -30;//(-82 + 32) / 2; // + is up
 */
 
-	float magOffX = 20, magOffY = 40, magOffZ = -30;
+	float magOffX = 16.5;
+	float magOffY = 17.5;
+	float magOffZ = -30;
 	
 
 	float magScaleX = (10.0 - (-30.0)) / 100.0;
@@ -119,14 +163,13 @@ class RollAHRS {
 //ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
 	
 	float gyrOffX = -0.87, 
-		  gyrOffY = -0.99, 
-		  gyrOffZ = 1.1;
+		  gyrOffY = -1.0, 
+		  gyrOffZ = +1.6;
 		  
 	float accOffX = +0.171,
 		  accOffY = -0.856,
 		  accOffZ = -0.037;
 		  
-public:
 	RollAHRS() { 
 		gyrYOffsetFit.add(gyrOffY);
 		gyrZOffsetFit.add(gyrOffZ);
@@ -190,9 +233,14 @@ public:
 	Windup360 magHdg360;
 	float compR = 0, compYH =0, rollG = 0;
 	float gyroDrift = 0;
-	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 	float gpsPitch = 0, accelPitch = 0;
 	float lastGz, magCorr = 0;
+
+
+	float compRatio1 = 0.00111;
+	float driftCorrCoeff1 = 3.2;
+	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
+
 	bool valid() { 
 		return prev.gpsTrack != -1;
 	}
@@ -288,8 +336,6 @@ public:
 
 		float tas = 100; //l.g5Ias; // true airspeed in knots		
 
-		const float compRatio1 = 0.0027 ;
-		const float driftCorrCoeff1 = 4.5;
 		//const float driftCorrCoeff1 = pow(1 - compRatio1, 200) * 9;
 		
 		//printf("DEBUG %f\n", driftCorrCoeff1);
@@ -410,9 +456,11 @@ struct LogItemB {
 };
 
 struct LogItemC {
-	short pwmOutput, flags;  
-	float desRoll, roll; 
-	AhrsInput ai;
+	short pwmOutput, flags;  // 30 31
+	float pidP, pidI, pidD;  // 32  
+	float gainP, gainI, gainD, finalGain; // 35 
+	float desRoll, pitchCmd, roll; // 39 
+	AhrsInputA ai;
 	String toString() {
 		char buf[200];
 		snprintf(buf, sizeof(buf), " %d %d %f %f", (int)pwmOutput, (int)flags,
@@ -425,6 +473,42 @@ struct LogItemC {
 	}
 };
 
-typedef LogItemC LogItem;
-	
-	
+struct LogItemD {
+	short pwmOutput, flags;  
+	float desRoll, roll; 
+	AhrsInputB ai;
+	String toString() {
+		char buf[200];
+		snprintf(buf, sizeof(buf), " %d %d %f %f", (int)pwmOutput, (int)flags,
+			desRoll, roll);
+		return ai.toString() +  String(buf);
+	} 
+	LogItemD fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+	LogItemD &operator =(const LogItemC &c) {
+		ai = c.ai;
+		pwmOutput = c.pwmOutput;
+		flags = c.flags;
+		desRoll = c.desRoll;
+		roll = c.roll;
+		return *this;
+	}
+};
+
+
+typedef LogItemD LogItem;	
+
+
+#ifdef UBUNTU
+void ESP32sim_convertLogCtoD(ifstream &i, ofstream &o) {
+	LogItemC l; 
+	while (i.read((char *)&l, sizeof(l))) {
+		LogItemD l2;
+		l2 = l;
+		o.write((char *)&l2, sizeof(l2));
+	}
+}
+#endif
+
