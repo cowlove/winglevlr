@@ -150,8 +150,8 @@ public:
 		  magOffZ = -30;//(-82 + 32) / 2; // + is up
 */
 
-	float magOffX = 16.5;
-	float magOffY = 17.5;
+	float magOffX = 17.9;
+	float magOffY = 08.3;
 	float magOffZ = -30;
 	
 
