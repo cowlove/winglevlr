@@ -8,23 +8,23 @@ using namespace std;
 #define USE_ACCEL
 
 struct AhrsInput { 
-	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y;
-	float ax, ay, az;  // accel updates removed from imuRead() to speed up loop, drops about 1.2ms 
+	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt; 
+	float ax, ay, az;  
 	float gx, gy, gz, mx, my, mz, dtk, g5Track;
-	float q3, palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
+	float palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
 	String toString() { 
 		static char buf[512];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f %.3f %.3f " /* 1 - 10 */
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f " /* 1 - 10 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 11 - 20 */
-			"%.3f %.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f",  /* 21 - 27 */ 
-		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, q3, palt, gspeed, 
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f",  /* 21 - 27 */ 
+		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
 		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp);
 		return String(buf);	
 	 }
 	 AhrsInput fromString(const char *s) { 
-		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &p, &r, &y, &ax, &ay, &az, &gx, &gy, 
-		&gz, &mx, &my, &mz, &dtk, &g5Track, &q3, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp);
+		sscanf(s, "%f %f %f %f %f %f %f %f %f  %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
+		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp);
 		return *this;
 	}
 		 
@@ -410,15 +410,13 @@ struct LogItemB {
 };
 
 struct LogItemC {
-	short pwmOutput, flags;  // 30 31
-	float pidP, pidI, pidD;  // 32  
-	float gainP, gainI, gainD, finalGain; // 35 
-	float desRoll, pitchCmd, roll; // 39 
+	short pwmOutput, flags;  
+	float desRoll, roll; 
 	AhrsInput ai;
 	String toString() {
 		char buf[200];
-		snprintf(buf, sizeof(buf), " %d %d %f %f %f %f %f %f %f %f %f %f", (int)pwmOutput, (int)flags, pidP, pidI, pidD, gainP, gainI, gainD, finalGain,
-			desRoll, pitchCmd, roll);
+		snprintf(buf, sizeof(buf), " %d %d %f %f", (int)pwmOutput, (int)flags,
+			desRoll, roll);
 		return ai.toString() +  String(buf);
 	} 
 	LogItemC fromString(const char *s) { 

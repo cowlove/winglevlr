@@ -38,6 +38,20 @@ void esp_task_wdt_init(int, int) {}
 void esp_task_wdt_reset() {}
 esp_err_t esp_task_wdt_add(void *) { return 0; }
 
+class File {
+public:
+	operator bool() { return false; } 
+	int read(uint8_t *, int) { return 0; } 
+	int close() { return 0; } 
+	int printf(const char *, ...) { return 0; } 
+};
+
+struct {
+	void begin() {}
+	void format() {}
+	File open(const char *, const char *) { return File(); } 
+} SPIFFS;
+
 struct {
 	void begin() {}
 	void handle() {}

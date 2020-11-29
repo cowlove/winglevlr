@@ -338,8 +338,49 @@ void printSD() {}
 template <class T>
 void SDCardBufferedLogThread(void *p);
 
+
+template<class T> 
+class SPIFFSVariable { 
+	String filename;
+	const T def;
+public:
+	SPIFFSVariable(const char *f, const T &d) : filename(f), def(d) {}
+	operator const T() {
+		T val = def;
+		File file = SPIFFS.open(filename.c_str(), "r");
+		if (file) { 
+			uint8_t buf[64];
+			int b = file.read(buf, sizeof(buf) - 1);
+			Serial.printf("read %d bytes\n");
+			file.close();
+			if (b > 0) {
+				buf[b] = 0; 
+				sscanf((char *)buf, "%d", &val);
+			}
+		}
+		return val;
+	} 
+	SPIFFSVariable & operator=(const T&v) { 
+		File file = SPIFFS.open(filename.c_str(), "w");
+		if (file) { 
+			file.printf("%d\n", v);
+			file.close();
+		} else { 
+			Serial.printf("error writing file %s\n", filename.c_str());
+			SPIFFS.format();
+		}
+		return *this;
+	}
+};
+
+
+
+
 template <class T>
 class SDCardBufferedLog {
+public:
+	int dropped = 0;
+	int maxWaiting = 0;
 #ifndef UBUNTU
 	QueueHandle_t queue;
 	int timo;
@@ -360,12 +401,15 @@ class SDCardBufferedLog {
 	bool textMode;
 public:
 	String currentFile;
-	
+	StaticQueue_t qb;
 	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true) : 
 		filename(fname), 
 		flushInterval(flushInt), 
 		timo((timeout+portTICK_PERIOD_MS-1)/portTICK_PERIOD_MS) {
+			
 		queue = xQueueCreate(len, sizeof(T));
+		Serial.printf("xQueueCreate = %d\n", queue);
+		//queue = xQueueCreateStatic(len, sizeof(T), malloc(len * sizeof(T)), &qb);
 		this->textMode = textMode;
 		open_TTGOTS_SD();
 		setFilename();
@@ -384,10 +428,18 @@ public:
 		 SD.end();
 	}
 	void add(T *v) {
-		xQueueSend(queue, v, timo);
+		add(v, timo);
 	}
 	void add(T *v, int t) {
-		xQueueSend(queue, v, (t+portTICK_PERIOD_MS-1)/portTICK_PERIOD_MS);
+		if (xQueueSend(queue, v, (t+portTICK_PERIOD_MS-1)/portTICK_PERIOD_MS) != pdTRUE) 
+			dropped++;
+		int waiting = uxQueueMessagesWaiting(queue);
+		if (waiting > maxWaiting)
+			maxWaiting = waiting;
+			
+	}
+	int queueLen() {
+		return uxQueueMessagesWaiting(queue);
 	}
 	void setFilename() { 
 		int fileVer = 1;
@@ -468,6 +520,7 @@ public:
 		snprintf(buf, sizeof(buf), fname, 1);
 		fd = open(buf, O_WRONLY | O_CREAT, 0666);
 	}
+	int queueLen() { return 0; }
 #endif
 };	
 
@@ -581,7 +634,7 @@ public:
 		items.push_back(i);
 	}
 	inline void forceUpdate();	
-	inline void update(bool update);	
+	inline bool update(bool update, bool onlyOne);	
 };
 
 
@@ -624,9 +677,9 @@ public:
 		}
 		//update(changed);
 	}
-	void update(bool force) {
+	bool update(bool force) {
 		if (d == NULL)
-			return;
+			return false;
 		if (first || ++updates % 1000 == 1) 
 			force = true;
 		if (changed) { 
@@ -639,7 +692,9 @@ public:
 		if (force || val != lastVal) {
 			d->printAt(x + 6 * strlen(label), y, val.c_str(), valueInverse ? color.vb : color.vf, valueInverse ? color.vf : color.vb);
 			lastVal = val;
+			return true;
 		}
+		return false;
 	}
 	template<class T>
 	void setValue(const T&v) { 
@@ -651,14 +706,18 @@ public:
 	}
 };
 
-inline void JDisplay::update(bool force) { 
+inline bool JDisplay::update(bool force, bool onlyOne) { 
 	for (std::vector<JDisplayItemBase *>::iterator it = items.begin(); it != items.end(); it++) { 
-		(*it)->update(force);
+		if ((*it)->update(force)) {
+			if (onlyOne) 
+				return true;
+		}
 	}
+	return false;
 }
 
 inline void JDisplay::forceUpdate() { 
-	update(true);
+	update(true, false);
 }
 
 template<class T>

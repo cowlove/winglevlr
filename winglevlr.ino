@@ -30,6 +30,7 @@
 #include "FS.h"
 #include "ESPmDNS.h"
 #include "ArduinoOTA.h"
+//#include "queue.h"
 //#include "WiFiManager.h"
 #include "WiFiUdp.h"
 #include "WiFiMulti.h"
@@ -39,6 +40,7 @@
 #include <mySD.h>
 #include "Wire.h"
 #include <MPU9250_asukiaaa.h>
+#include "SPIFFS.h"
 #if defined(ESP32)
 //#include "esp_system.h"
 #include <esp_task_wdt.h>
@@ -57,6 +59,8 @@
 #include "RollAHRS.h"
 
 WiFiMulti wifi;
+
+SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
 
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
@@ -117,7 +121,7 @@ namespace Display {
 	JDisplayItem<float>  zsc(&jd,10,y+=10," ZSC:", "%03.0f");   JDisplayItem<int>   mode(&jd,c2x,y,    "MODE:", "%05d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> maghdg(&jd,c2x,y,  " MAG:", "%05.1f ");
 	JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
-	JDisplayItem<const char *>  log(&jd,10,y+=10," LOG:", "%s  ");
+	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s "); JDisplayItem<int>   drop(&jd,c2x+50,y,    "", "%03d ");
 
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,c2x,y,    "SERV:", "%04d ");
 	
@@ -300,6 +304,14 @@ void DisplayUpdateThread(void *);
 static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
 
 void setup() {	
+	SPIFFS.begin();
+	Serial.begin(921600, SERIAL_8N1);
+	Serial.setTimeout(1);
+	Serial.printf("Reading log file number\n");
+	int l = logFileNumber;
+	Serial.printf("Log file number %d\n", l);
+	logFileNumber = l + 1;
+
 	esp_task_wdt_init(15, true);
 	esp_err_t err = esp_task_wdt_add(NULL);
 
@@ -313,8 +325,6 @@ void setup() {
 //	pinMode(26, OUTPUT);
 //	Serial1.begin(57600, SERIAL_8N1, 32, 26);
 //	Serial1.setTimeout(1);
-	Serial.begin(921600, SERIAL_8N1);
-	Serial.setTimeout(1);
 
 	Display::jd.begin();
 	Display::jd.clear();
@@ -350,6 +360,8 @@ void setup() {
 		}
 		
 	}
+
+	
 
 	udpSL30.begin(7891);
 	udpG90.begin(4000);
@@ -396,6 +408,7 @@ void setup() {
 
 	ArduinoOTA.begin();
 
+	
 #ifndef UBUNTU	
 	xTaskCreate(
 			DisplayUpdateThread,       /* Function that implements the task. */
@@ -431,52 +444,7 @@ static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
 float desRoll = 0;		
 
-#ifdef UBUNTU
 
-void ESP32sim_set_gpsTrackGDL90(float v) { 
-	gpsTrackGDL90 = v;
-	ahrsInput.g5Hdg = v;
-}
-
-/*void ESP32sim_set_g5(float p, float r, float h) { 
-	ahrsInput.g5Hdg = h;
-	ahrsInput.g5Pitch = p;
-	ahrsInput.g5Roll = r;
-}
-*/
-
-void ESP32sim_set_desiredTrk(float v) {
-	desiredTrk = v;
-}
-
-
-bool ESP32sim_replayLogItem(ifstream &i) {
-	LogItem l; 
-	static uint64_t logfileMicrosOffset = 0;
-	
-	if (i.read((char *)&l, sizeof(l))) {
-		if (logfileMicrosOffset == 0) 
-			logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
-		_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
-		imu.ax = l.ai.ax;
-		imu.ay = l.ai.ay;
-		imu.az = l.ai.az;
-		imu.gx = l.ai.gx;
-		imu.gy = l.ai.gy;
-		imu.gz = l.ai.gz;
-		imu.mx = l.ai.mx;
-		imu.my = l.ai.my;
-		imu.mz = l.ai.mz;
-		
-		ahrsInput = l.ai;
-		//g5.hdg = l.ai.g5Hdg * M_PI / 180;
-		//g5.roll = l.ai.g5Roll * M_PI / 180;
-		//g5.pitch = l.ai.g5Pitch * M_PI / 180;
-		return true;
-	} 
-	return false;
-}
-#endif
 
 static int serialLogFlags = 0;
 
@@ -501,7 +469,7 @@ void pitchTrimSet(float p) {
 	static int seq = 5;
 	snprintf(l, sizeof(l), "trim %f %d\n", p, seq++);
 	udpSendString(l);
-	logItem.pitchCmd = p;
+	//logItem.pitchCmd = p;
 }
 
 void pitchTrimRelay(int relay, int ms) { 
@@ -567,6 +535,12 @@ void loop() {
 	esp_task_wdt_reset();
 	ArduinoOTA.handle();
 
+	// tmp debug log
+
+	//if (logFile == NULL) 
+	//	logActive = true;
+	
+	
 	if (0) {  // debugging memory leak from xTaskCreate/vTaskDelete in log implementation
 		static EggTimer t(20000);
 		if (t.tick()) {
@@ -579,7 +553,7 @@ void loop() {
 	}
 	
 	//vTaskDelay(1);
-	delayMicroseconds(20);
+	delayMicroseconds(100);
 	//yield();
 
 #ifndef UBUNTU
@@ -597,14 +571,17 @@ void loop() {
 		Serial.printf(
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f pcmd %06.1f srv %04d xte %3.2f "
-			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d\n", 
+			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f srv %04d xte %3.2f "
+			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d\n", 
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, logItem.pitchCmd, servoOutput, crossTrackError.average(),
-			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count,
+			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, servoOutput, crossTrackError.average(),
+			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			0
 		);
+		if (logFile != NULL) {
+			logFile->maxWaiting =  0;
+		}
 		serialLogFlags = 0;
 	}
 
@@ -727,7 +704,7 @@ void loop() {
 				trimCmd = -1;
 			}
 			pitchTrimSet(trimCmd); 
-			logItem.pitchCmd = trimCmd;
+			//logItem.pitchCmd = trimCmd;
 		}
 
 		pwmOutput = 0;
@@ -772,18 +749,11 @@ void loop() {
 		
 		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
-		logItem.pidP = hdgPID.err.p;
-		logItem.pidI = hdgPID.err.i;
-		logItem.pidD = hdgPID.err.d;
-		logItem.finalGain = hdgPID.finalGain;
-		logItem.gainP = hdgPID.gain.p;
-		logItem.gainI = hdgPID.gain.i;
-		logItem.gainD = hdgPID.gain.d;
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
 		logItem.ai = ahrsInput;
-		logItem.ai.q3 = ahrs.magCorr; 
+		//logItem.ai.q3 = ahrs.magCorr; 
 			//ahrs.magStability; 
 			//ahrs.bankAngle; 
 			//ahrs.lastGz;
@@ -795,7 +765,7 @@ void loop() {
 		
 	
 #ifdef UBUNTU
-		if (strcmp(logFilename.c_str(), "-") == 0) { 
+		if (strcmp(logFilename.c_str(), "+") == 0) { 
 			cout << logItem.toString().c_str() << " " << 
 	/*44*/	ahrs.compYH <<" "<< servoOutput <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<<  ahrs.magHdg << " " << 0 <<" "<< 
 	/*49*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
@@ -831,6 +801,7 @@ void loop() {
 		Display::maghdg = (float)ahrs.magHdg;
 		Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
+		Display::drop = logFile != NULL ? logFile->dropped : -1;
 		//Display::pitch = pitch;
 		Display::xtec = xteCorrection; 
 		Display::log = logFilename.c_str();
@@ -1007,13 +978,15 @@ void DisplayUpdateThread(void *) {
 			Display::jd.begin();
 			Display::jd.forceUpdate();
 		}
-		if (screenEnabled) 
-			Display::jd.update(false);
+		while(screenEnabled && (logFile == NULL || logFile->queueLen() < 20)) {
+			if (Display::jd.update(false, true) == false) // update 1 at a time only as long as queueLen < 20
+				break;
+		}
 			
 		if (logActive == true && logFile == NULL) {
 			//screenEnabled = false;
 			//delayMicroseconds(100000);
-			logFile = new SDCardBufferedLog<LogItem>(logFileName, 100/*q size*/, 100/*timeout*/, 1000/*flushInterval*/, false/*textMode*/);
+			logFile = new SDCardBufferedLog<LogItem>(logFileName, 900/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
 			logFilename = logFile->currentFile;
 		} 
 		if (logActive == false && logFile != NULL) {
@@ -1038,4 +1011,56 @@ void DisplayUpdateThread(void *) {
 float ESP32sim_getRollErr() {  return totalRollErr;}
 void ESP32sim_setLogFile(const char *p) { logFilename = p; } 
 void ESP32sim_setDebug(float x) { ahrs.hdgCompRatio = x; } 
+
+bool ESP32sim_replayLogItem(ifstream &i) {
+	LogItem l; 
+	static uint64_t logfileMicrosOffset = 0;
+	
+	if (i.read((char *)&l, sizeof(l))) {
+		if (logfileMicrosOffset == 0) 
+			logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
+		_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
+		imu.ax = l.ai.ax;
+		imu.ay = l.ai.ay;
+		imu.az = l.ai.az;
+		imu.gx = l.ai.gx;
+		imu.gy = l.ai.gy;
+		imu.gz = l.ai.gz;
+		imu.mx = l.ai.mx;
+		imu.my = l.ai.my;
+		imu.mz = l.ai.mz;
+		
+		ahrsInput = l.ai;
+		//g5.hdg = l.ai.g5Hdg * M_PI / 180;
+		//g5.roll = l.ai.g5Roll * M_PI / 180;
+		//g5.pitch = l.ai.g5Pitch * M_PI / 180;
+		
+		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) { 
+			cout << l.toString().c_str() << " " << 
+	/*31*/	 ahrs.magHdg << " LOG" << endl;
+		}		
+		return true;
+	} 
+	return false;
+}
+
+
+void ESP32sim_set_gpsTrackGDL90(float v) { 
+	gpsTrackGDL90 = v;
+	ahrsInput.g5Hdg = v;
+}
+
+/*void ESP32sim_set_g5(float p, float r, float h) { 
+	ahrsInput.g5Hdg = h;
+	ahrsInput.g5Pitch = p;
+	ahrsInput.g5Roll = r;
+}
+*/
+
+void ESP32sim_set_desiredTrk(float v) {
+	desiredTrk = v;
+}
+
+
+
 #endif
