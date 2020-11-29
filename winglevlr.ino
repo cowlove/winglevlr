@@ -50,6 +50,10 @@
 #endif
 
 
+#include <string>
+#include <sstream>
+#include <vector>
+#include <iterator>
 
 
 #include "jimlib.h"
@@ -766,10 +770,7 @@ void loop() {
 	
 #ifdef UBUNTU
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
-			cout << logItem.toString().c_str() << " " << 
-	/*44*/	ahrs.compYH <<" "<< servoOutput <<" "<< ahrs.pitchCompDriftCorrected <<" "<< ahrs.gpsPitch  <<" "<<  ahrs.magHdg << " " << 0 <<" "<< 
-	/*49*/  ahrs.pitchDrift <<" "<< ahrs.accelPitch <<" "<< ahrs.gyroTurnBank <<" "<< ahrs.pG <<" "<<
-			"LOG" << endl;
+			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " LOG O" << endl;
 		}
 #endif
 		if (logFile != NULL) {
@@ -1010,7 +1011,41 @@ void DisplayUpdateThread(void *) {
 #ifdef UBUNTU
 float ESP32sim_getRollErr() {  return totalRollErr;}
 void ESP32sim_setLogFile(const char *p) { logFilename = p; } 
-void ESP32sim_setDebug(float x) { ahrs.hdgCompRatio = x; } 
+
+
+template <typename Out>
+void split(const std::string &s, char delim, Out result) {
+    std::istringstream iss(s);
+    std::string item;
+    while (std::getline(iss, item, delim)) {
+        *result++ = item;
+    }
+}
+
+std::vector<std::string> split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    split(s, delim, std::back_inserter(elems));
+    return elems;
+}
+
+
+void ESP32sim_setDebug(const char *s) { 
+	vector<string> l = split(string(s), ',');
+	float v;
+	for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
+		if (sscanf(it->c_str(), "zeros.mx=%f", &v)) { ahrs.magOffX = v; } 
+		if (sscanf(it->c_str(), "zeros.my=%f", &v)) { ahrs.magOffY = v; } 
+		if (sscanf(it->c_str(), "zeros.mz=%f", &v)) { ahrs.magOffZ = v; } 
+		if (sscanf(it->c_str(), "zeros.gx=%f", &v)) { ahrs.gyrOffX = v; } 
+		if (sscanf(it->c_str(), "zeros.gy=%f", &v)) { ahrs.gyrOffY = v; } 
+		if (sscanf(it->c_str(), "zeros.gz=%f", &v)) { ahrs.gyrOffZ = v; } 
+		if (sscanf(it->c_str(), "cr1=%f", &v)) { ahrs.compRatio1 = v; } 
+		if (sscanf(it->c_str(), "dc1=%f", &v)) { ahrs.driftCorrCoeff1 = v; } 
+		if (sscanf(it->c_str(), "cr2=%f", &v)) { ahrs.hdgCompRatio = v; } 
+	}
+} 
+
+
 
 bool ESP32sim_replayLogItem(ifstream &i) {
 	LogItem l; 
@@ -1036,8 +1071,7 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		//g5.pitch = l.ai.g5Pitch * M_PI / 180;
 		
 		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) { 
-			cout << l.toString().c_str() << " " << 
-	/*31*/	 ahrs.magHdg << " LOG" << endl;
+			cout << l.toString().c_str() << " -1 LOG" << endl;
 		}		
 		return true;
 	} 
