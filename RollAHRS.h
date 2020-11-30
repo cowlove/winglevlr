@@ -150,13 +150,13 @@ public:
 		  magOffZ = -30;//(-82 + 32) / 2; // + is up
 */
 
-	float magOffX = 17.9;
-	float magOffY = 08.3;
+	float magOffX = 25;
+	float magOffY = 20;
 	float magOffZ = -30;
 	
 
-	float magScaleX = (10.0 - (-30.0)) / 100.0;
-	float magScaleY = (72.0 - 33.0) / 100.0;
+	float magScaleX = 1.0;
+	float magScaleY = 1.0;
 	float magScaleZ = 1.0;
 	
 	
@@ -169,6 +169,11 @@ public:
 	float accOffX = +0,
 		  accOffY = -0,
 		  accOffZ = -0;
+
+	float compRatio1 = 0.00111;  // roll comp filter ratio 
+	float driftCorrCoeff1 = 3.4; // how fast to add in drift correction
+	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
+	float magDipConstant = 3.0; // unexplained correction factor for bank angle in dip calcs
 		  
 	RollAHRS() { 
 		gyrYOffsetFit.add(gyrOffY);
@@ -235,11 +240,6 @@ public:
 	float gyroDrift = 0;
 	float gpsPitch = 0, accelPitch = 0;
 	float lastGz, magCorr = 0;
-
-
-	float compRatio1 = 0.00111;
-	float driftCorrCoeff1 = 3.4;
-	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 
 	bool valid() { 
 		return prev.gpsTrack != -1;
@@ -366,23 +366,13 @@ public:
 		//magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 150;
 
 
-		
-		float magHdg2 = magHdg;
-		if (0) { 
-			// recalculate magHdg w/ bank correction 
-			// scoring the ra coefficnet with quartile-quartile metric: ./loglook.sh 112 -q3 -range '[50:100]' -stats 21
-			// off=36, 1.0=29 2.0=23, 4.0=19, 5.0=18, 6.0=22
-			float ra = 1.0 * avgRoll.average() / 180 * M_PI;   
-			float my1 = l.my * cos(ra) + l.mz * sin(ra);		
-			magHdg2 = atan2(my1, l.mx) * 180 / M_PI;
-		}
-		if (1) { 
-			float ra = 2.8 * avgRoll.average() / 180 * M_PI;   
-			float z = sin(67.0*M_PI/180) * cos(ra); 
-			float y = sin(magHdg*M_PI/180);
-			float y1 = y * cos(ra) - z * sin(ra);
-			magHdg =  atan2(y1, cos(magHdg*M_PI/180)) * 180 / M_PI;
-		}
+
+		// attempt magnetic dip bank error correction 
+		float ra = magDipConstant * avgRoll.average() / 180 * M_PI;   
+		float z = sin(67.0*M_PI/180) * cos(ra); 
+		float y = sin(magHdg*M_PI/180);
+		float y1 = y * cos(ra) - z * sin(ra);
+		magHdg =  atan2(y1, cos(magHdg*M_PI/180)) * 180 / M_PI;
 		magHdg = angularClosest(magHdg, avgMagHdg.average());
 		avgMagHdg.add(magHdg);
 		magHdg360 = avgMagHdg.average();
@@ -391,9 +381,7 @@ public:
 			hdgInitialized = true;
 			hdg = magHdg360;
 		}
-
-		hdg =  (hdg - (cos(rollRad) * l.gz + sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;
-		
+		hdg =  (hdg - (cos(rollRad) * l.gz + sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;		
 		magHdg = constrain360(hdg);
 		
 		if (1) { 
@@ -413,6 +401,7 @@ public:
 		prev = l;
 		return compYH;
 	}	
+	
 	float getGyroQuality() {
 		return gyroZeroCount.average();
 	}
