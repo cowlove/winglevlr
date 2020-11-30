@@ -11,3 +11,14 @@ for f in $(seq 2 .1 4); do echo -n "$f:  "; ./winglevlr_ubuntu --replay ./logs/A
 #####################################
 /loglook.sh 107 -roll -replay "cr1=0.00111,cr2=3.2" -roll -replay "cr1=0.00222,cr2=4.2" -roll
 
+
+# Plot and compare a prev git version w/ current
+################################################
+# -args  : additional args for winglevlr_ubuntu
+# -debug : --debug X=1,Y=2 style args for winglevlr_ubuntu
+# -git   : git version to checkout
+# -replay: regenerate an output file
+# -maghdg: things to plot from that file
+# more -git,-replay : plot from different versions
+#################################################3  
+./loglook.sh 107 -args "--seconds 540" -debug "cr1=.001" -git 49132e -replay -maghdg  -git master -replay -maghdg  
