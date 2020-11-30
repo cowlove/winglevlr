@@ -579,7 +579,7 @@ void loop() {
 			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d\n", 
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.xzAngle, 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
+			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, 0.0, 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			0
 		);
@@ -771,7 +771,7 @@ void loop() {
 	
 #ifdef UBUNTU
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
-			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " " << ahrs.xzAngle << " LOG U" << endl;
+			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " " << 0/*33*/  << " LOG U" << endl;
 		}
 #endif
 		if (logFile != NULL) {
@@ -1043,6 +1043,7 @@ void ESP32sim_setDebug(const char *s) {
 		if (sscanf(it->c_str(), "cr1=%f", &v)) { ahrs.compRatio1 = v; } 
 		if (sscanf(it->c_str(), "dc1=%f", &v)) { ahrs.driftCorrCoeff1 = v; } 
 		if (sscanf(it->c_str(), "cr2=%f", &v)) { ahrs.hdgCompRatio = v; } 
+		if (sscanf(it->c_str(), "dipconstant=%f", &v)) { ahrs.magDipConstant = v; } 
 	}
 } 
 
