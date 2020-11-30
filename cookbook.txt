@@ -1,7 +1,8 @@
 # To sweep and tune
 ####################
 for f in $(seq -1.2 .05 -0.6); do echo -n "$f:  "; ./winglevlr_ubuntu --replay ./logs/AHRSD112.DAT --debug "zeros.gy=$f,zeros.gz=1.3"; done
-
+for f in $(seq 2 .1 4); do echo -n "$f:  "; ./winglevlr_ubuntu --replay ./logs/AHRSD107.DAT --debug "dc1=$f"; done
+	
 # To examine log for jitter and gaps
 #####################################
 ./column_deltas.pl logs/AHRSD091.plog  | cut -f1 '-d '  | sort -rn | gnuplot -e 'p [*:*][0:.05] "-" u 0:1 w l ; pause 99'

@@ -657,6 +657,7 @@ void loop() {
 			desRoll = ed.maxb.value * (testTurnAlternate ? -1 : 1);
 		else 
 			desRoll = 0;
+		desiredTrk = -1;
 	}
 	
 
