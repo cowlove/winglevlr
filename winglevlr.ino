@@ -395,8 +395,8 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.value = 12;
-	ed.tttt.value = 20; // seconds to make each test turn 
-	ed.ttlt.value = 30; // seconds betweeen test turn  
+	ed.tttt.value = 5; // seconds to make each test turn 
+	ed.ttlt.value = 10; // seconds betweeen test turn  
 	ed.tzer.value = 1000;
 	ed.pidsel.value = 0;
 	setKnobPid(ed.pidsel.value);
@@ -501,7 +501,7 @@ void setKnobPid(int f) {
 	
 static int servoOverride = 0, pitchTrimOverride = -1;
 static bool testTurnActive = false;
-static bool testTurnAlternate = false;
+static int testTurnAlternate = 0;
 static float testTurnLastTurnTime = 0;
 static RollingAverage<float,5> crossTrackError;
 static RollingAverage<float,10> windCorrectionAngle;
@@ -604,7 +604,7 @@ void loop() {
 					
 			} else { 
 				testTurnActive = !testTurnActive;
-				testTurnAlternate = false;
+				testTurnAlternate = 0;
 			}
 			
 		}
@@ -649,15 +649,25 @@ void loop() {
 	}
 	
 	if (testTurnActive) {
-		if (nowSec - testTurnLastTurnTime > ed.tttt.value + ed.ttlt.value) { 
-			testTurnLastTurnTime = nowSec;
-			testTurnAlternate = !testTurnAlternate;
+		if (desiredTrk == -1) {
+			// roll mode, test turns are fixed time at maxb degrees 
+			if (nowSec - testTurnLastTurnTime > ed.tttt.value + ed.ttlt.value) { 
+				testTurnLastTurnTime = nowSec;
+				testTurnAlternate  = (testTurnAlternate + 1) % 3;
+			}
+			if (nowSec - testTurnLastTurnTime <= ed.tttt.value)
+				desRoll = ed.maxb.value * (testTurnAlternate == 0 ? -1 : 1);
+			else 
+				desRoll = 0;
+		} else {
+			// hdg mode, test turn is fixed number of degrees 
+			if (nowSec - testTurnLastTurnTime > ed.tttt.value) { 
+				testTurnLastTurnTime = nowSec;
+				testTurnAlternate  = (testTurnAlternate + 1) % 3;
+				desiredTrk = desiredTrk + ed.ttlt.value * (testTurnAlternate == 0 ? -1 : 1);
+			}
 		}
-		if (nowSec - testTurnLastTurnTime <= ed.tttt.value)
-			desRoll = ed.maxb.value * (testTurnAlternate ? -1 : 1);
-		else 
-			desRoll = 0;
-		desiredTrk = -1;
+			
 	}
 	
 
@@ -769,7 +779,11 @@ void loop() {
 		totalHdgError += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
 		
 	
+	
 #ifdef UBUNTU
+		if (millis() < 1000) 
+			totalRollErr = totalHdgError = 0;
+			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
 			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " " << 0/*33*/  << " LOG U" << endl;
 		}
@@ -1034,16 +1048,16 @@ void ESP32sim_setDebug(const char *s) {
 	vector<string> l = split(string(s), ',');
 	float v;
 	for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
-		if (sscanf(it->c_str(), "zeros.mx=%f", &v)) { ahrs.magOffX = v; } 
-		if (sscanf(it->c_str(), "zeros.my=%f", &v)) { ahrs.magOffY = v; } 
-		if (sscanf(it->c_str(), "zeros.mz=%f", &v)) { ahrs.magOffZ = v; } 
-		if (sscanf(it->c_str(), "zeros.gx=%f", &v)) { ahrs.gyrOffX = v; } 
-		if (sscanf(it->c_str(), "zeros.gy=%f", &v)) { ahrs.gyrOffY = v; } 
-		if (sscanf(it->c_str(), "zeros.gz=%f", &v)) { ahrs.gyrOffZ = v; } 
-		if (sscanf(it->c_str(), "cr1=%f", &v)) { ahrs.compRatio1 = v; } 
-		if (sscanf(it->c_str(), "dc1=%f", &v)) { ahrs.driftCorrCoeff1 = v; } 
-		if (sscanf(it->c_str(), "cr2=%f", &v)) { ahrs.hdgCompRatio = v; } 
-		if (sscanf(it->c_str(), "dipconstant=%f", &v)) { ahrs.magDipConstant = v; } 
+		if (sscanf(it->c_str(), "zeros.mx=%f", &v) == 1) { ahrs.magOffX = v; } 
+		if (sscanf(it->c_str(), "zeros.my=%f", &v) == 1) { ahrs.magOffY = v; } 
+		if (sscanf(it->c_str(), "zeros.mz=%f", &v) == 1) { ahrs.magOffZ = v; } 
+		if (sscanf(it->c_str(), "zeros.gx=%f", &v) == 1) { ahrs.gyrOffX = v; } 
+		if (sscanf(it->c_str(), "zeros.gy=%f", &v) == 1) { ahrs.gyrOffY = v; } 
+		if (sscanf(it->c_str(), "zeros.gz=%f", &v) == 1) { ahrs.gyrOffZ = v; } 
+		if (sscanf(it->c_str(), "cr1=%f", &v) == 1) { ahrs.compRatio1 = v; } 
+		if (sscanf(it->c_str(), "dc1=%f", &v) == 1) { ahrs.driftCorrCoeff1 = v; } 
+		if (sscanf(it->c_str(), "cr2=%f", &v) == 1) { ahrs.hdgCompRatio = v; } 
+		if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 
 	}
 } 
 
