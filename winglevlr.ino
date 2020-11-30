@@ -575,11 +575,11 @@ void loop() {
 		Serial.printf(
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f mDip %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f srv %04d xte %3.2f "
+			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f xyA %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f srv %04d xte %3.2f "
 			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d\n", 
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.magXFit.slope(), ahrs.magYFit.slope(), ahrs.magZFit.slope(), ahrs.magStability, 0.0, 0.0, servoOutput, crossTrackError.average(),
+			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrs.xzAngle, 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			0
 		);
@@ -771,7 +771,7 @@ void loop() {
 	
 #ifdef UBUNTU
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
-			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " LOG O" << endl;
+			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " " << ahrs.xzAngle << " LOG U" << endl;
 		}
 #endif
 		if (logFile != NULL) {

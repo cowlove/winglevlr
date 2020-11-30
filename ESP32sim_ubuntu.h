@@ -407,7 +407,7 @@ public:
 				ESP32sim_replayLogItem(ifile);
 			}
 			if (ESP32sim_replayLogItem(ifile) == false) { 
-				printf("%f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", ESP32sim_getRollErr() / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
+				printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", ESP32sim_getRollErr() / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
 				exit(0);
 			}
 			logEntries++;
