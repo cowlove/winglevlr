@@ -150,7 +150,7 @@ public:
 		  magOffZ = -30;//(-82 + 32) / 2; // + is up
 */
 
-	float magOffX = 25;
+	float magOffX = 21;
 	float magOffY = 20;
 	float magOffZ = -30;
 	
@@ -173,7 +173,7 @@ public:
 	float compRatio1 = 0.00111;  // roll comp filter ratio 
 	float driftCorrCoeff1 = 3.4; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
-	float magDipConstant = 3.0; // unexplained correction factor for bank angle in dip calcs
+	float magDipConstant = 3.6; // unexplained correction factor for bank angle in dip calcs
 		  
 	RollAHRS() { 
 		gyrYOffsetFit.add(gyrOffY);
