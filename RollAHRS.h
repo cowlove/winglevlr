@@ -132,8 +132,6 @@ inline static float windup360(float now, float prev) {
 	return prev + hd;
 }
 	
-static int AHRSAvgPeriod = 50;
-
 class RollAHRS {
 public:
 	float fit360(float h) { 
@@ -240,7 +238,7 @@ public:
 
 
 	float compRatio1 = 0.00111;
-	float driftCorrCoeff1 = 3.2;
+	float driftCorrCoeff1 = 3.4;
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 
 	bool valid() { 
@@ -358,9 +356,9 @@ public:
 		}
 		
 		compYH = compR + gyroDrift * driftCorrCoeff1;
-		if (abs(bankAngle) < 20) {			
-			gyroDrift += (bankAngle - compYH) * 0.0001;
-		}
+		//if (abs(bankAngle) < 30) {			
+		//	gyroDrift += (bankAngle - compYH) * 0.0001;
+		//}
 			
 		avgRoll.add(compYH);
 
