@@ -132,6 +132,8 @@ inline static float windup360(float now, float prev) {
 	return prev + hd;
 }
 	
+static int AHRSAvgPeriod = 50;
+
 class RollAHRS {
 public:
 	float fit360(float h) { 
@@ -216,9 +218,9 @@ public:
 		
 		
 	RollingAverage<float,200> magStabFit;
-	RollingAverage<float,20> avgRoll;
+	RollingAverage<float,50> avgRoll;
 	RollingAverage<float,20> avgMagHdg;
-	RollingAverage<float,20> avgGZ, avgGX;
+	RollingAverage<float,50> avgGZ, avgGX;
 	RollingAverage<float,200> gyroZeroCount;
 	
 	TwoStageRLS 
@@ -344,7 +346,7 @@ public:
 		bankAngle = (isnan(zgyrBankAngle) ? 0 : zgyrBankAngle);
 		bankAngle *= 1.00;
 		//bankAngle = max(-30.0, min(30.0, (double)bankAngle));
-		//bankAngle = max(avgRoll.average() - 20.0, min(avgRoll.average() + 20.0, (double)bankAngle));
+		bankAngle = max(avgRoll.average() - 15.0, min(avgRoll.average() + 15.0, (double)bankAngle));
 		//bankAngle =0;
 	
 		compR = (compR + l.gy * 1.00 /*gyroGain*/ * dt) * (1-compRatio1) + (bankAngle * compRatio1);
