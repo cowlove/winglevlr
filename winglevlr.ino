@@ -770,7 +770,7 @@ void loop() {
 	
 #ifdef UBUNTU
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
-			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " LOG O" << endl;
+			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " LOG O" << endl;
 		}
 #endif
 		if (logFile != NULL) {
