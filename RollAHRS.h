@@ -409,20 +409,10 @@ public:
 		}
 		
 		
-		
-		float a = atan2(l.ax * M_PI/180, l.az * M_PI/180) * 180 / M_PI;
-		avgXzAngle.add(a);
-		avgXzAngle2.add(a);
-		xzAngle = avgXzAngle.average()- avgXzAngle2.average();;
-		
 		count++;
 		prev = l;
 		return compYH;
-	}
-	RollingAverage<float,100> avgXzAngle;
-	RollingAverage<float,800> avgXzAngle2;
-	float xzAngle;
-	
+	}	
 	float getGyroQuality() {
 		return gyroZeroCount.average();
 	}
