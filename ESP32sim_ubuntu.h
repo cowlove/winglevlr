@@ -31,6 +31,7 @@ extern float ESP32sim_getPitchCmd();
 extern void ESP32sim_setLogFile(const char *);
 extern float ESP32sim_getRollErr();
 void ESP32sim_convertLogCtoD(ifstream &i, ofstream &o);
+void printFinalReport();
 
 extern void ESP32sim_setDebug(const char *);
 extern double totalRollErr, totalHdgError;
@@ -297,7 +298,6 @@ void ESP32sim_JDisplay_forceUpdate();
 bool ESP32sim_replayLogItem(ifstream &);
 int logEntries = 0;
 const int ACC_FULL_SCALE_4_G = 0, GYRO_FULL_SCALE_250_DPS = 0, MAG_MODE_CONTINUOUS_100HZ = 0;
-float seconds = 0;
 
 class MPU9250_DMP {
 	float bank = 0, track = 0, simPitch = 0;
@@ -408,7 +408,8 @@ public:
 				ESP32sim_replayLogItem(ifile);
 			}
 			if (ESP32sim_replayLogItem(ifile) == false) { 
-				seconds = 0.00001; //exit now
+				printFinalReport();
+				exit(0);
 			}
 			logEntries++;
 
@@ -440,9 +441,13 @@ void loop(void);
 static void JDisplayToConsole(bool b);
 
 
-
+void printFinalReport() { 
+	printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", ESP32sim_getRollErr() / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
+	exit(0);
+}
 
 int main(int argc, char **argv) {
+	float seconds = 0;
 	for(char **a = argv + 1; a < argv+argc; a++) {
 		if (strcmp(*a, "--serial") == 0) Serial.toConsole = true;
 		if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
@@ -481,6 +486,5 @@ int main(int argc, char **argv) {
 		}
 		lastMillis = now;
 	}
-	printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", ESP32sim_getRollErr() / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
-
+	printFinalReport();
 }
