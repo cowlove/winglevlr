@@ -1,3 +1,4 @@
+#include <functional>
 
 class Mutex {
 	SemaphoreHandle_t xSem;
@@ -646,6 +647,7 @@ bool JDisplay::displayToConsole = false;
 static void JDisplayToConsole(bool b) { JDisplay::displayToConsole = b; } 
 #endif
 
+
 class JDisplayItemBase {
 	int x, y, updates;
 	int lb, lf, vb, vf;
@@ -655,13 +657,12 @@ class JDisplayItemBase {
 	bool first = true;
 public:
 	bool changed = false;
-	const char *label, *fmt;
+	const char *label;
 	JDisplay::Colors color;
-	JDisplayItemBase(JDisplay *d, int x, int y, const char *label, const char *fmt, JDisplay::Colors colors) {
+	JDisplayItemBase(JDisplay *d, int x, int y, const char *label, JDisplay::Colors colors) {
 		this->x = x;
 		this->y = y;
 		this->label = label;
-		this->fmt = fmt;
 		this->d = d;
 		this->color = colors;
 		updates = 0;
@@ -696,11 +697,8 @@ public:
 		}
 		return false;
 	}
-	template<class T>
-	void setValue(const T&v) { 
-		char buf[64];
-		sprintf(buf, fmt, v);
-		val = String(buf);
+	void setValueString(const String &s) {
+		val = s;
 		if (lastVal != val) 
 			d->markChange();
 	}
@@ -722,12 +720,21 @@ inline void JDisplay::forceUpdate() {
 
 template<class T>
 class JDisplayItem : public JDisplayItemBase { 
+	const char *fmt;
 public:
-	JDisplayItem(JDisplay *d, int x, int y, const char *label, const char *fmt, JDisplay::Colors colors = JDisplay::defaultColors) :
-		JDisplayItemBase(d, x, y, label, fmt, colors) {}
+	JDisplayItem(JDisplay *d, int x, int y, const char *label, const char *format, JDisplay::Colors colors = JDisplay::defaultColors) :
+		JDisplayItemBase(d, x, y, label, colors), fmt(format) {}
 	JDisplayItem<T>& operator =(const T&v) { setValue(v); return *this; }
-};
 
+	std::function<String(const T&)> toString = [this](const T& v)->String { 
+		char buf[64];
+		sprintf(buf, this->fmt, v);
+		return String(buf);
+	};		
+	void setValue(const T&v) { 
+		setValueString(toString(v));
+	}
+};
 
 
 class JDisplayEditableItem;
@@ -759,7 +766,7 @@ public:
 
 class JDisplayEditableItem { 
 protected:
-	JDisplayItemBase *di; 
+	JDisplayItem<float> *di; 
 public:
 	bool recentChange = false;
 	bool changed() { 
@@ -772,7 +779,7 @@ public:
 	float value, newValue, increment;
 	float min, max;
 	enum { UNSELECTED, SELECTED, EDITING } state;
-	JDisplayEditableItem(JDisplayItemBase *i, float inc, float mi = -100000, float ma = +10000) : 
+	JDisplayEditableItem(JDisplayItem<float> *i, float inc, float mi = -100000, float ma = +10000) : 
 		di(i), increment(inc), min(mi), max(ma) {}
 	void update() {
 		if (di == NULL)
@@ -788,6 +795,8 @@ public:
 	};
 	void setValue(float v) { 
 		value = v;
+		if (di != NULL) 
+			di->setValue(v);
 		update();
 	}
 };

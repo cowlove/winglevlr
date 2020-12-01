@@ -131,9 +131,9 @@ namespace Display {
 	JDisplayItem<float> pidpl(&jd,00,y+=20,"PL:", "%03.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    " TT1:", "%04.0f ");
 	JDisplayItem<float> pidph(&jd,00,y+=10,"PH:", "%03.2f "); JDisplayItem<float> ttlt(&jd,c2x,y,    " TT2:", "%04.0f ");;
 	JDisplayItem<float>  pidi(&jd,00,y+=10," I:", "%03.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");
-	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); //JDisplayItem<float> dead(&jd,c2x,y,    "DEAD:", "%04.1f ");	
-	JDisplayItem<float>  dead(&jd,00,y+=10,"DZ:", "%03.1f ");
+	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> maxi(&jd,c2x,y,    "MAXI:", "%04.1f ");
+	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); 	
+	JDisplayItem<float>  dead(&jd,00,y+=10,"DZ:", "%03.1f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");
 }
 
 class MyEditor : public JDisplayEditor {
@@ -145,6 +145,7 @@ public:
 	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
 	JDisplayEditableItem pidl = JDisplayEditableItem(NULL, .1);
 	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
+	JDisplayEditableItem maxi = JDisplayEditableItem(&Display::maxi, .1);
 	JDisplayEditableItem tttt = JDisplayEditableItem(&Display::tttt, 1);
 	JDisplayEditableItem ttlt = JDisplayEditableItem(&Display::ttlt, 1);
 	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
@@ -162,6 +163,7 @@ public:
 		add(&tttt);
 		add(&ttlt);	
 		add(&maxb);
+		add(&maxi);
 		add(&pidsel);
 	}
 } ed;
@@ -401,15 +403,19 @@ void setup() {
 	pitchPID.finalGain = 0.2;
 	pitchPID.maxerr.i = .5;
 
+    // make PID select knob display text from array instead of 0-3	
+	Display::pidsel.toString = [](float v){ return String((const char *[]){"HDG ", "ROLL", "XTE ", "PIT "}[(v >=0 && v <= 3) ? (int)v : 0]); };
+		
 	ed.begin();
+
 #ifndef UBUNTU
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
-	ed.maxb.value = 12;
-	ed.tttt.value = 10; // seconds to make each test turn 
-	ed.ttlt.value = 10; // seconds betweeen test turn  
-	ed.tzer.value = 1000;
-	ed.pidsel.value = 0;
+	ed.maxb.setValue(12);
+	ed.tttt.setValue(10); // seconds to make each test turn 
+	ed.ttlt.setValue(10); // seconds betweeen test turn  
+	ed.tzer.setValue(1000);
+	ed.pidsel.setValue(0);
 	setKnobPid(ed.pidsel.value);
 	ed.update();
 	
@@ -509,6 +515,7 @@ void setKnobPid(int f) {
 	ed.pidd.setValue(knobPID->gain.d);
 	ed.pidl.setValue(knobPID->gain.l);
 	ed.pidg.setValue(knobPID->finalGain);
+	ed.maxi.setValue(knobPID->maxerr.i);
 	ed.dead.setValue(knobPID->hiGainTrans.p);
 }	
 	
@@ -588,11 +595,15 @@ void loop() {
 		Serial.printf(
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f srv %04d xte %3.2f "
+			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
+			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
+			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
 			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d\n", 
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg, 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
+			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
+			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
+			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
 			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			0
 		);
@@ -819,6 +830,7 @@ void loop() {
 		knobPID->gain.i = ed.pidi.value;
 		knobPID->gain.d = ed.pidd.value;
 		knobPID->gain.l = ed.pidl.value;
+		knobPID->maxerr.i = ed.maxi.value;
 		knobPID->finalGain = ed.pidg.value;
 		knobPID->hiGainTrans.p = ed.dead.value;
 		
