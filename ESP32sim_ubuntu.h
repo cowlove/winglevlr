@@ -362,7 +362,7 @@ public:
 			ESP32sim_currentPwm, track, desRoll, bank, gy);
 		}
 		
-		gz = -2.0 + tan(bank * M_PI/180) / 100 * 1091;
+		gz = +1.5 + tan(bank * M_PI/180) / 100 * 1091;
 		
 		
 		uint64_t now = millis();
@@ -471,15 +471,19 @@ int main(int argc, char **argv) {
 	}
 	
 	bm.addPress(32, 1, 1, true); // knob long press - arm servo
-	bm.addPress(37, 450, 1, true); // mid long press - test turn activate 
+	bm.addPress(37, 250, 1, true); // mid long press - test turn activate 
+	bm.addPress(39, 500, 1, false); // top short press - hdg hold 
 
 	ESP32sim_set_desiredTrk(90);
+
+	
 	setup();
 	uint64_t lastMillis = 0;
 	double totalErr = 0;
 	while(seconds <= 0 || _micros / 1000000.0 < seconds) {
 		uint64_t now = millis();
 		loop();
+ 
 
 		if (floor(now / 1000) != floor(lastMillis / 1000)) { 
 			ESP32sim_JDisplay_forceUpdate();	

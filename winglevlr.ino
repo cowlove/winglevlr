@@ -380,7 +380,7 @@ void setup() {
 	rollPID.setGains(7.52, 0.05, 0.11);
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	hdgPID.setGains(0.12, 0.00, 0.04);
+	hdgPID.setGains(0.15, 0.00, 0.04);
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 2.2;
 	xtePID.setGains(5.0, 0.00, 0.5);
@@ -395,7 +395,7 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.value = 12;
-	ed.tttt.value = 5; // seconds to make each test turn 
+	ed.tttt.value = 10; // seconds to make each test turn 
 	ed.ttlt.value = 10; // seconds betweeen test turn  
 	ed.tzer.value = 1000;
 	ed.pidsel.value = 0;
@@ -575,11 +575,11 @@ void loop() {
 		Serial.printf(
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f xyA %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f srv %04d xte %3.2f "
+			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f %+05.2f %+05.2f %+05.2f %+05.2f %+05.1f %+05.1f srv %04d xte %3.2f "
 			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d\n", 
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, 0.0, 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
+			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg, 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			0
 		);
