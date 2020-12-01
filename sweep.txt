@@ -3,14 +3,19 @@
 
 # File number, eg 107 for AHRSD107.DAT
 ###################################
-NUM=101
+NUM=107
 
 # Which field, 1 is roll, 2 is maghdg 
 ######################################
 FIELD=2
 
+# Args to pass to winglevlr_ubuntu
+###################
+ARGS=--seconds 500
+
+
 # List of parameters to sweep, each with min, max, increment 
 #############################################################
-zeros.mx 15 40 2
-zeros.my 10 40 2
-dipconstant  0 6 .2	
+zeros.mx 20 20 3
+zeros.my 20 20 3
+dipconstant  4 4 .5	
