@@ -119,21 +119,52 @@ namespace Display {
 	JDisplay jd;
 	int y = 0;
 	const int c2x = 80;
-	JDisplayItem<const char *>  ip(&jd,10,y+=10,"WIFI:", "%s ");
-	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>  trk(&jd,c2x,y,    " TRK:", "%05.1f ");
-	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");  JDisplayItem<float>  obs(&jd,c2x,y,    " OBS:", "%05.1f ");
-	JDisplayItem<float>  zsc(&jd,10,y+=10," ZSC:", "%03.0f");   JDisplayItem<int>   mode(&jd,c2x,y,    "MODE:", "%05d ");
+	JDisplayItem<const char *>  ip(&jd,10,y,"WIFI:", "%s ");
+	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>    trk(&jd,c2x,y,  " TRK:", "%05.1f ");
+	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");  JDisplayItem<float>    obs(&jd,c2x,y,  " OBS:", "%05.1f ");
+	JDisplayItem<float> roll(&jd,10,y+=10,"ROLL:", "%+03.1f");   JDisplayItem<int>    mode(&jd,c2x,y,  "MODE:", "%05d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> maghdg(&jd,c2x,y,  " MAG:", "%05.1f ");
-	JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
+	//JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s "); JDisplayItem<int>   drop(&jd,c2x+50,y,    "", "%03d ");
-
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,c2x,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidp(&jd,10,y+=10,"   P:", "%05.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    "TTTT:", "%04.0f ");
-	JDisplayItem<float> pidi(&jd,10,y+=10,"   I:", "%05.3f "); JDisplayItem<float> ttlt(&jd,c2x,y,    "TTLT:", "%04.0f ");;
-	JDisplayItem<float> pidd(&jd,10,y+=10,"   D:", "%04.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float> pidg(&jd,10,y+=10,"   G:", "%04.2f "); JDisplayItem<float> pidsel(&jd,c2x,y,    " PID:", "%1.0f ");
+	JDisplayItem<float> pidpl(&jd,00,y+=20,"PL:", "%03.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    " TT1:", "%04.0f ");
+	JDisplayItem<float> pidph(&jd,00,y+=10,"PH:", "%03.2f "); JDisplayItem<float> ttlt(&jd,c2x,y,    " TT2:", "%04.0f ");;
+	JDisplayItem<float>  pidi(&jd,00,y+=10," I:", "%03.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
+	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");
+	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); //JDisplayItem<float> dead(&jd,c2x,y,    "DEAD:", "%04.1f ");	
+	JDisplayItem<float>  dead(&jd,00,y+=10,"DZ:", "%03.1f ");
 }
+
+class MyEditor : public JDisplayEditor {
+public:
+	JDisplayEditableItem pidpl = JDisplayEditableItem(&Display::pidpl, .01);
+	JDisplayEditableItem pidph = JDisplayEditableItem(&Display::pidph, .01);
+	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
+	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
+	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
+	JDisplayEditableItem pidl = JDisplayEditableItem(NULL, .1);
+	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
+	JDisplayEditableItem tttt = JDisplayEditableItem(&Display::tttt, 1);
+	JDisplayEditableItem ttlt = JDisplayEditableItem(&Display::ttlt, 1);
+	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
+	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 3);
+	JDisplayEditableItem dead = JDisplayEditableItem(&Display::dead, .1);
+	
+	//MyEditor() : JDisplayEditor(26, 21) { // add in correct knob selection order
+	MyEditor() : JDisplayEditor(26, 0) { // add in correct knob selection order
+		add(&pidpl);	
+		add(&pidph);	
+		add(&pidi);	
+		add(&pidd);	
+		add(&pidg);	
+		add(&dead);
+		add(&tttt);
+		add(&ttlt);	
+		add(&maxb);
+		add(&pidsel);
+	}
+} ed;
 
 
 
@@ -269,32 +300,6 @@ void printMag() {
 }
 
 
-class MyEditor : public JDisplayEditor {
-public:
-	JDisplayEditableItem pidp = JDisplayEditableItem(&Display::pidp, .01);
-	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
-	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
-	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
-	JDisplayEditableItem pidl = JDisplayEditableItem(NULL, .1);
-	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
-	JDisplayEditableItem tttt = JDisplayEditableItem(&Display::tttt, 1);
-	JDisplayEditableItem ttlt = JDisplayEditableItem(&Display::ttlt, 1);
-	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
-	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 3);
-	
-	//MyEditor() : JDisplayEditor(26, 21) { // add in correct knob selection order
-	MyEditor() : JDisplayEditor(26, 0) { // add in correct knob selection order
-		add(&pidp);	
-		add(&pidi);	
-		add(&pidd);	
-		//add(&pidl);	
-		add(&pidg);	
-		add(&tttt);
-		add(&ttlt);	
-		add(&maxb);
-		add(&pidsel);
-	}
-} ed;
 
 #if 0 
 #include "esp_freertos_hooks.h"
@@ -375,17 +380,23 @@ void setup() {
 	lastAhrsGoodG5.gpsTrackGDL90 = 17;
 	lastAhrsGoodG5.gpsTrackRMC = 17;
 	
-	//SCREENLINE.println("WiFi connected");
-
+	// Set up PID gains 
 	rollPID.setGains(7.52, 0.05, 0.11);
+	rollPID.hiGain.p = 1;
+	rollPID.hiGainTrans.p = 5;
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
+
 	hdgPID.setGains(0.15, 0.00, 0.04);
+	hdgPID.hiGain.p = 0.3;
+	hdgPID.hiGainTrans.p = 3;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 2.2;
+
 	xtePID.setGains(5.0, 0.00, 0.5);
 	xtePID.maxerr.i = 30.0;
 	xtePID.finalGain = 10.0;
+	
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
 	pitchPID.finalGain = 0.2;
 	pitchPID.maxerr.i = .5;
@@ -492,11 +503,13 @@ void setKnobPid(int f) {
 	else if (f == 2) { knobPID = &xtePID; }
 	else if (f == 3) { knobPID = &pitchPID; }
 	
-	ed.pidp.setValue(knobPID->gain.p);
+	ed.pidpl.setValue(knobPID->gain.p);
+	ed.pidph.setValue(knobPID->hiGain.p);
 	ed.pidi.setValue(knobPID->gain.i);
 	ed.pidd.setValue(knobPID->gain.d);
 	ed.pidl.setValue(knobPID->gain.l);
 	ed.pidg.setValue(knobPID->finalGain);
+	ed.dead.setValue(knobPID->hiGainTrans.p);
 }	
 	
 static int servoOverride = 0, pitchTrimOverride = -1;
@@ -801,25 +814,27 @@ void loop() {
 	
 	if (screenTimer.tick() && screenEnabled) { 
 		ed.update();
-		knobPID->gain.p = ed.pidp.value;
+		knobPID->gain.p = ed.pidpl.value;
+		knobPID->hiGain.p = ed.pidph.value;
 		knobPID->gain.i = ed.pidi.value;
 		knobPID->gain.d = ed.pidd.value;
 		knobPID->gain.l = ed.pidl.value;
 		knobPID->finalGain = ed.pidg.value;
-
+		knobPID->hiGainTrans.p = ed.dead.value;
+		
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = desiredTrk; 
 		Display::trk = ahrsInput.gpsTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
-		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)logActive; 
+		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::maghdg = (float)ahrs.magHdg;
-		Display::zsc = ahrs.getGyroQuality(); 
+		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
 		Display::drop = logFile != NULL ? logFile->dropped : -1;
 		//Display::pitch = pitch;
-		Display::xtec = xteCorrection; 
+		//Display::xtec = xteCorrection; 
 		Display::log = logFilename.c_str();
 		Display::log.setInverse(false, (logFile != NULL));
 	}
@@ -942,6 +957,7 @@ void loop() {
 						if (apMode != 4 && obs != lastObs) {
 							desiredTrk = obs;
 							crossTrackError.reset();
+							testTurnActive = false;
 						}
 						lastObs = obs;
 					}

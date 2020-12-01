@@ -39,7 +39,7 @@ public:
     }
     PID err, gain, maxerr, hiGain, hiGainTrans;
     double finalGain = 1.0;
-   
+    
 	float calcGain(float err, float loGain, float hiGain, float transition) {
 		float c =  err * loGain;
 		if (hiGain > 0 && (abs(err) > transition))
@@ -99,6 +99,5 @@ public:
     }
     
     void resetI() { i = 0; } 
-    
 };
  
