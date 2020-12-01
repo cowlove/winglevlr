@@ -1,17 +1,26 @@
 #!/usr/bin/perl
 
-$num = shift(@ARGV);
-while(<STDIN>) {
-	($param, $lo, $hi, $inc) = split(' ', $_);
-	$lo{$param} = $lo;
-	$hi{$param} = $hi;
-	$inc{$param} = $inc;
-	push(@params, $param);
+
+while(<>) {
+	if (/^\s*[#]/ || /^s*$/) { 
+		#comment  
+    } elsif (/FIELD=(\d+)/i) { 
+		$field = $1;
+	} elsif (/NUM=(\d+)/i) {
+		$num = $1;
+	} else { 
+		($param, $lo, $hi, $inc) = split(' ', $_);
+		$lo{$param} = $lo;
+		$hi{$param} = $hi;
+		$inc{$param} = $inc;
+		push(@params, $param);
+	}
 }
+
 
 foreach $it ( 1..10 ) { 
 	foreach $t ( @params ) {
-		print "$t\n";
+		print "Sweep $t:\n";
 		for ($v = $lo{$t}; $v <= $hi{$t}; $v = $v + $inc{$t}) {  
 			$args = ",";
 			foreach $p ( @params ) {
@@ -23,11 +32,17 @@ foreach $it ( 1..10 ) {
 				} 
 			}
 			$cmd = "./winglevlr_ubuntu --replay ./logs/AHRSD$num.DAT --debug \"$args\"";
-			print $cmd . "...";
-			($x, $result) = (`$cmd` =~ /#\s([0-9.+-]+)\s([0-9.+-]+)/ );
-			print $result. "  ";
+			print $cmd . " :\t";
+			if (`$cmd` =~ /#\s([0-9.+-]+)\s([0-9.+-]+)/ ) {
+				if ($field == 1) {
+					$result = $1;
+				} elsif ($field == 2) { 
+					$result = $2;
+				}
+			}
+			print  $result;
 			if (!exists $best{$t} || $result <= $best{$t}) {
-				print "\t<<=== BEST"; 
+				print " *"; 
 				$best{$t} = $result;
 				$bestParam{$t} = $v;
 				$bestCmd = $cmd;
