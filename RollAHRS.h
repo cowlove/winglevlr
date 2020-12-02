@@ -170,10 +170,10 @@ public:
 		  accOffY = -0,
 		  accOffZ = -0;
 
-	float compRatio1 = 0.00091;  // roll comp filter ratio 
+	float compRatio1 = 0.00072;  // roll comp filter ratio 
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
-	float magDipConstant = 2.8; // unexplained correction factor for bank angle in dip calcs
+	float magDipConstant = 2.14; // unexplained correction factor for bank angle in dip calcs
 		  
 	RollAHRS() { 
 		gyrYOffsetFit.add(gyrOffY);
