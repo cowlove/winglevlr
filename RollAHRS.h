@@ -162,9 +162,9 @@ public:
 	
 //ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
 	
-	float gyrOffX = -1.066, 
-		  gyrOffY = -1.066, 
-		  gyrOffZ = +1.012;
+	float gyrOffX = -1; 
+	float gyrOffY = -1.066; 
+	float gyrOffZ = +1.012;
 		  
 	float accOffX = +0,
 		  accOffY = -0,
@@ -174,8 +174,8 @@ public:
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 	float magDipConstant = 2.14; // unexplained correction factor for bank angle in dip calcs
-	float magBankTrimCr = 0.000090;
-	float magBankTrimMaxBankErr = 7.0;
+	float magBankTrimCr = 0.00005;
+	float magBankTrimMaxBankErr = 12;
 	RollAHRS() { 
 		gyrYOffsetFit.add(gyrOffY);
 		gyrZOffsetFit.add(gyrOffZ);

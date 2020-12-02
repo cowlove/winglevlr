@@ -1088,7 +1088,7 @@ void ESP32sim_setDebug(const char *s) {
 		else if (sscanf(it->c_str(), "mbt.cr=%f", &v) == 1) { ahrs.magBankTrimCr = v; } 
 		else if (sscanf(it->c_str(), "mbt.maxerr=%f", &v) == 1) { ahrs.magBankTrimMaxBankErr = v; } 
 		else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 
-		else { 
+		else if (strlen(it->c_str()) > 0) { 
 			printf("Unknown debug parameter '%s'\n", it->c_str()); 
 			exit(-1);
 		}
