@@ -11,11 +11,11 @@ FIELD=2
 
 # Args to pass to winglevlr_ubuntu
 ###################
-ARGS=--seconds 500
+#ARGS=--seconds 500
 
 
 # List of parameters to sweep, each with min, max, increment 
 #############################################################
-zeros.mx 20 20 3
-zeros.my 20 20 3
+zeros.mx 30 20 3
+zeros.my 30 20 3
 dipconstant  4 4 .5	

@@ -19,10 +19,9 @@ while(<>) {
 			$num = $1;
 		}
 	} else { 
-		($param, $mid, $span, $inc) = split(' ', $_);
+		($param, $mid, $span) = split(' ', $_);
 		$span{$param} = $span;
 		$mid{$param} = $mid;
-		$inc{$param} = $inc;
 		push(@params, $param);
 	}
 }
@@ -34,7 +33,7 @@ while($round < 100) {
 		foreach $t ( @params ) {
 			delete $best{$t};
 			$span = $span{$t} / $round;
-			$inc = $inc{$t} / $round;
+			$inc = $span / 5;
 			$lo = $mid{$t} - $span;
 			$hi = $mid{$t} + $span;
 			print "Sweep '$t' $lo to $hi by $inc, iteration $it:\n";
@@ -42,10 +41,10 @@ while($round < 100) {
 				$valstr = ",";
 				foreach $p ( @params ) {
 					if (exists $bestV{$p} && ($t ne $p)) { 
-						$valstr = $valstr . "$p=" . sprintf("%.2f", $bestV{$p}) . ",";
+						$valstr = $valstr . "$p=" . sprintf("%.5f", $bestV{$p}) . ",";
 					} 
 					if ($t eq $p) {
-						$valstr = $valstr . "$p=". sprintf("%.2f", $v).",";
+						$valstr = $valstr . "$p=". sprintf("%.5f", $v).",";
 					} 
 				}
 				$cmd = "./winglevlr_ubuntu  $args --replay ./logs/AHRSD$num.DAT --debug \"$valstr\"";

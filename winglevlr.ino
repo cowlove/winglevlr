@@ -389,13 +389,13 @@ void setup() {
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
 
-	hdgPID.setGains(0.15, 0.00, 0.04);
-	hdgPID.hiGain.p = 0.3;
-	hdgPID.hiGainTrans.p = 3;
+	hdgPID.setGains(0.10, 0.02, 0.02);
+	hdgPID.hiGain.p = 0.5;
+	hdgPID.hiGainTrans.p = 3.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 2.2;
 
-	xtePID.setGains(5.0, 0.00, 0.5);
+	xtePID.setGains(8.0, 0.01, 0.05);
 	xtePID.maxerr.i = 30.0;
 	xtePID.finalGain = 10.0;
 	
@@ -1030,7 +1030,7 @@ void DisplayUpdateThread(void *) {
 		if (logActive == true && logFile == NULL) {
 			//screenEnabled = false;
 			//delayMicroseconds(100000);
-			logFile = new SDCardBufferedLog<LogItem>(logFileName, 900/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
+			logFile = new SDCardBufferedLog<LogItem>(logFileName, 800/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
 			logFilename = logFile->currentFile;
 		} 
 		if (logActive == false && logFile != NULL) {

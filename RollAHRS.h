@@ -162,16 +162,16 @@ public:
 	
 //ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
 	
-	float gyrOffX = -0.87, 
-		  gyrOffY = -1.0, 
-		  gyrOffZ = +1.6;
+	float gyrOffX = -1.066, 
+		  gyrOffY = -1.066, 
+		  gyrOffZ = +1.012;
 		  
 	float accOffX = +0,
 		  accOffY = -0,
 		  accOffZ = -0;
 
-	float compRatio1 = 0.00111;  // roll comp filter ratio 
-	float driftCorrCoeff1 = 3.4; // how fast to add in drift correction
+	float compRatio1 = 0.00091;  // roll comp filter ratio 
+	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 	float magDipConstant = 2.8; // unexplained correction factor for bank angle in dip calcs
 		  

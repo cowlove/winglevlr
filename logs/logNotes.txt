@@ -1,4 +1,14 @@
 
+004 Roll mode left drift big long 360 degree turn 14 minutes
+005 hdg mode straight 7 min
+006 hdg mode straight 4 min
+009 hdg mode test turns, interrupted (reboot?) 9 minutes
+010 hdg mode test turns, interrupted (reboot?) 12 minutes
+013	Roll mode, test turns 20/20 Rollaway incident, seems stick unresponsive servo
+017 Roll mode, 20/20 good data
+ 
+#########################3
+
 
 AHRSD0037 	4/19	constant bank turns, at this point the plane had large servo trim and no PID-I correction
 AHRSD0038	4/19	orbit.sh 
