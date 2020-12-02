@@ -955,7 +955,7 @@ void loop() {
 				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
 					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
-					printf("CAN: %s", line);
+					//printf("CAN: %s", line);
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
 					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
