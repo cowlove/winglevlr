@@ -22,3 +22,8 @@ for f in $(seq 2 .1 4); do echo -n "$f:  "; ./winglevlr_ubuntu --replay ./logs/A
 # more -git,-replay : plot from different versions
 #################################################3  
 ./loglook.sh 107 -args "--seconds 540" -debug "cr1=.001" -git 49132e -replay -maghdg  -git master -replay -maghdg  
+
+
+# Format SD card with bad-sector scan
+######################################3
+sudo mkfs.vfat -cv /dev/mmcblk0p1
