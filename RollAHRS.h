@@ -194,7 +194,8 @@ public:
 		gyrXOffsetFit,
 		gyrYOffsetFit;
 
-
+	
+	float magBank, magBankTrim = 0.0;
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, /*bankCorrection,*/ bankAngle;
 	float gyroTurnBank, pG;
 	float pitchComp = 0, pitchRaw = 0, pitchDrift = 0, pitchCompDriftCorrected = 0;
@@ -394,6 +395,7 @@ public:
 			magBank = -atan(magHdgFit.slope() * tas / 1091) * 180/M_PI;
 			if (abs(compYH - magBank) < magBankTrimMaxBankErr) { 
 				magBankTrim += (compYH - magBank) * magBankTrimCr;
+				magBankTrim = max(min((double)magBankTrim, 4.0), -4.0);
 			}
 		}
 		
@@ -401,7 +403,6 @@ public:
 		prev = l;
 		return compYH;
 	}	
-	float magBank, magBankTrim = 0.0;
 	
 	float getGyroQuality() {
 		return gyroZeroCount.average();
