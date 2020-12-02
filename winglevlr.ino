@@ -647,7 +647,7 @@ void loop() {
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {		// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
 				apMode = 1;
 				if (desiredTrk == -1) 
-					desiredTrk = ahrsInput.gpsTrack;
+					desiredTrk = ahrsInput.selTrack;
 				else 
 					desiredTrk = -1;
 			}
@@ -708,29 +708,29 @@ void loop() {
 		pitch = ahrs.pitchCompDriftCorrected;
 
 		if (hdgSelect == 0) { // mode 0, use GDL90 until first can message, then switch to G5
-			ahrsInput.gpsTrack = ahrsInput.gpsTrackGDL90;
+			ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
 			if (canMsgCount.isValid() == true) // switch to G5 on first CAN msg
 				hdgSelect = 1;  
 		}
 		if (hdgSelect == 1) { // hybrid G5/GDL90 data 
 			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale
 				if (ahrsInput.gpsTrackGDL90 != -1 || ahrsInput.gpsTrackRMC != -1) { 
-					ahrsInput.gpsTrack = ahrsInput.g5Hdg;
+					ahrsInput.selTrack = ahrsInput.g5Hdg;
 				}
 				lastAhrsGoodG5 = ahrsInput;
 			} else if (ahrsInput.gpsTrackGDL90 != -1 && ahrsInput.gpsTrackRMC != -1) { 
-				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90) / 2 + 
+				ahrsInput.selTrack = lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90) / 2 + 
 				 angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC) / 2;
 			} else if (ahrsInput.gpsTrackGDL90 != -1) { // otherwise use change in GDL90 data 
-				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90); 
+				ahrsInput.selTrack = lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90); 
 			} else if (ahrsInput.gpsTrackRMC != -1) { // otherwise use change in VTG data 
-				ahrsInput.gpsTrack = lastAhrsGoodG5.gpsTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC); 
+				ahrsInput.selTrack = lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC); 
 			} else { // otherwise, no available heading/track data 
-				ahrsInput.gpsTrack = -1;
+				ahrsInput.selTrack = -1;
 			}
 		}
-		else if (hdgSelect == 2) ahrsInput.gpsTrack = ahrsInput.gpsTrackGDL90;
-		else if (hdgSelect == 3) ahrsInput.gpsTrack = ahrs.magHdg;
+		else if (hdgSelect == 2) ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
+		else if (hdgSelect == 3) ahrsInput.selTrack = ahrs.magHdg;
 		
 		if (false && floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pset = 0;
@@ -753,13 +753,15 @@ void loop() {
 					if (apMode == 4) {
 						xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
 						xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+						desiredTrk = navDTK + xteCorrection;
+						ahrsInput.dtk = desiredTrk;
 					} else { 
 						xteCorrection = 0;
 					}
 					double hdgErr = 0;
-					if (ahrs.valid() != false && ahrsInput.gpsTrack != -1) { // gpsTrack is misnomer if headingSel is set to magHdg
-						hdgErr = angularDiff(ahrsInput.gpsTrack - ahrsInput.dtk - xteCorrection);
-						currentHdg = ahrsInput.gpsTrack;
+					if (ahrs.valid() != false && ahrsInput.selTrack != -1) { 
+						hdgErr = angularDiff(ahrsInput.selTrack - ahrsInput.dtk);
+						currentHdg = ahrsInput.selTrack;
 					} else { 
 						// lost course guidance, just keep wings level by leaving currentHdg unchanged and no error 
 						hdgErr = 0;
@@ -836,7 +838,7 @@ void loop() {
 		
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = desiredTrk; 
-		Display::trk = ahrsInput.gpsTrack; 
+		Display::trk = ahrsInput.selTrack; 
 		Display::navt = navDTK; 
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
@@ -996,8 +998,6 @@ void loop() {
 				if (canMsgCount.isValid() == false) {
 					apMode = 4;
 				}
-				if (apMode == 4) 
-					desiredTrk = navDTK;
 			}
 			if (xte.isUpdated() && xteLR.isUpdated()) {
 				float err = 0.01 * gps.parseDecimal(xte.value());

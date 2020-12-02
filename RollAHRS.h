@@ -8,7 +8,7 @@ using namespace std;
 #define USE_ACCEL
 
 struct AhrsInputA { 
-	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y;
+	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y;
 	float ax, ay, az;  
 	float gx, gy, gz, mx, my, mz, dtk, g5Track;
 	float q3, palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
@@ -17,13 +17,13 @@ struct AhrsInputA {
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %f %f %f" /* 1 - 10 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" /* 11 - 20 */
 			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f",  /* 21 - 27 */ 
-		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, q3, palt, gspeed, 
+		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, q3, palt, gspeed, 
 		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp);
 		return String(buf);	
 	 }
 	 AhrsInputA fromString(const char *s) { 
 		sscanf(s, "%f %f %f %f %f %f %f %f %f  %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
+		&sec, &selTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
 		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp);
 		return *this;
 	}
@@ -31,7 +31,7 @@ struct AhrsInputA {
 
 
 struct AhrsInputB { 
-	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt; 
+	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt; 
 	float ax, ay, az;  
 	float gx, gy, gz, mx, my, mz, dtk, g5Track;
 	float palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
@@ -40,19 +40,19 @@ struct AhrsInputB {
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f " /* 1 - 10 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 11 - 20 */
 			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f",  /* 21 - 27 */ 
-		sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
+		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
 		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp);
 		return String(buf);	
 	 }
 	 AhrsInputB fromString(const char *s) { 
 		sscanf(s, "%f %f %f %f %f %f %f %f %f  %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-		&sec, &gpsTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
+		&sec, &selTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
 		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp);
 		return *this;
 	}
 	AhrsInputB &operator =(const AhrsInputA &a) { 
 		sec = a.sec;
-		gpsTrack = a.gpsTrack;
+		selTrack = a.selTrack;
 		gpsTrackGDL90 = a.gpsTrackGDL90;
 		gpsTrackVTG = a.gpsTrackVTG;
 		gpsTrackRMC = a.gpsTrackRMC;
@@ -242,7 +242,7 @@ public:
 	float lastGz, magCorr = 0;
 
 	bool valid() { 
-		return prev.gpsTrack != -1;
+		return prev.selTrack != -1;
 	}
 	
 	void zeroSensors() { 
@@ -322,7 +322,7 @@ public:
 					
 		// prevent discontinuities in hdg, just keep wrapping it around 360,720,1080,...
 		if (count > 0) { 	
-			l.gpsTrack = windup360(l.gpsTrack, prev.gpsTrack);
+			l.selTrack = windup360(l.selTrack, prev.selTrack);
 		}
 
 		//magHdgRawFit.add(l.sec, rawMagHdg);
