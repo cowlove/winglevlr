@@ -29,7 +29,8 @@ while(<>) {
 $round = 1;	
 while($round < 100) { 
 	$it = 1;
-	while($it < 10) { 
+	$lastBest = -1;
+	while(($#params >= 2 && $it < 10) || ($#params < 2 && $it < 2)) { 
 		foreach $t ( @params ) {
 			delete $best{$t};
 			$span = $span{$t} / $round;
@@ -41,10 +42,10 @@ while($round < 100) {
 				$valstr = ",";
 				foreach $p ( @params ) {
 					if (exists $bestV{$p} && ($t ne $p)) { 
-						$valstr = $valstr . "$p=" . sprintf("%.5f", $bestV{$p}) . ",";
+						$valstr = $valstr . "$p=" . sprintf("%.7f", $bestV{$p}) . ",";
 					} 
 					if ($t eq $p) {
-						$valstr = $valstr . "$p=". sprintf("%.5f", $v).",";
+						$valstr = $valstr . "$p=". sprintf("%.7f", $v).",";
 					} 
 				}
 				$cmd = "./winglevlr_ubuntu  $args --replay ./logs/AHRSD$num.DAT --debug \"$valstr\"";
