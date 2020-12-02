@@ -174,7 +174,8 @@ public:
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 	float magDipConstant = 2.14; // unexplained correction factor for bank angle in dip calcs
-		  
+	float magBankTrimCr = 0.000090;
+	float magBankTrimMaxBankErr = 7.0;
 	RollAHRS() { 
 		gyrYOffsetFit.add(gyrOffY);
 		gyrZOffsetFit.add(gyrOffZ);
@@ -217,7 +218,7 @@ public:
 		//gyroTurnBankFit = RunningLeastSquares(100),
 		//pitchDriftFit = RunningLeastSquares(300),  // 10HZ
 		gyroDriftFit = RunningLeastSquares(300), // 10HZ 
-		magHdgFit = RunningLeastSquares(50);
+		magHdgFit = RunningLeastSquares(50); // 10Hz
 		
 		
 	RollingAverage<float,200> magStabFit;
@@ -382,25 +383,25 @@ public:
 			hdg = magHdg360;
 		}
 		hdg =  (hdg - (cos(rollRad) * l.gz + sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;		
-		magHdg = constrain360(hdg);
-		
-		if (1) { 
-			static int skipped = 0;
-			if (skipped > 3 || !magHdgFit.full() || abs(magHdgFit.predict(l.sec) - magHdg) < 5.0) {
-				magHdgFit.add(l.sec, magHdg360);
-				magHdgAvg.add(l.sec, magHdg360);
-				skipped = 0;
-			} else {
-				skipped++;
-			}
-			//magHdg = constrain360(magHdgAvg.average());
+		if (tick10HZ) {
+			magHdgFit.add(l.sec, hdg);
 		}
+		magHdg = constrain360(hdg);		
 		
+		
+		if (magHdgFit.full()) { 
+			compYH -= magBankTrim;
+			magBank = -atan(magHdgFit.slope() * tas / 1091) * 180/M_PI;
+			if (abs(compYH - magBank) < magBankTrimMaxBankErr) { 
+				magBankTrim += (compYH - magBank) * magBankTrimCr;
+			}
+		}
 		
 		count++;
 		prev = l;
 		return compYH;
 	}	
+	float magBank, magBankTrim = 0.0;
 	
 	float getGyroQuality() {
 		return gyroZeroCount.average();
