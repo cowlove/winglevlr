@@ -476,7 +476,6 @@ int main(int argc, char **argv) {
 
 	ESP32sim_set_desiredTrk(90);
 
-	
 	setup();
 	uint64_t lastMillis = 0;
 	double totalErr = 0;
