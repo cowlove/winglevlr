@@ -118,14 +118,14 @@ void buttonISR() {
 namespace Display {
 	JDisplay jd;
 	int y = 0;
-	const int c2x = 80;
+	const int c2x = 70;
 	JDisplayItem<const char *>  ip(&jd,10,y,"WIFI:", "%s ");
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>    trk(&jd,c2x,y,  " TRK:", "%05.1f ");
 	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");  JDisplayItem<float>    obs(&jd,c2x,y,  " OBS:", "%05.1f ");
 	JDisplayItem<float> roll(&jd,10,y+=10,"ROLL:", "%+03.1f");   JDisplayItem<int>    mode(&jd,c2x,y,  "MODE:", "%05d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> maghdg(&jd,c2x,y,  " MAG:", "%05.1f ");
 	//JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
-	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s "); JDisplayItem<int>   drop(&jd,c2x+50,y,    "", "%03d ");
+	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s "); JDisplayItem<int>   drop(&jd,c2x+30,y,    "", "%03d ");
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,c2x,y,    "SERV:", "%04d ");
 	
 	JDisplayItem<float> pidpl(&jd,00,y+=20,"PL:", "%03.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    " TT1:", "%04.0f ");
@@ -363,7 +363,7 @@ void setup() {
 	wifi.addAP("ChloeNet", "niftyprairie7");
 	wifi.addAP("TUK-PUBLIC", "");
 
-	if (digitalRead(button4.pin) != 0) { // skip long setup stuff if we're debugging
+	if (digitalRead(button4.pin) != 0 || digitalRead(button3.pin) != 0) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
 			wifi.run();
@@ -447,20 +447,47 @@ template<class T>
 class StaleData {
 	uint64_t timeout, lastUpdate;
 	T value, invalidValue;
+	bool chg = false; 
 public:
 	StaleData(int t, T i) : lastUpdate(0), timeout(t), invalidValue(i) {} 
 	bool isValid() { return millis() - lastUpdate < timeout; }
 	operator T&() { return isValid() ? value : invalidValue; }
 	StaleData<T>& operator =(const T&v) {
+		chg = value != v;
 		value = v;
 		lastUpdate = millis();
 		return *this;
 	}
-	T getValue() { return value; } 
+	T getValue() { return value; }
+	bool changed() { 
+		bool rval = chg;
+		chg = false;
+		return rval && isValid(); 
+	}
+};
+
+template<class T> 
+class ChangedData {
+	T value;
+	bool chg = false;
+	bool first = true;
+public:
+	ChangedData(T i) {} 
+	operator T&() { return value; }
+	ChangedData<T>& operator =(const T&v) {
+		chg = value != v || first;
+		value = v;
+		first = false;
+		return *this;
+	}
+	bool changed() { 
+		bool rval = chg;
+		chg = false;
+		return rval; }
 };
  
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(6000,-1), gpsTrackVTG(5000,-1);
-static StaleData<int> canMsgCount(3000,-1);
+static StaleData<int> canMsgCount(3000,-1), g5Hdg(3000, -1);
 
 static float desiredTrk = -1;
 float desRoll = 0;		
@@ -524,8 +551,8 @@ static bool testTurnActive = false;
 static int testTurnAlternate = 0;
 static float testTurnLastTurnTime = 0;
 static RollingAverage<float,5> crossTrackError;
-static RollingAverage<float,10> windCorrectionAngle;
 static float xteCorrection = 0;
+static float magVar = +15.5; 
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
@@ -693,17 +720,28 @@ void loop() {
 		}
 			
 	}
-	
-
-#ifndef UBUNTU
-	// TODO - stale/changed data not set by logfile playback
-	ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
-	ahrsInput.gpsTrackVTG = gpsTrackVTG;
-	ahrsInput.gpsTrackRMC = gpsTrackRMC;
-#endif
-	ahrsInput.dtk = desiredTrk;
 
 	if (imuRead()) {
+		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
+
+#ifdef UBUNTU
+		// TODO - stale/changed data not set by logfile playback, 
+		// Simluate NMEA and GDL90 and G5 UDP packets? 
+		gpsTrackGDL90 = ahrsInput.gpsTrackGDL90;
+		gpsTrackVTG = ahrsInput.gpsTrackVTG;
+		gpsTrackRMC = ahrsInput.gpsTrackRMC;
+		if (gpsTrackGDL90.changed()) { ahrs.mComp.addAux(gpsTrackGDL90, 5, 0.03); }
+#endif
+
+		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
+		ahrsInput.gpsTrackVTG = gpsTrackVTG;
+		ahrsInput.gpsTrackRMC = gpsTrackRMC;
+		ahrsInput.dtk = desiredTrk;
+		g5Hdg = ahrsInput.g5Hdg;
+		if (g5Hdg.changed()) {
+			ahrs.mComp.addAux(g5Hdg, 1, 0.02);
+		}
+
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
 
@@ -785,9 +823,7 @@ void loop() {
 				servoOutput = max(550, min(2100, servoOutput));
 				pwmOutput = servoOutput * 4915 / 1500;
 			}			
-		}
-		
-		
+		}	
 		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
 		logItem.pwmOutput = pwmOutput;
@@ -803,11 +839,9 @@ void loop() {
 			0;
 		totalRollErr += abs(roll + ahrsInput.g5Roll);
 		totalHdgError += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
-		
-	
 	
 #ifdef UBUNTU
-		if (millis() < 1000) 
+		if (millis() < 1000) // don't count error during the first second while stuff initializes 
 			totalRollErr = totalHdgError = 0;
 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
@@ -871,10 +905,8 @@ void loop() {
 				gdl90.add(buf[i]);
 				GDL90Parser::State s = gdl90.getState();
 				if (s.valid && s.updated) {
-					gpsTrackGDL90 = s.track;
-					if (s.track > 0 && ahrsInput.g5Hdg > 0) {
-						windCorrectionAngle.add(angularDiff(s.track - ahrsInput.g5Hdg));
-					}
+					gpsTrackGDL90 = constrain360(s.track - magVar);
+					ahrs.mComp.addAux(gpsTrackGDL90, 5, 0.03); 
 					if (hdgSelect == 2) {
 						gpsFixes++;
 						ahrsInput.alt = s.alt;
@@ -973,6 +1005,9 @@ void loop() {
 							crossTrackError.reset();
 							testTurnActive = false;
 						}
+						if (apMode == 4 && obs != lastObs) { 
+							xtePID.reset();
+						}
 						lastObs = obs;
 					}
 					canMsgCount = canMsgCount + 1;
@@ -981,10 +1016,10 @@ void loop() {
 			gps.encode(buf[i]);
 			// Use only VTG course so as to only use G5 data
 			if (vtgCourse.isUpdated()) {  
-				gpsTrackVTG = gps.parseDecimal(vtgCourse.value()) * 0.01; //gps.course.deg();
+				gpsTrackVTG = constrain360(gps.parseDecimal(vtgCourse.value()) * 0.01 - magVar);
 			}
 			if (gps.course.isUpdated()) { 
-				gpsTrackRMC = gps.course.deg();
+				gpsTrackRMC = constrain360(gps.course.deg() - magVar);
 			}
 			if (gps.location.isUpdated() && hdgSelect == 2) {
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
@@ -992,7 +1027,7 @@ void loop() {
 				gpsFixes++;
 			}
 			if (desiredHeading.isUpdated()) { 
-				navDTK = 0.01 * gps.parseDecimal(desiredHeading.value());// - windCorrectionAngle.average();
+				navDTK = constrain360(0.01 * gps.parseDecimal(desiredHeading.value()) - magVar);
 				if (navDTK < 0)
 					navDTK += 360;
 				if (canMsgCount.isValid() == false) {
@@ -1143,6 +1178,7 @@ void ESP32sim_set_gpsTrackGDL90(float v) {
 
 void ESP32sim_set_desiredTrk(float v) {
 	desiredTrk = v;
+	ahrsInput.dtk = v;
 }
 
 

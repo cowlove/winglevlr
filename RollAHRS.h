@@ -29,7 +29,6 @@ struct AhrsInputA {
 	}
 };
 
-
 struct AhrsInputB { 
 	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt; 
 	float ax, ay, az;  
@@ -110,7 +109,6 @@ float constrain360(float a) {
 	return a;
 }
 
-
 float angularDiff(float d) { 
 	if (abs(d) > 100000) 
 		return d;
@@ -132,6 +130,46 @@ inline static float windup360(float now, float prev) {
 	return prev + hd;
 }
 	
+	
+class MultiCompFilter { 
+	bool first = true;
+	float defaultCr = 0.03;
+	float age = 5.0;
+public:
+	float value, prevMainValue, bestCr, bestAux, bestAuxPri, expires, priority; 
+	float calculate(float now, float v) {
+		if (first) {
+			prevMainValue = value = v;
+			bestAuxPri = -1;
+			first = false;
+			expires = now + age;
+		}
+		if(now > expires || bestAuxPri >= priority) { 
+			if (bestAuxPri == -1) {
+				bestAux = v;
+				bestAuxPri = 0;			
+				bestCr = defaultCr;
+			}
+			expires = now + age;
+			bestAux = angularClosest(bestAux, value);
+			priority = bestAuxPri;
+			value = (1 - bestCr) * (value) + (bestCr * bestAux);
+		} 
+		value += angularDiff(v - prevMainValue);	
+		bestAuxPri = -1;
+		prevMainValue = v;
+		return value;	  
+	}
+	void addAux(float v, int pri, float cr) {
+		if (pri >= bestAuxPri) {
+			bestAux = v;
+			bestAuxPri = pri;
+			bestCr = cr;
+		}
+	}
+};
+
+
 class RollAHRS {
 public:
 	float fit360(float h) { 
@@ -139,28 +177,15 @@ public:
 		while(h > 360) h -= 360;
 		return h;
 	}
-/*	float magOffX = (-52.0 + 50) / 2,  // + is to the rear  
-		  magOffY = (-0.0 + 106) / 2, //  + is left
-		  magOffZ = (-82 + 32) / 2; // + is up
-*/
-
-/*
-	float magOffX = 15.4,//(-30.0 + 10) / 2,  // + is to the rear  
-		  magOffY = 8.6,//(33 + 72) / 2 - 3, //  + is left
-		  magOffZ = -30;//(-82 + 32) / 2; // + is up
-*/
-
+	MultiCompFilter mComp;
+	
 	float magOffX = 21;
 	float magOffY = 14;
 	float magOffZ = -30;
 	
-
 	float magScaleX = 1.0;
 	float magScaleY = 1.0;
 	float magScaleZ = 1.0;
-	
-	
-//ERO SENSORS gyro 0.858590 0.834096 1.463080 accel 0.171631 -0.085765 -0.037540
 	
 	float gyrOffX = -1; 
 	float gyrOffY = -1.066; 
@@ -176,6 +201,7 @@ public:
 	float magDipConstant = 2.14; // unexplained correction factor for bank angle in dip calcs
 	float magBankTrimCr = 0.00005;
 	float magBankTrimMaxBankErr = 12;
+	
 	RollAHRS() { 
 		gyrYOffsetFit.add(gyrOffY);
 		gyrZOffsetFit.add(gyrOffZ);
@@ -188,13 +214,11 @@ public:
 		TwoStageRollingAverage<float,20,20> ax,ay,az,gx,gy,gz;
 	} zeroAverages;
 
-
 	TwoStageRollingAverage<float,20,150>
 		gyrZOffsetFit,
 		gyrXOffsetFit,
 		gyrYOffsetFit;
 
-	
 	float magBank, magBankTrim = 0.0;
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, /*bankCorrection,*/ bankAngle;
 	float gyroTurnBank, pG;
@@ -205,23 +229,9 @@ public:
 	
 	typedef TwoStageRunningLeastSquares<float> TwoStageRLS;
 	RunningLeastSquares // all at about 200 HZ */
-		//accelPitchFit = RunningLeastSquares(100), 
-		//altFit = RunningLeastSquares(200), // 10Hz
-		//gpsHdgFit = RunningLeastSquares(200),  // TODO run GPS histories at lower rate 
-		//magHdgRawFit = RunningLeastSquares(50),
-		//magMagnitudeFit = RunningLeastSquares(300),  
-		//magXyAngFit = RunningLeastSquares(10), 
-		//magZAngFit = RunningLeastSquares(10),
-		//gyZFit = RunningLeastSquares(100),
-		//gyXFit = RunningLeastSquares(100),
-		//gyYFit = RunningLeastSquares(100),
-		//dipBankFit = RunningLeastSquares(100),
-		//gyroTurnBankFit = RunningLeastSquares(100),
-		//pitchDriftFit = RunningLeastSquares(300),  // 10HZ
 		gyroDriftFit = RunningLeastSquares(300), // 10HZ 
 		magHdgFit = RunningLeastSquares(50); // 10Hz
-		
-		
+				
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
 	RollingAverage<float,20> avgMagHdg;
@@ -267,9 +277,9 @@ public:
 		
 		bool tick10HZ = (floor(l.sec / .1) != floor(prev.sec / .1));
 
-		//zeroAverages.ax.add(l.ax);
-		//zeroAverages.ay.add(l.ay);
-		//zeroAverages.az.add(l.az);
+		zeroAverages.ax.add(l.ax);
+		zeroAverages.ay.add(l.ay);
+		zeroAverages.az.add(l.az);
 		zeroAverages.gx.add(l.gx);
 		zeroAverages.gy.add(l.gy);
 		zeroAverages.gz.add(l.gz);
@@ -384,11 +394,13 @@ public:
 			hdg = magHdg360;
 		}
 		hdg =  (hdg - (cos(rollRad) * l.gz + sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;		
-		if (tick10HZ) {
-			magHdgFit.add(l.sec, hdg);
-		}
-		magHdg = constrain360(hdg);		
+
 		
+		float cHdg = mComp.calculate(l.sec, hdg);
+		if (tick10HZ) {
+			magHdgFit.add(l.sec, cHdg);
+		}
+		magHdg = constrain360(cHdg);		
 		
 		if (magHdgFit.full()) { 
 			compYH -= magBankTrim;
@@ -401,6 +413,9 @@ public:
 		
 		count++;
 		prev = l;
+		
+		compYH;
+				
 		return compYH;
 	}	
 	

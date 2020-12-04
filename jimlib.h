@@ -30,6 +30,23 @@ class Semaphore {
 };
 
 
+class LineBuffer {
+public:
+	char line[1024];
+	char len;
+	int add(char c) {
+		int r = 0; 
+		if (c != '\r' && c != '\n');
+			line[len++] = c;
+		if (len >= sizeof(line) || c == '\n') {
+			r = len;
+				line[len] = '\0';
+			len = 0;
+		}
+		return r;
+	}
+};
+
 class EggTimer {
 	uint64_t last;
 	int interval; 
