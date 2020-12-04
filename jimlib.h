@@ -291,6 +291,64 @@ class DigitalButtonLongShort {
 	int wasLong() { return filter.wasLong; } 
 };
 
+template<class T> 
+class StaleData {
+	uint64_t timeout, lastUpdate;
+	T value, invalidValue;
+	bool chg = false; 
+public:
+	StaleData(int t, T i) : lastUpdate(0), timeout(t), invalidValue(i) {} 
+	bool isValid() { return millis() - lastUpdate < timeout; }
+	operator T&() { return isValid() ? value : invalidValue; }
+	StaleData<T>& operator =(const T&v) {
+		chg = value != v;
+		value = v;
+		lastUpdate = millis();
+		return *this;
+	}
+	T getValue() { return value; }
+	bool changed() { 
+		bool rval = chg;
+		chg = false;
+		return rval && isValid(); 
+	}
+};
+
+template<class T> 
+class ChangedData {
+	T value;
+	bool chg = false;
+	bool first = true;
+public:
+	ChangedData(T i) {} 
+	operator T&() { return value; }
+	ChangedData<T>& operator =(const T&v) {
+		chg = value != v || first;
+		value = v;
+		first = false;
+		return *this;
+	}
+	bool changed() { 
+		bool rval = chg;
+		chg = false;
+		return rval; }
+};
+
+template <typename Out>
+void split(const std::string &s, char delim, Out result) {
+    std::istringstream iss(s);
+    std::string item;
+    while (std::getline(iss, item, delim)) {
+        *result++ = item;
+    }
+}
+
+std::vector<std::string> split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    split(s, delim, std::back_inserter(elems));
+    return elems;
+}
+
 #ifdef ESP32
 // mutex to serialize SD card and TFT writes. 
 Mutex mutex;
