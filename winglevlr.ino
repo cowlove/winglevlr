@@ -94,13 +94,12 @@ DigitalButton button4(32); // knob press
 static IPAddress mavRemoteIp;
 #define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
 static uint8_t buf[BUFFER_LENGTH];
-EggTimer screenTimer(200), blinkTimer(1000), udpDebugTimer(1000), mavTimer(300);
+EggTimer screenTimer(200);
 
 LongShortFilter butFilt(1500,600);
 LongShortFilter butFilt2(1500,600);
 LongShortFilter butFilt3(1500,600);
 LongShortFilter butFilt4(1500,600);
-
 
 void setKnobPid(int f); 
 
@@ -152,7 +151,6 @@ public:
 	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 3);
 	JDisplayEditableItem dead = JDisplayEditableItem(&Display::dead, .1);
 	
-	//MyEditor() : JDisplayEditor(26, 21) { // add in correct knob selection order
 	MyEditor() : JDisplayEditor(26, 0) { // add in correct knob selection order
 		add(&pidpl);	
 		add(&pidph);	
@@ -169,16 +167,9 @@ public:
 } ed;
 
 
-
-void ESP32sim_JDisplay_forceUpdate() { 
-	Display::jd.forceUpdate();
-}
-
 //MPU9250_DMP imu;
 MPU9250_asukiaaa imu(0x69);
 #define IMU_INT_PIN 4
-
-
 
 void imuLog(); 
 void imuInit() { 
@@ -196,27 +187,6 @@ void imuInit() {
 	} else {
 		Serial.println("Cannot read sensorId");
 	}
-
-  //pinMode(IMU_INT_PIN, INPUT_PULLUP);
-#if 0 
-	imu.setGyroFSR(250/*deg per sec*/);
-	imu.setAccelFSR(4/*G*/);
-	imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL | INV_XYZ_COMPASS);
-
-	// FIFO seems slower than just sampling 
-	imu.setCompassSampleRate(100); // Set mag rate to 10Hz
-	imu.setSampleRate(1000);
-	imu.configureFifo(INV_XYZ_GYRO |INV_XYZ_ACCEL);  
-
-	imu.dmpSetInterruptMode(DMP_INT_CONTINUOUS);
-	imu.setIntLevel(INT_ACTIVE_LOW);
-	imu.enableInterrupt(1);
-	imu.setIntLatched(INT_50US_PULSE);
-	imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | // Enable 6-axis quat
-			   DMP_FEATURE_GYRO_CAL, // Use gyro calibration
-			  100); // Set DMP FIFO rate to 10 Hz
-	//attachInterrupt(digitalPinToInterrupt(button.pin), imuPrint, FALLING);
-#endif
 }
 
 static AhrsInput ahrsInput;
@@ -226,28 +196,12 @@ bool imuRead() {
 	if(1){
 		AhrsInput &x = ahrsInput;
 		x.sec = millis() / 1000.0;
-#if 0
-		imu.updateAccel();
-		imu.updateGyro();
-		imu.updateCompass();
-
-		x.ax = imu.calcAccel(imu.ax);
-		x.ay = imu.calcAccel(imu.ay);
-		x.az = imu.calcAccel(imu.az);
-		x.gx = imu.calcGyro(imu.gx);
-		x.gy = imu.calcGyro(imu.gy);
-		x.gz = imu.calcGyro(imu.gz);
-		x.mx = imu.calcMag(imu.mx);
-		x.my = imu.calcMag(imu.my);
-		x.mz = imu.calcMag(imu.mz);
-#else
 #ifdef USE_ACCEL
 		imu.accelUpdate();
 		x.ax = imu.accelX();
 		x.ay = imu.accelY();
 		x.az = imu.accelZ();
 #endif
-
 		imu.gyroUpdate();
 		x.gx = imu.gyroX();
 		x.gy = imu.gyroY();
@@ -262,14 +216,11 @@ bool imuRead() {
 			x.mz = imu.magZ();
 		}
 		lastUsec = micros();
-#endif
-
 		// remaining items set (alt, hdg, speed) set by main loop
 		return true;
 	} else { 
 		AhrsInput &x = ahrsInput;
-		x.gx = x.mx = -1;
-		// x.ax = -1;
+		x.ax = x.gx = x.mx = -1;
 	}
 	return false;
 }
@@ -277,9 +228,6 @@ bool imuRead() {
 LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
 const char *logFileName = "AHRSD%03d.DAT";
-
-
-
 
 void sdLog()  {
 	//Serial.println(x.toString());
@@ -289,26 +237,11 @@ void sdLog()  {
 
 void printMag() {
       //imu.updateCompass();
-#if 0
-      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcGyro(imu.gx), (float)imu.calcGyro(imu.gy), (float)imu.calcGyro(imu.gz) );
-      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcMag(imu.mx), (float)imu.calcMag(imu.my), (float)imu.calcMag(imu.mz) );
-      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.calcAccel(imu.ax), (float)imu.calcAccel(imu.ay), (float)imu.calcAccel(imu.az) );
-#else
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.gyroX(), (float)imu.gyroY(), (float)imu.gyroZ() );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.magX(), (float)imu.magY(), (float)imu.magZ() );
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.accelX(), (float)imu.accelY(), (float)imu.accelZ() );
-#endif
       Serial.println("");
 }
-
-
-
-#if 0 
-#include "esp_freertos_hooks.h"
-bool bApplicationIdleHook() {
-	return true;
-}
-#endif
 
 void DisplayUpdateThread(void *); 
 
@@ -332,11 +265,6 @@ void setup() {
 	pinMode(27, OUTPUT);
 	digitalWrite(27, 1);
 
-//	pinMode(32, INPUT);
-//	pinMode(26, OUTPUT);
-//	Serial1.begin(57600, SERIAL_8N1, 32, 26);
-//	Serial1.setTimeout(1);
-
 	Display::jd.begin();
 	Display::jd.clear();
 	
@@ -350,7 +278,6 @@ void setup() {
 	attachInterrupt(digitalPinToInterrupt(button3.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button4.pin), buttonISR, CHANGE);
 
-	//SCREENLINE.println("Initializing IMU...");
 	imuInit();	
 	
 	WiFi.disconnect(true);
@@ -372,8 +299,6 @@ void setup() {
 		
 	}
 
-	
-
 	udpSL30.begin(7891);
 	udpG90.begin(4000);
 	udpNMEA.begin(7892);
@@ -389,14 +314,14 @@ void setup() {
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
 
-	hdgPID.setGains(0.10, 0.02, 0.02);
-	hdgPID.hiGain.p = 0.5;
+	hdgPID.setGains(0.25, 0.02, 0.02);
+	hdgPID.hiGain.p = 0.50;
 	hdgPID.hiGainTrans.p = 3.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 2.2;
 
-	xtePID.setGains(8.0, 0.01, 0.05);
-	xtePID.maxerr.i = 30.0;
+	xtePID.setGains(8.0, 0.00, 0.05);
+	xtePID.maxerr.i = 1.0;
 	xtePID.finalGain = 10.0;
 	
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
@@ -404,8 +329,7 @@ void setup() {
 	pitchPID.maxerr.i = .5;
 
     // make PID select knob display text from array instead of 0-3	
-	Display::pidsel.toString = [](float v){ return String((const char *[]){"HDG ", "ROLL", "XTE ", "PIT "}[(v >=0 && v <= 3) ? (int)v : 0]); };
-		
+	Display::pidsel.toString = [](float v){ return String((const char *[]){"HDG ", "ROLL", "XTE ", "PIT "}[(v >=0 && v <= 3) ? (int)v : 0]); };		
 	ed.begin();
 
 #ifndef UBUNTU
@@ -428,7 +352,6 @@ void setup() {
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
 
 	ArduinoOTA.begin();
-
 	
 #ifndef UBUNTU	
 	xTaskCreate(
@@ -442,60 +365,12 @@ void setup() {
 #endif 
 }
 
-
-template<class T> 
-class StaleData {
-	uint64_t timeout, lastUpdate;
-	T value, invalidValue;
-	bool chg = false; 
-public:
-	StaleData(int t, T i) : lastUpdate(0), timeout(t), invalidValue(i) {} 
-	bool isValid() { return millis() - lastUpdate < timeout; }
-	operator T&() { return isValid() ? value : invalidValue; }
-	StaleData<T>& operator =(const T&v) {
-		chg = value != v;
-		value = v;
-		lastUpdate = millis();
-		return *this;
-	}
-	T getValue() { return value; }
-	bool changed() { 
-		bool rval = chg;
-		chg = false;
-		return rval && isValid(); 
-	}
-};
-
-template<class T> 
-class ChangedData {
-	T value;
-	bool chg = false;
-	bool first = true;
-public:
-	ChangedData(T i) {} 
-	operator T&() { return value; }
-	ChangedData<T>& operator =(const T&v) {
-		chg = value != v || first;
-		value = v;
-		first = false;
-		return *this;
-	}
-	bool changed() { 
-		bool rval = chg;
-		chg = false;
-		return rval; }
-};
  
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(6000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1), g5Hdg(3000, -1);
-
 static float desiredTrk = -1;
 float desRoll = 0;		
-
-
-
 static int serialLogFlags = 0;
-
 
 void udpSendString(const char *b) { 
 	for (int repeat = 0; repeat < 3; repeat++) { 
@@ -553,9 +428,6 @@ static float testTurnLastTurnTime = 0;
 static RollingAverage<float,5> crossTrackError;
 static float xteCorrection = 0;
 static float magVar = +15.5; 
-
-Windup360 currentHdg;
-ChangeTimer g5HdgChangeTimer;
 static float navDTK = -1;
 static bool logActive = false;
 static float roll = 0, pitch = 0;
@@ -569,43 +441,20 @@ static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg.
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 double totalRollErr = 0.0, totalHdgError = 0.0;
-
-uint16_t len;
-static int ledOn = 0;
+//static int ledOn = 0;
 static int manualRelayMs = 60;
 static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
-//static int buildNumber = 12;
-//static int mavBytesIn = 0;
-//static char lastParam[64];
-//static int lastHdg;
 static uint64_t lastLoop = micros();
 static bool selEditing = false;
+
+Windup360 currentHdg;
+ChangeTimer g5HdgChangeTimer;
 
 
 void loop() {	
 	esp_task_wdt_reset();
-	ArduinoOTA.handle();
-
-	// tmp debug log
-
-	//if (logFile == NULL) 
-	//	logActive = true;
-	
-	
-	if (0) {  // debugging memory leak from xTaskCreate/vTaskDelete in log implementation
-		static EggTimer t(20000);
-		if (t.tick()) {
-			static int logtestc = 0;
-			if (logtestc++ % 2 == 0) 
-				logActive = true;
-			else
-				logActive = false;
-		}
-	}
-	
-	//vTaskDelay(1);
+	ArduinoOTA.handle();	
 	delayMicroseconds(100);
-	//yield();
 
 #ifndef UBUNTU
 	if (!loopTimer.tick())
@@ -886,11 +735,7 @@ void loop() {
 		Display::log = logFilename.c_str();
 		Display::log.setInverse(false, (logFile != NULL));
 	}
-	
-	if (blinkTimer.tick()) 
-		ledOn ^= 1;
-	digitalWrite(LED_PIN, (ledOn & 0x1) ^ (gpsFixes & 0x1) ^ (serBytes & 0x1));
-		
+			
 	int recsize = 0;
 	do {
 		recsize = 0;
@@ -916,8 +761,7 @@ void loop() {
 				}
 			}
 		}
-	}
-	while(recsize > 0);
+	} while(recsize > 0);
 
 	if (Serial.available()) {
 		static char line[32]; // TODO make a line parser class with a lambda/closure
@@ -953,9 +797,6 @@ void loop() {
 				else {
 					Serial.printf("UNKNOWN COMMAND: %s", line);
 				}
-
-				//Serial.printf("PID %.2f %.2f %.2f pitch %.2f trim %.2f\n", pitchPID.gain.p, pitchPID.gain.i, pitchPID.gain.d, ed.pset.value, ed.tzer.value);
-				//printMag();
 			}
 		}
 	}
@@ -1013,13 +854,14 @@ void loop() {
 					canMsgCount = canMsgCount + 1;
 				}
 			}
+
 			gps.encode(buf[i]);
-			// Use only VTG course so as to only use G5 data
-			if (vtgCourse.isUpdated()) {  
+			if (vtgCourse.isUpdated()) {  // VTG typically from G5 NMEA serial output
 				gpsTrackVTG = constrain360(gps.parseDecimal(vtgCourse.value()) * 0.01 - magVar);
 			}
-			if (gps.course.isUpdated()) { 
+			if (gps.course.isUpdated()) { // RMC typically from ifly NMEA output
 				gpsTrackRMC = constrain360(gps.course.deg() - magVar);
+				ahrs.mComp.addAux(gpsTrackRMC, 4, 0.03); 	
 			}
 			if (gps.location.isUpdated() && hdgSelect == 2) {
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
@@ -1043,8 +885,6 @@ void loop() {
 		}
 	}
 }
-
-
 
 void DisplayUpdateThread(void *) { 
 	Display::jd.forceUpdate();
@@ -1077,34 +917,13 @@ void DisplayUpdateThread(void *) {
 			screenEnabled = true;
 			
 		}
-		
-		//Display::pidc = pid.corr;
-		//Display::serv = pwmOutput;
-		//Display::jd.forceUpdate();
 		delayMicroseconds(10);
 	}
 }
 
-
 #ifdef UBUNTU
 float ESP32sim_getRollErr() {  return totalRollErr;}
 void ESP32sim_setLogFile(const char *p) { logFilename = p; } 
-
-
-template <typename Out>
-void split(const std::string &s, char delim, Out result) {
-    std::istringstream iss(s);
-    std::string item;
-    while (std::getline(iss, item, delim)) {
-        *result++ = item;
-    }
-}
-
-std::vector<std::string> split(const std::string &s, char delim) {
-    std::vector<std::string> elems;
-    split(s, delim, std::back_inserter(elems));
-    return elems;
-}
 
 
 void ESP32sim_setDebug(const char *s) { 
@@ -1129,8 +948,6 @@ void ESP32sim_setDebug(const char *s) {
 		}
 	}
 } 
-
-
 
 bool ESP32sim_replayLogItem(ifstream &i) {
 	LogItem l; 
@@ -1163,18 +980,14 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 	return false;
 }
 
-
 void ESP32sim_set_gpsTrackGDL90(float v) { 
 	gpsTrackGDL90 = v;
 	ahrsInput.g5Hdg = v;
 }
 
-/*void ESP32sim_set_g5(float p, float r, float h) { 
-	ahrsInput.g5Hdg = h;
-	ahrsInput.g5Pitch = p;
-	ahrsInput.g5Roll = r;
+void ESP32sim_JDisplay_forceUpdate() { 
+	Display::jd.forceUpdate();
 }
-*/
 
 void ESP32sim_set_desiredTrk(float v) {
 	desiredTrk = v;
