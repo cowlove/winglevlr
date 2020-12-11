@@ -18,9 +18,6 @@
  */
 
 
-
-
-
 #ifndef UBUNTU
 #include <HardwareSerial.h>
 #include "SPI.h"
@@ -450,7 +447,6 @@ static bool selEditing = false;
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
 
-
 void loop() {	
 	esp_task_wdt_reset();
 	ArduinoOTA.handle();	
@@ -459,7 +455,10 @@ void loop() {
 #ifndef UBUNTU
 	if (!loopTimer.tick())
 		return;
+#else
+	imu.ESP32sim_run();
 #endif
+
 	
 	uint64_t now = micros();
 	double nowSec = millis() / 1000.0;
@@ -570,7 +569,156 @@ void loop() {
 			
 	}
 
-	if (imuRead()) {
+	int recsize = 0;
+	do {
+		recsize = 0;
+		int avail = udpG90.parsePacket();
+		while(avail > 0) { 
+			recsize = udpG90.read(buf, min(avail,(int)sizeof(buf)));
+			if (recsize <= 0)
+				break;
+			avail -= recsize;
+			udpBytes += recsize; //+ random(0,2);
+			for (int i = 0; i < recsize; i++) {  
+				gdl90.add(buf[i]);
+				GDL90Parser::State s = gdl90.getState();
+				if (s.valid && s.updated) {
+					gpsTrackGDL90 = constrain360(s.track - magVar);
+					ahrs.mComp.addAux(gpsTrackGDL90, 5, 0.03); 
+					if (hdgSelect == 2) {
+						gpsFixes++;
+						ahrsInput.alt = s.alt;
+						ahrsInput.palt = s.palt;
+						ahrsInput.gspeed = s.hvel;
+					}
+				}
+			}
+		}
+	} while(recsize > 0);
+
+	if (Serial.available()) {
+		static char line[32]; // TODO make a line parser class with a lambda/closure
+		static int index;
+		int n = Serial.readBytes(buf, sizeof(buf));
+		for (int i = 0; i < n; i++) {
+			if (index >= sizeof(line))
+				index = 0;
+			if (buf[i] != '\r')
+				line[index++] = buf[i];
+			if (buf[i] == '\n' || buf[i] == '\r') {
+				line[index] = '\0';
+				Serial.printf("RECEIVED COMMAND: %s", line);
+				index = 0;
+				float f;
+				int relay, ms;
+				if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
+				else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
+				else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
+				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
+				else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
+				else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
+				else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
+				else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
+				//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
+				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
+				//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
+				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
+				else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
+				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
+				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
+				else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
+				else {
+					Serial.printf("UNKNOWN COMMAND: %s", line);
+				}
+			}
+		}
+	}
+
+	int avail = udpSL30.parsePacket();
+	while(avail > 0) { 
+		static char line[200];
+		static int index;
+		
+		int n = udpSL30.read(buf, sizeof(buf));
+		//printf("READ: %s\n", buf);
+		if (n <= 0)
+			break;
+		buf[n] = '\0';
+		avail -= n;
+		udpBytes += n; // + random(0,2);
+		for (int i = 0; i < n; i++) {
+			if (index >= sizeof(line) - 1)
+				index = 0;
+			if (buf[i] != '\r')
+				line[index++] = buf[i];
+			if (buf[i] == '\n' || buf[i] == '\r') {
+				line[index++] = '\0';
+				index = 0;
+				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
+				int mode = 0;
+				//printf("LINE %s\n", line);
+				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
+				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
+					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
+					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
+					//printf("CAN: %s", line);
+					ahrsInput.g5Pitch = pit * 180 / M_PI;
+					ahrsInput.g5Roll = roll * 180 / M_PI;
+					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
+					ahrsInput.g5Track = magTrack * 180 / M_PI;
+					ahrsInput.g5Palt = palt / 3.2808;
+					ahrsInput.g5Ias = ias / 0.5144;
+					ahrsInput.g5Tas = tas / 0.5144;
+					ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
+					apMode = mode;
+					if (knobSel == 1 || knobSel == 4) {
+						obs = knobVal * 180.0 / M_PI;
+						if (obs <= 0) obs += 360;
+						if (apMode != 4 && obs != lastObs) {
+							desiredTrk = obs;
+							crossTrackError.reset();
+							testTurnActive = false;
+						}
+						if (apMode == 4 && obs != lastObs) { 
+							xtePID.reset();
+						}
+						lastObs = obs;
+					}
+					canMsgCount = canMsgCount + 1;
+				}
+			}
+
+			gps.encode(buf[i]);
+			if (vtgCourse.isUpdated()) {  // VTG typically from G5 NMEA serial output
+				gpsTrackVTG = constrain360(gps.parseDecimal(vtgCourse.value()) * 0.01 - magVar);
+			}
+			if (gps.course.isUpdated()) { // RMC typically from ifly NMEA output
+				gpsTrackRMC = constrain360(gps.course.deg() - magVar);
+				ahrs.mComp.addAux(gpsTrackRMC, 4, 0.03); 	
+			}
+			if (gps.location.isUpdated() && hdgSelect == 2) {
+				ahrsInput.alt = gps.altitude.meters() * 3.2808;
+				ahrsInput.gspeed = gps.speed.knots();
+				gpsFixes++;
+			}
+			if (desiredHeading.isUpdated()) { 
+				navDTK = constrain360(0.01 * gps.parseDecimal(desiredHeading.value()) - magVar);
+				if (navDTK < 0)
+					navDTK += 360;
+				if (canMsgCount.isValid() == false) {
+					apMode = 4;
+				}
+			}
+			if (xte.isUpdated() && xteLR.isUpdated()) {
+				float err = 0.01 * gps.parseDecimal(xte.value());
+				if (strcmp(xteLR.value(), "L") == 0)
+					err *= -1;
+				crossTrackError.add(err);
+			}
+		}
+	}
+
+	if (imuRead()) { 
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
 
 #ifdef UBUNTU
@@ -697,9 +845,6 @@ void loop() {
 			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " " << ahrs.magBank/*33*/  << " LOG U" << endl;
 		}
 #endif
-		if (logFile != NULL) {
-			sdLog();
-		}
 		logItem.flags = 0;
 		lastAhrsInput = ahrsInput;
 	}
@@ -736,153 +881,8 @@ void loop() {
 		Display::log.setInverse(false, (logFile != NULL));
 	}
 			
-	int recsize = 0;
-	do {
-		recsize = 0;
-		int avail = udpG90.parsePacket();
-		while(avail > 0) { 
-			recsize = udpG90.read(buf, min(avail,(int)sizeof(buf)));
-			if (recsize <= 0)
-				break;
-			avail -= recsize;
-			udpBytes += recsize; //+ random(0,2);
-			for (int i = 0; i < recsize; i++) {  
-				gdl90.add(buf[i]);
-				GDL90Parser::State s = gdl90.getState();
-				if (s.valid && s.updated) {
-					gpsTrackGDL90 = constrain360(s.track - magVar);
-					ahrs.mComp.addAux(gpsTrackGDL90, 5, 0.03); 
-					if (hdgSelect == 2) {
-						gpsFixes++;
-						ahrsInput.alt = s.alt;
-						ahrsInput.palt = s.palt;
-						ahrsInput.gspeed = s.hvel;
-					}
-				}
-			}
-		}
-	} while(recsize > 0);
-
-	if (Serial.available()) {
-		static char line[32]; // TODO make a line parser class with a lambda/closure
-		static int index;
-		int n = Serial.readBytes(buf, sizeof(buf));
-		for (int i = 0; i < n; i++) {
-			if (index >= sizeof(line))
-				index = 0;
-			if (buf[i] != '\r')
-				line[index++] = buf[i];
-			if (buf[i] == '\n' || buf[i] == '\r') {
-				line[index] = '\0';
-				Serial.printf("RECEIVED COMMAND: %s", line);
-				index = 0;
-				float f;
-				int relay, ms;
-				if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
-				else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
-				else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
-				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
-				else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
-				else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
-				else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
-				else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
-				//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
-				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
-				//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
-				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
-				else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
-				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
-				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
-				else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
-				else {
-					Serial.printf("UNKNOWN COMMAND: %s", line);
-				}
-			}
-		}
-	}
-
-	int avail = udpSL30.parsePacket();
-	while(avail > 0) { 
-		static char line[200];
-		static int index;
-		
-		int n = udpSL30.read(buf, sizeof(buf));
-		if (n <= 0)
-			break;
-		buf[n] = '\0';
-		//printf("READ: %s", buf);
-		avail -= n;
-		udpBytes += n; // + random(0,2);
-		for (int i = 0; i < n; i++) {
-			if (index >= sizeof(line) - 1)
-				index = 0;
-			if (buf[i] != '\r')
-				line[index++] = buf[i];
-			if (buf[i] == '\n' || buf[i] == '\r') {
-				line[index++] = '\0';
-				index = 0;
-				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
-				int mode = 0;
-				//Serial.printf("LINE %s\n", line);
-				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
-				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
-					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
-					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
-					//printf("CAN: %s", line);
-					ahrsInput.g5Pitch = pit * 180 / M_PI;
-					ahrsInput.g5Roll = roll * 180 / M_PI;
-					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
-					ahrsInput.g5Track = magTrack * 180 / M_PI;
-					ahrsInput.g5Palt = palt / 3.2808;
-					ahrsInput.g5Ias = ias / 0.5144;
-					ahrsInput.g5Tas = tas / 0.5144;
-					ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
-					apMode = mode;
-					if (knobSel == 1 || knobSel == 4) {
-						obs = knobVal * 180.0 / M_PI;
-						if (obs <= 0) obs += 360;
-						if (apMode != 4 && obs != lastObs) {
-							desiredTrk = obs;
-							crossTrackError.reset();
-							testTurnActive = false;
-						}
-						if (apMode == 4 && obs != lastObs) { 
-							xtePID.reset();
-						}
-						lastObs = obs;
-					}
-					canMsgCount = canMsgCount + 1;
-				}
-			}
-
-			gps.encode(buf[i]);
-			if (vtgCourse.isUpdated()) {  // VTG typically from G5 NMEA serial output
-				gpsTrackVTG = constrain360(gps.parseDecimal(vtgCourse.value()) * 0.01 - magVar);
-			}
-			if (gps.course.isUpdated()) { // RMC typically from ifly NMEA output
-				gpsTrackRMC = constrain360(gps.course.deg() - magVar);
-				ahrs.mComp.addAux(gpsTrackRMC, 4, 0.03); 	
-			}
-			if (gps.location.isUpdated() && hdgSelect == 2) {
-				ahrsInput.alt = gps.altitude.meters() * 3.2808;
-				ahrsInput.gspeed = gps.speed.knots();
-				gpsFixes++;
-			}
-			if (desiredHeading.isUpdated()) { 
-				navDTK = constrain360(0.01 * gps.parseDecimal(desiredHeading.value()) - magVar);
-				if (navDTK < 0)
-					navDTK += 360;
-				if (canMsgCount.isValid() == false) {
-					apMode = 4;
-				}
-			}
-			if (xte.isUpdated() && xteLR.isUpdated()) {
-				float err = 0.01 * gps.parseDecimal(xte.value());
-				if (strcmp(xteLR.value(), "L") == 0)
-					err *= -1;
-				crossTrackError.add(err);
-			}
-		}
+	if (logFile != NULL) {
+		sdLog();
 	}
 }
 
@@ -966,12 +966,10 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		imu.mx = l.ai.mx;
 		imu.my = l.ai.my;
 		imu.mz = l.ai.mz;
-		
-		ahrsInput = l.ai;
-		//g5.hdg = l.ai.g5Hdg * M_PI / 180;
-		//g5.roll = l.ai.g5Roll * M_PI / 180;
-		//g5.pitch = l.ai.g5Pitch * M_PI / 180;
-		
+	
+		if (ahrsInput.g5Hdg != l.ai.g5Hdg || ahrsInput.g5Pitch != l.ai.g5Pitch || ahrsInput.g5Roll != l.ai.g5Roll) { 
+			ESP32sim_simulateG5Input(l.ai.g5Pitch, l.ai.g5Roll, l.ai.g5Hdg, l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt, 0, 0, l.ai.g5TimeStamp);
+		}		
 		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) { 
 			cout << l.toString().c_str() << " -1 LOG" << endl;
 		}		
