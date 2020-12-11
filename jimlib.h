@@ -293,24 +293,32 @@ class DigitalButtonLongShort {
 
 template<class T> 
 class StaleData {
-	uint64_t timeout, lastUpdate;
+	uint64_t timeout, lastUpdate, lastChange;
 	T value, invalidValue;
 	bool chg = false; 
 public:
 	StaleData(int t, T i) : lastUpdate(0), timeout(t), invalidValue(i) {} 
 	bool isValid() { return millis() - lastUpdate < timeout; }
-	operator T&() { return isValid() ? value : invalidValue; }
+	operator T&() { return getValue(); }
 	StaleData<T>& operator =(const T&v) {
 		chg = value != v;
 		value = v;
 		lastUpdate = millis();
+		if (chg) 
+			lastChange = millis();
 		return *this;
 	}
-	T getValue() { return value; }
+	T& getValue() { return isValid() ? value : invalidValue; }
 	bool changed() { 
 		bool rval = chg;
 		chg = false;
 		return rval && isValid(); 
+	}
+	uint64_t age() { 
+		return millis() - lastUpdate;
+	}
+	uint64_t timeSinceChange() { 
+		return millis() - lastChange;
 	}
 };
 
