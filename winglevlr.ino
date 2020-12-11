@@ -111,6 +111,15 @@ void buttonISR() {
 	butFilt4.check(button4.duration());
 }
 
+namespace LogFlags {
+	static const int g5Update1 = 0x01;
+	static const int g5Update2 = 0x02;
+	static const int HdgRMC = 0x04;
+	static const int NavDTK = 0x08;
+	static const int MagVar = 0x10;	
+	static const int HdgGDL = 0x20;
+}
+
 namespace Display {
 	JDisplay jd;
 	int y = 0;
@@ -230,6 +239,7 @@ void sdLog()  {
 	//Serial.println(x.toString());
 	if (logFile != NULL)
 		logFile->add(&logItem, 0/*timeout*/);
+	logItem.flags = 0;
 }
 
 void printMag() {
@@ -363,8 +373,8 @@ void setup() {
 }
 
  
-static StaleData<float> gpsTrackGDL90(8000,-1), gpsTrackRMC(6000,-1), gpsTrackVTG(5000,-1);
-static StaleData<int> canMsgCount(3000,-1), g5Hdg(3000, -1);
+static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
+static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
 float desRoll = 0;		
 static int serialLogFlags = 0;
@@ -584,7 +594,8 @@ void loop() {
 				GDL90Parser::State s = gdl90.getState();
 				if (s.valid && s.updated) {
 					gpsTrackGDL90 = constrain360(s.track - magVar);
-					ahrs.mComp.addAux(gpsTrackGDL90, 5, 0.03); 
+					ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
+					logItem.flags |= LogFlags::HdgGDL; 
 					if (hdgSelect == 2) {
 						gpsFixes++;
 						ahrsInput.alt = s.alt;
@@ -671,6 +682,8 @@ void loop() {
 					ahrsInput.g5Tas = tas / 0.5144;
 					ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
 					apMode = mode;
+					ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
+					logItem.flags |= LogFlags::g5Update1;
 					if (knobSel == 1 || knobSel == 4) {
 						obs = knobVal * 180.0 / M_PI;
 						if (obs <= 0) obs += 360;
@@ -694,7 +707,8 @@ void loop() {
 			}
 			if (gps.course.isUpdated()) { // RMC typically from ifly NMEA output
 				gpsTrackRMC = constrain360(gps.course.deg() - magVar);
-				ahrs.mComp.addAux(gpsTrackRMC, 4, 0.03); 	
+				ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07); 	
+				logItem.flags |= LogFlags::HdgRMC;
 			}
 			if (gps.location.isUpdated() && hdgSelect == 2) {
 				ahrsInput.alt = gps.altitude.meters() * 3.2808;
@@ -721,23 +735,10 @@ void loop() {
 	if (imuRead()) { 
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
 
-#ifdef UBUNTU
-		// TODO - stale/changed data not set by logfile playback, 
-		// Simluate NMEA and GDL90 and G5 UDP packets? 
-		//gpsTrackGDL90 = ahrsInput.gpsTrackGDL90;
-		//gpsTrackVTG = ahrsInput.gpsTrackVTG;
-		//gpsTrackRMC = ahrsInput.gpsTrackRMC;
-		//if (gpsTrackGDL90.changed()) { ahrs.mComp.addAux(gpsTrackGDL90, 5, 0.03); }
-#endif
-
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
 		ahrsInput.gpsTrackVTG = gpsTrackVTG;
 		ahrsInput.gpsTrackRMC = gpsTrackRMC;
 		ahrsInput.dtk = desiredTrk;
-		g5Hdg = ahrsInput.g5Hdg;
-		if (g5Hdg.changed()) {
-			ahrs.mComp.addAux(g5Hdg, 1, 0.02);
-		}
 
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitchCompDriftCorrected;
@@ -925,7 +926,6 @@ void DisplayUpdateThread(void *) {
 float ESP32sim_getRollErr() {  return totalRollErr;}
 void ESP32sim_setLogFile(const char *p) { logFilename = p; } 
 
-
 void ESP32sim_setDebug(const char *s) { 
 	vector<string> l = split(string(s), ',');
 	float v;
@@ -973,6 +973,15 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		
 		// TODO:  Add VTG and RMC gps lines
 		// TODO: mark fresh data with a log flag bit, not looking for data change.  Put StaleData timeouts back to 3000 ms once this is done
+
+
+		if (ahrsInput.gpsTrackRMC != l.ai.gpsTrackRMC) { 
+			// TODO: clean up NMEA checksum 
+			char buf[128], buf2[128];
+			sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", l.ai.gpsTrackRMC + magVar);
+
+			WiFiUDP::inputMap[7891] = String(nmeaChecksum(std::string(buf)));
+		}
 		
 		if (ahrsInput.gpsTrackGDL90 != l.ai.gpsTrackGDL90) { 
 			unsigned char buf[32];
@@ -982,7 +991,8 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 			WiFiUDP::inputMap[4000] = String((char *)buf, len);
 		}
 			
-		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) { 
+		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
+			l.ai.sec = _micros / 1000000.0; 
 			cout << l.toString().c_str() << " -1 LOG" << endl;
 		}		
 		return true;
