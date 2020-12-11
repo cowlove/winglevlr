@@ -8,8 +8,13 @@ class GDL90Parser {
 	unsigned char buf[256];
 	int index = -1;
 	bool esc = 0;
-	unsigned long bs3(unsigned char* b) {
+	unsigned long bs3(const unsigned char* b) {
 		return ((unsigned long)b[0] << 16) | ((unsigned long)b[1] << 8) | b[2];
+	}
+	void unBS3(unsigned char *b, long x) { 
+		b[2] = x & 0xff;
+		b[1] = (x >> 8) & 0xff;
+		b[0] = (x >> 16) & 0xff;
 	}
 public:
 	int msgCount = 0, errCount = 0;
@@ -83,7 +88,17 @@ public:
 			msgCount++;
 		}
 	}
-	
+	int packMsg10(unsigned char *b, State s) { 
+			b[0] = 0x7e;
+			b[1] = 10;
+			if (s.lat < 0) s.lat += 360;
+			if (s.lon < 0) s.lon += 360;
+			unBS3(b + 6, s.lat * 0x800000 / 180.0);
+			unBS3(b + 9, s.lon * 0x800000 / 180.0);
+			b[18] = s.track * 256 / 360.0;
+			b[19] = 0x7e;
+			return 20;
+	}
 	void add(char b) { // handle one character in GDL90 stream
 		if (b == 0x7e) { // got a flag byte
 			if (index >= 0) { // end of packet flag, packet complete

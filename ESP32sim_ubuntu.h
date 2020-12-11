@@ -136,6 +136,12 @@ class String {
 	std::string st;
 	String(const char *s) : st(s) {}
 	String(std::string s) : st(s) {}
+	String(const char *b, int l) { 
+		st = std::string();
+		for (int n = 0; n < l; n++) {
+			st.push_back(b[n]);
+		}
+	} 
 	String(int s) : st(std::to_string(s)) {}
 	String() {}
 	int length() { return st.length(); } 
@@ -246,7 +252,10 @@ public:
 		if (inputMap.find(port) != inputMap.end()) { 
 			String inputLine = inputMap.find(port)->second;
 			int rval =  min(inputLine.length(), l);
-			strncpy((char *)b, inputLine.c_str(), rval);
+			for (int n = 0; n < rval; n++) { 
+				b[n] = inputLine.st[n];
+			}
+			//strncpy((char *)b, inputLine.c_str(), rval);
 			if (toSerial) { 
 				printf("UDP: %s", b);
 			}

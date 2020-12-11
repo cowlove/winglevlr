@@ -363,7 +363,7 @@ void setup() {
 }
 
  
-static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(6000,-1), gpsTrackVTG(5000,-1);
+static StaleData<float> gpsTrackGDL90(8000,-1), gpsTrackRMC(6000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1), g5Hdg(3000, -1);
 static float desiredTrk = -1;
 float desRoll = 0;		
@@ -724,10 +724,10 @@ void loop() {
 #ifdef UBUNTU
 		// TODO - stale/changed data not set by logfile playback, 
 		// Simluate NMEA and GDL90 and G5 UDP packets? 
-		gpsTrackGDL90 = ahrsInput.gpsTrackGDL90;
-		gpsTrackVTG = ahrsInput.gpsTrackVTG;
-		gpsTrackRMC = ahrsInput.gpsTrackRMC;
-		if (gpsTrackGDL90.changed()) { ahrs.mComp.addAux(gpsTrackGDL90, 5, 0.03); }
+		//gpsTrackGDL90 = ahrsInput.gpsTrackGDL90;
+		//gpsTrackVTG = ahrsInput.gpsTrackVTG;
+		//gpsTrackRMC = ahrsInput.gpsTrackRMC;
+		//if (gpsTrackGDL90.changed()) { ahrs.mComp.addAux(gpsTrackGDL90, 5, 0.03); }
 #endif
 
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
@@ -970,6 +970,18 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		if (ahrsInput.g5Hdg != l.ai.g5Hdg || ahrsInput.g5Pitch != l.ai.g5Pitch || ahrsInput.g5Roll != l.ai.g5Roll) { 
 			ESP32sim_simulateG5Input(l.ai.g5Pitch, l.ai.g5Roll, l.ai.g5Hdg, l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt, 0, 0, l.ai.g5TimeStamp);
 		}		
+		
+		// TODO:  Add VTG and RMC gps lines
+		// TODO: mark fresh data with a log flag bit, not looking for data change.  Put StaleData timeouts back to 3000 ms once this is done
+		
+		if (ahrsInput.gpsTrackGDL90 != l.ai.gpsTrackGDL90) { 
+			unsigned char buf[32];
+			GDL90Parser::State s;
+			s.track = l.ai.gpsTrackGDL90;
+			int len = gdl90.packMsg10(buf, s);
+			WiFiUDP::inputMap[4000] = String((char *)buf, len);
+		}
+			
 		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) { 
 			cout << l.toString().c_str() << " -1 LOG" << endl;
 		}		
