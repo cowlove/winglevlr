@@ -22,10 +22,10 @@ class ScopedMutex {
 class Semaphore { 
 	SemaphoreHandle_t xSem;
  public:
-	Semaphore() { 
-		xSem = xSemaphoreCreateCounting(1,1);
+	Semaphore(int max = 1, int init = 1) { 
+		xSem = xSemaphoreCreateCounting(max, init);
 	}
-	void take() { xSemaphoreTake(xSem, portMAX_DELAY); } 
+	bool take(int delay = portMAX_DELAY) { return xSemaphoreTake(xSem, delay); } 
 	void give() { xSemaphoreGive(xSem); }
 };
 
@@ -933,4 +933,91 @@ inline void JDisplayEditor::buttonPress(bool longpress) {
 	items[selectedItem]->update();
 }
 
-#endif
+template <class T>  
+class CircularBoundedQueue { 
+	Semaphore empty, full;
+	int size, head, tail;
+	T *array;
+public:
+	CircularBoundedQueue(int s) : size(s), empty(s, s), full(s, 0) {
+		array = new T[size];
+		head = tail = 0;
+	}
+	T *peekHead(int tmo) {
+		if (!empty.take(tmo)) 
+			return false;
+
+		T *rval = &array[head];
+		head = (head + 1) % size;
+		return rval;
+	}
+	void postHead() {
+		full.give();
+	}
+	T *peekTail(int tmo) {
+		if (!full.take(tmo)) 
+			return false;
+
+		T *rval = &array[tail];
+		tail = (tail + 1) % size;
+		return rval;
+	}
+	void freeTail() {
+		empty.give();
+	}
+};
+#endif //#ifdef ESP32
+
+// From data format described in web search "SL30 Installation Manual PDF" 
+class SL30 {
+public:
+        std::string twoenc(unsigned char x) {
+                char r[3];
+                r[0] = (((x & 0xf0) >> 4) + 0x30);
+                r[1] = (x & 0xf) + 0x30;
+                r[2] = 0;
+                return std::string(r);
+        }
+        int chksum(const std::string& r) {
+                int sum = 0;
+                const char* s = r.c_str();
+                while (*s)
+                        sum += *s++;
+                return sum & 0xff;
+        }
+        void open() {
+        }
+        void pmrrv(const std::string& r) {
+                std::string s = std::string("$PMRRV") + r + twoenc(chksum(r)) + "\r\n";
+                Serial2.write(s.c_str());
+				//Serial.printf("G5: %s", s.c_str());
+                //Serial.write(s.c_str());
+        }
+        void setCDI(double hd, double vd) {
+                int flags = 0b11111010;
+                hd *= 127 / 3;
+                vd *= 127 / 3;
+                pmrrv(std::string("21") + twoenc(hd) + twoenc(vd) + twoenc(flags));
+        }
+};
+
+
+class PinPulse { 
+public:
+	int pin;
+	uint64_t toggleTime = 0;
+	PinPulse(int p, int initval = 0) : pin(p) { pinMode(p, OUTPUT); digitalWrite(p, initval); } 
+	void  pulse(int v, int ms) { 
+		toggleTime = ms > 0 ? millis() + ms: 0;
+		pinMode(pin, OUTPUT);
+		digitalWrite(pin, v);
+	}
+	void run() { 
+		if (toggleTime > 0 && millis() >= toggleTime) {
+			toggleTime = 0;
+			pinMode(pin, OUTPUT);
+			digitalWrite(pin, !digitalRead(pin));
+		}
+	}
+};
+
