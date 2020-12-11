@@ -1029,3 +1029,12 @@ public:
 	}
 };
 
+std::string nmeaChecksum(const std::string &s) { 
+	char check = 0;
+	for (const char &c : s)  
+		check ^= c;
+	char buf[8];
+	snprintf(buf, sizeof(buf), "*%02X\n", (int)check);
+	return std::string("$") + s + std::string(buf);
+		
+}
