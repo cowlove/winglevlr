@@ -177,7 +177,8 @@ class FakeSerial {
 		return rval;
 	} 
 	int write(const uint8_t *, int) { return 0; }
-} Serial, Serial1;
+	int write(const char *) { return 0; }	
+} Serial, Serial1, Serial2;
 
 #define WL_CONNECTED 0
 #define WIFI_STA 0
@@ -212,6 +213,10 @@ public:
 };
 
 
+void ESP32sim_JDisplay_forceUpdate();
+bool ESP32sim_replayLogItem(ifstream &);
+int logEntries = 0;
+const int ACC_FULL_SCALE_4_G = 0, GYRO_FULL_SCALE_250_DPS = 0, MAG_MODE_CONTINUOUS_100HZ = 0;
 float ESP32sim_pitchCmd = 940.0;
 
 class WiFiUDP {
@@ -276,39 +281,26 @@ struct {
 	int knobSel, age; 
 } g5;
 
-void ESP32sim_run() { 
-	static float lastTime = 0;
-	float now = _micros / 1000000.0;
 
-	if (floor(now / .1) != floor(lastTime / .1)) {
-		char buf[128];
-		snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f %.3f %.3f %.3f %d %.3f %d CAN\n",
-			g5.pitch, g5.roll, g5.hdg, 0.0, g5.ias, g5.tas, g5.alt, g5.knobSel, g5.knobVal, g5.age);
-		WiFiUDP::inputMap[7891] = String(buf);
-	}
-
-	//if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
-	//if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
-
-	lastTime = now;
+void ESP32sim_simulateG5Input(float pit, float roll, float hdg, float ias, float tas, float alt, int knobSel, float knobVal, int age) { 
+	char buf[128];
+	int mode = 0;
+	snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f %.3f %.3f %.3f %d %.3f %d %d CAN\n",
+		pit*M_PI/180, roll*M_PI/180, hdg*M_PI/180, 0.0, ias*0.5144, tas*0.5144, alt*3.2808, knobSel, knobVal, age, mode);
+	WiFiUDP::inputMap[7891] = String(buf);
 }
 
-void ESP32sim_JDisplay_forceUpdate();
 
-bool ESP32sim_replayLogItem(ifstream &);
-int logEntries = 0;
-const int ACC_FULL_SCALE_4_G = 0, GYRO_FULL_SCALE_250_DPS = 0, MAG_MODE_CONTINUOUS_100HZ = 0;
+static const char *replayFile;
+ifstream ifile;
+static int logSkip; //log entries to skip
 
 class MPU9250_DMP {
 	float bank = 0, track = 0, simPitch = 0;
 	RollingAverage<float,500> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
-
 public:
-	static const char *replayFile;
-	ifstream ifile;
-	static int logSkip; //log entries to skip
 	int begin(){ 
 		if (replayFile != NULL) { 
 			ifile = ifstream(replayFile, ios_base::in | ios::binary);
@@ -397,11 +389,15 @@ public:
 		
 		lastMillis = now;
 	}
-	
-	//LogItem l, prevl;
-	void updateGyro() {
-		ESP32sim_run();
+
+	void ESP32sim_run() { 
+		static float lastTime = 0;
+		float now = _micros / 1000000.0;
+
 		if (replayFile == NULL) { 
+			if (floor(now / .1) != floor(lastTime / .1)) {
+				ESP32sim_simulateG5Input(g5.pitch, g5.roll, g5.hdg, g5.ias, g5.tas, g5.alt, g5.knobSel, g5.knobVal, g5.age);
+			}
 			flightSim();
 		} else {
 			while(logSkip > 0 && logSkip-- > 0) {
@@ -412,11 +408,18 @@ public:
 				exit(0);
 			}
 			logEntries++;
-
-			//printf("%06.4f AX %+05.2f G5 %+05.2f\n", _micros / 1000000.0, ax, g5.roll); 			 
 		}
+
+		//if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
+		//if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
+
+		lastTime = now;
 	}
+
 	
+	//LogItem l, prevl;
+	void updateGyro() {
+	}
 	void updateCompass() {}
 	float calcAccel(float x) { return x; }
 	float calcGyro(float x) { return x; }
@@ -428,9 +431,6 @@ public:
 
 typedef MPU9250_DMP MPU9250_asukiaaa;
 
-const char *MPU9250_DMP::replayFile;
-int MPU9250_DMP::logSkip = 0;
-
 typedef char byte;
 
 #include "TinyGPS++.h"
@@ -439,7 +439,6 @@ typedef char byte;
 void setup(void);
 void loop(void);
 static void JDisplayToConsole(bool b);
-
 
 void printFinalReport() { 
 	printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", ESP32sim_getRollErr() / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
@@ -455,8 +454,8 @@ int main(int argc, char **argv) {
 		if (strcmp(*a, "--debug") == 0) {
 			ESP32sim_setDebug(*(++a));
 		} 
-		if (strcmp(*a, "--replay") == 0) MPU9250_DMP::replayFile = *(++a);
-		if (strcmp(*a, "--replaySkip") == 0) MPU9250_DMP::logSkip = atoi(*(++a));
+		if (strcmp(*a, "--replay") == 0) replayFile = *(++a);
+		if (strcmp(*a, "--replaySkip") == 0) logSkip = atoi(*(++a));
 		if (strcmp(*a, "--log") == 0) { 
 			bm.addPress(39, 1, 1, true);  // long press top button - start log 1 second in  
 			ESP32sim_setLogFile(*(++a));
