@@ -198,37 +198,30 @@ void imuInit() {
 static AhrsInput ahrsInput;
 
 bool imuRead() { 
-	//if (imu.fifoAvailable() && imu.updateFifo() == INV_SUCCESS) { // FIFO is slow
-	if(1){
-		AhrsInput &x = ahrsInput;
-		x.sec = millis() / 1000.0;
+	AhrsInput &x = ahrsInput;
+	x.sec = millis() / 1000.0;
 #ifdef USE_ACCEL
-		imu.accelUpdate();
-		x.ax = imu.accelX();
-		x.ay = imu.accelY();
-		x.az = imu.accelZ();
+	imu.accelUpdate();
+	x.ax = imu.accelX();
+	x.ay = imu.accelY();
+	x.az = imu.accelZ();
 #endif
-		imu.gyroUpdate();
-		x.gx = imu.gyroX();
-		x.gy = imu.gyroY();
-		x.gz = imu.gyroZ();
-	
-		// limit magnometer update to 100Hz 
-		static uint64_t lastUsec = 0;
-		if (lastUsec / 10000 != micros() / 10000) { 
-			imu.magUpdate();
-			x.mx = imu.magX();
-			x.my = imu.magY();
-			x.mz = imu.magZ();
-		}
-		lastUsec = micros();
-		// remaining items set (alt, hdg, speed) set by main loop
-		return true;
-	} else { 
-		AhrsInput &x = ahrsInput;
-		x.ax = x.gx = x.mx = -1;
+	imu.gyroUpdate();
+	x.gx = imu.gyroX();
+	x.gy = imu.gyroY();
+	x.gz = imu.gyroZ();
+
+	// limit magnometer update to 100Hz 
+	static uint64_t lastUsec = 0;
+	if (lastUsec / 10000 != micros() / 10000) { 
+		imu.magUpdate();
+		x.mx = imu.magX();
+		x.my = imu.magY();
+		x.mz = imu.magZ();
 	}
-	return false;
+	lastUsec = micros();
+	// remaining items set (alt, hdg, speed) set by main loop
+	return true;
 }
 
 LogItem logItem;
@@ -360,16 +353,7 @@ void setup() {
 
 	ArduinoOTA.begin();
 	
-#ifndef UBUNTU	
-	xTaskCreate(
-			DisplayUpdateThread,       /* Function that implements the task. */
-			"DisplayUpdateThread",          /* Text name for the task. */
-			8192,      /* Stack size in words, not bytes. */
-			NULL,    /* Parameter passed into the task. */
-			tskIDLE_PRIORITY,/* Priority at which the task is created. */
-			NULL );      /* Used to pass out the created task's handle. */
-
-#endif 
+	xTaskCreate(DisplayUpdateThread, "DisplayUpdateThread", 8192, NULL,	tskIDLE_PRIORITY, NULL);
 }
 
  

@@ -13,13 +13,14 @@
 #include <algorithm>
 #include "RunningLeastSquares.h"
 
-
+// Stub out FreeRTOS stuff 
 typedef int SemaphoreHandle_t;
 int xSemaphoreCreateCounting(int, int) { return 0; } 
 int xSemaphoreGive(int) { return 0; } 
 int xSemaphoreTake(int, int) { return 0; }
 #define portMAX_DELAY 0 
-
+#define tskIDLE_PRIORITY 0
+void xTaskCreate(void (*)(void *), const char *, int, void *, int, void *) {}
 
 using namespace std;
 static uint64_t _micros = 0;
