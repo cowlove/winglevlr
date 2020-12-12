@@ -94,19 +94,12 @@ public:
 } bm;
 
 int digitalRead(int p) {
-	// HACK simple proof-of-concept to simulate button push and arm
-	// the servos  
-	float now = millis()/1000.0;
-	
-	//if (p == 35 && now >= 1 && now < 3.1) return 0;  // arm servos
-	//if (p == 34 && now >= 110 && now < 113.1) return 0;  // activate test turn mode
-
-	return bm.check(p, now);
+	return bm.check(p, millis()/1000.0);
 }
 void ledcWrite(int chan, int val) { 
 	ESP32sim_currentPwm = val;
-	//printf("pwm %d\n", val);
 } 
+
 int digitalPinToInterrupt(int) { return 0; }
 void digitalWrite(int, int) {};
 void attachInterrupt(int, void (*)(), int) {} 
