@@ -1,4 +1,17 @@
+#ifndef INC_JIMLIB_H
+#define INC_JIMLIB_H
 #include <functional>
+#include <string>
+
+std::string strfmt(const char *format, ...) { 
+    va_list args;
+    va_start(args, format);
+	char buf[256];
+	vsnprintf(buf, sizeof(buf), format, args);
+    va_end(args);
+	return std::string(buf);
+}
+
 
 class Mutex {
 	SemaphoreHandle_t xSem;
@@ -1038,3 +1051,4 @@ std::string nmeaChecksum(const std::string &s) {
 	return std::string("$") + s + std::string(buf);
 		
 }
+#endif //#ifndef INC_JIMLIB_H

@@ -27,33 +27,28 @@
 #include "FS.h"
 #include "ESPmDNS.h"
 #include "ArduinoOTA.h"
-//#include "queue.h"
-//#include "WiFiManager.h"
 #include "WiFiUdp.h"
 #include "WiFiMulti.h"
 #include <MPU9250_asukiaaa.h>
-//#include <SparkFunMPU9250-DMP.h>
 #include <RunningLeastSquares.h>
 #include <mySD.h>
 #include "Wire.h"
 #include <MPU9250_asukiaaa.h>
 #include "SPIFFS.h"
 #if defined(ESP32)
-//#include "esp_system.h"
 #include <esp_task_wdt.h>
 #endif
-#else
+#else // #ifndef UBUNTU
 #include "ESP32sim_ubuntu.h"
-#endif
+#endif // #else // UBUNTU
 
 
 #include <string>
 #include <sstream>
 #include <vector>
 #include <iterator>
-
-
 #include "jimlib.h"
+
 #include "PidControl.h"
 #include "TinyGPS++.h"
 #include "G90Parser.h"
@@ -61,6 +56,7 @@
 
 WiFiMulti wifi;
 
+std::string strfmt(const char *, ...); 
 SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
 
 TinyGPSPlus gps;
@@ -112,12 +108,11 @@ void buttonISR() {
 }
 
 namespace LogFlags {
-	static const int g5Update1 = 0x01;
-	static const int g5Update2 = 0x02;
-	static const int HdgRMC = 0x04;
-	static const int NavDTK = 0x08;
-	static const int MagVar = 0x10;	
-	static const int HdgGDL = 0x20;
+	static const int g5Nav =  0x01;
+	static const int g5Ins =  0x02;
+	static const int g5Ps =   0x04;
+	static const int HdgRMC = 0x08;
+	static const int HdgGDL = 0x10;
 }
 
 namespace Display {
@@ -336,8 +331,8 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.setValue(12);
-	ed.tttt.setValue(10); // seconds to make each test turn 
-	ed.ttlt.setValue(10); // seconds betweeen test turn  
+	ed.tttt.setValue(20); // seconds to make each test turn 
+	ed.ttlt.setValue(20); // seconds betweeen test turn  
 	ed.tzer.setValue(1000);
 	ed.pidsel.setValue(0);
 	setKnobPid(ed.pidsel.value);
@@ -437,9 +432,27 @@ static int manualRelayMs = 60;
 static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 static uint64_t lastLoop = micros();
 static bool selEditing = false;
+static int knobSel = 0;
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
+
+void setObsKnob(float v) { 
+	if (knobSel == 1 || knobSel == 4) {
+		obs = v * 180.0 / M_PI;
+		if (obs <= 0) obs += 360;
+		if (apMode != 4 && obs != lastObs) {
+			desiredTrk = obs;
+			crossTrackError.reset();
+			testTurnActive = false;
+		}
+		if (apMode == 4 && obs != lastObs) { 
+			xtePID.reset();
+		}
+		lastObs = obs;
+	}	
+}
+
 
 void loop() {	
 	esp_task_wdt_reset();
@@ -629,8 +642,8 @@ void loop() {
 		}
 	}
 
-	int avail = udpSL30.parsePacket();
-	while(avail > 0) { 
+	int avail = 0;
+	while((avail = udpSL30.parsePacket()) > 0) { 
 		static char line[200];
 		static int index;
 		
@@ -649,6 +662,22 @@ void loop() {
 			if (buf[i] == '\n' || buf[i] == '\r') {
 				line[index++] = '\0';
 				index = 0;
+
+				vector<string> l = split(string(line), ' ');
+				float v;
+				for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
+					if      (sscanf(it->c_str(), "P=%f",   &v) == 1) { ahrsInput.g5Pitch = v; canMsgCount = canMsgCount + 1; logItem.flags |= LogFlags::g5Ins; }  
+					else if (sscanf(it->c_str(), "R=%f",   &v) == 1) { ahrsInput.g5Roll = v; logItem.flags |= LogFlags::g5Ins; } 
+					else if (sscanf(it->c_str(), "IAS=%f", &v) == 1) { ahrsInput.g5Ias = v; logItem.flags |= LogFlags::g5Ps;} 
+					else if (sscanf(it->c_str(), "TAS=%f", &v) == 1) { ahrsInput.g5Tas = v; logItem.flags |= LogFlags::g5Ps;} 
+					else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) { ahrsInput.g5Palt = v; logItem.flags |= LogFlags::g5Ps;} 
+					else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) { ahrsInput.g5Hdg = v; logItem.flags |= LogFlags::g5Nav;} 
+					else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) { ahrsInput.g5Track = v; logItem.flags |= LogFlags::g5Nav; } 
+					else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) { apMode = v; } 
+					else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) { knobSel = v; } 
+					else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) { setObsKnob(v); } 
+				}
+				
 				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
 				int mode = 0;
 				//printf("LINE %s\n", line);
@@ -667,20 +696,8 @@ void loop() {
 					ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
 					apMode = mode;
 					ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
-					logItem.flags |= LogFlags::g5Update1;
-					if (knobSel == 1 || knobSel == 4) {
-						obs = knobVal * 180.0 / M_PI;
-						if (obs <= 0) obs += 360;
-						if (apMode != 4 && obs != lastObs) {
-							desiredTrk = obs;
-							crossTrackError.reset();
-							testTurnActive = false;
-						}
-						if (apMode == 4 && obs != lastObs) { 
-							xtePID.reset();
-						}
-						lastObs = obs;
-					}
+					logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
+					setObsKnob(knobVal);
 					canMsgCount = canMsgCount + 1;
 				}
 			}
@@ -813,12 +830,7 @@ void loop() {
 		logItem.roll = roll;
 		logItem.ai = ahrsInput;
 		//logItem.ai.q3 = ahrs.magCorr; 
-			//ahrs.magStability; 
-			//ahrs.bankAngle; 
-			//ahrs.lastGz;
-			//ahrs.gyrZOffsetFit.average();
-			//-ahrs.zeroAverages.gz.average();
-			0;
+
 		totalRollErr += abs(roll + ahrsInput.g5Roll);
 		totalHdgError += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
 	
@@ -951,24 +963,26 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		imu.my = l.ai.my;
 		imu.mz = l.ai.mz;
 	
-		if (ahrsInput.g5Hdg != l.ai.g5Hdg || ahrsInput.g5Pitch != l.ai.g5Pitch || ahrsInput.g5Roll != l.ai.g5Roll) { 
-			ESP32sim_simulateG5Input(l.ai.g5Pitch, l.ai.g5Roll, l.ai.g5Hdg, l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt, 0, 0, l.ai.g5TimeStamp);
-		}		
-		
-		// TODO:  Add VTG and RMC gps lines
-		// TODO: mark fresh data with a log flag bit, not looking for data change.  Put StaleData timeouts back to 3000 ms once this is done
-
-
-		if (ahrsInput.gpsTrackRMC != l.ai.gpsTrackRMC) { 
+	
+		// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
+		if ((l.flags & LogFlags::g5Ps) || l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt) { 
+			ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt)); 
+		}
+		if ((l.flags & LogFlags::g5Nav) || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track) { 
+			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", l.ai.g5Hdg, l.ai.g5Track)); 
+		}
+		if ((l.flags & LogFlags::g5Ins) || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch) { 
+			ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
+		}
+		if (ahrsInput.gpsTrackRMC != l.ai.gpsTrackRMC || (l.flags & LogFlags::HdgRMC) != 0) { 
 			char buf[128];
 			sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", l.ai.gpsTrackRMC + magVar);
 			ESP32sim_udpInput(7891, String(nmeaChecksum(std::string(buf))));
 		}
-		
-		if (ahrsInput.gpsTrackGDL90 != l.ai.gpsTrackGDL90) { 
-			unsigned char buf[32];
+		if (ahrsInput.gpsTrackGDL90 != l.ai.gpsTrackGDL90 || (l.flags & LogFlags::HdgGDL) != 0) { 
+			unsigned char buf[64];
 			GDL90Parser::State s;
-			s.track = l.ai.gpsTrackGDL90;
+			s.track = l.ai.gpsTrackGDL90 + magVar;
 			int len = gdl90.packMsg10(buf, s);
 			ESP32sim_udpInput(4000, String((char *)buf, len));
 		}
@@ -982,8 +996,9 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 	return false;
 }
 
+
 void ESP32sim_set_gpsTrackGDL90(float v) { 
-	gpsTrackGDL90 = v;
+	gpsTrackGDL90 = v; // TODO - pass this through ESP32sim_udpInput()
 	ahrsInput.g5Hdg = v;
 }
 
