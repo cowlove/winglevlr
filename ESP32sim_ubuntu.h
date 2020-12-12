@@ -264,7 +264,7 @@ public:
 };
 
 std::map<int,String> WiFiUDP::inputMap;
-void udpInput(int p, String s) { 
+void ESP32sim_udpInput(int p, String s) { 
 	WiFiUDP::inputMap[p] = s;
 }
 
