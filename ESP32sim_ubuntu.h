@@ -86,7 +86,7 @@ public:
 	}
 	
 	int check(int pin, float time) {
-		float now = millis() / 1000.0;
+		float now = millis() / 1000.0; // TODO this is kinda slow 
 		for (vector<PressInfo>::iterator it = presses.begin(); it != presses.end(); it++) { 
 			if (it->pin == pin && now >= it->start && now < it->start + it->duration)
 				return 0;

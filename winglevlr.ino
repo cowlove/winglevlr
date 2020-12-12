@@ -496,8 +496,7 @@ void loop() {
 	}
 
 	//ed.re.check();
-	if (true) { // (buttonCheckTimer.tick()) { 
-		//printMag(); 
+	if (buttonCheckTimer.tick()) { 
 		buttonISR();
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
@@ -703,32 +702,34 @@ void loop() {
 			}
 
 			gps.encode(buf[i]);
-			if (vtgCourse.isUpdated()) {  // VTG typically from G5 NMEA serial output
-				gpsTrackVTG = constrain360(gps.parseDecimal(vtgCourse.value()) * 0.01 - magVar);
-			}
-			if (gps.course.isUpdated()) { // RMC typically from ifly NMEA output
-				gpsTrackRMC = constrain360(gps.course.deg() - magVar);
-				ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07); 	
-				logItem.flags |= LogFlags::HdgRMC;
-			}
-			if (gps.location.isUpdated() && hdgSelect == 2) {
-				ahrsInput.alt = gps.altitude.meters() * 3.2808;
-				ahrsInput.gspeed = gps.speed.knots();
-				gpsFixes++;
-			}
-			if (desiredHeading.isUpdated()) { 
-				navDTK = constrain360(0.01 * gps.parseDecimal(desiredHeading.value()) - magVar);
-				if (navDTK < 0)
-					navDTK += 360;
-				if (canMsgCount.isValid() == false) {
-					apMode = 4;
+			if (buf[i] == '\r' || buf[i] == '\n') { 
+				if (vtgCourse.isUpdated()) {  // VTG typically from G5 NMEA serial output
+					gpsTrackVTG = constrain360(gps.parseDecimal(vtgCourse.value()) * 0.01 - magVar);
 				}
-			}
-			if (xte.isUpdated() && xteLR.isUpdated()) {
-				float err = 0.01 * gps.parseDecimal(xte.value());
-				if (strcmp(xteLR.value(), "L") == 0)
-					err *= -1;
-				crossTrackError.add(err);
+				if (gps.course.isUpdated()) { // RMC typically from ifly NMEA output
+					gpsTrackRMC = constrain360(gps.course.deg() - magVar);
+					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07); 	
+					logItem.flags |= LogFlags::HdgRMC;
+				}
+				if (gps.location.isUpdated() && hdgSelect == 2) {
+					ahrsInput.alt = gps.altitude.meters() * 3.2808;
+					ahrsInput.gspeed = gps.speed.knots();
+					gpsFixes++;
+				}
+				if (desiredHeading.isUpdated()) { 
+					navDTK = constrain360(0.01 * gps.parseDecimal(desiredHeading.value()) - magVar);
+					if (navDTK < 0)
+						navDTK += 360;
+					if (canMsgCount.isValid() == false) {
+						apMode = 4;
+					}
+				}
+				if (xte.isUpdated() && xteLR.isUpdated()) {
+					float err = 0.01 * gps.parseDecimal(xte.value());
+					if (strcmp(xteLR.value(), "L") == 0)
+						err *= -1;
+					crossTrackError.add(err);
+				}
 			}
 		}
 	}
@@ -974,12 +975,12 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		if ((l.flags & LogFlags::g5Ins) || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch) { 
 			ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
 		}
-		if (ahrsInput.gpsTrackRMC != l.ai.gpsTrackRMC || (l.flags & LogFlags::HdgRMC) != 0) { 
+		if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
 			char buf[128];
 			sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", l.ai.gpsTrackRMC + magVar);
 			ESP32sim_udpInput(7891, String(nmeaChecksum(std::string(buf))));
 		}
-		if (ahrsInput.gpsTrackGDL90 != l.ai.gpsTrackGDL90 || (l.flags & LogFlags::HdgGDL) != 0) { 
+		if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0) { 
 			unsigned char buf[64];
 			GDL90Parser::State s;
 			s.track = l.ai.gpsTrackGDL90 + magVar;
