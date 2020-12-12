@@ -88,16 +88,25 @@ public:
 			msgCount++;
 		}
 	}
-	int packMsg10(unsigned char *b, State s) { 
-			b[0] = 0x7e;
-			b[1] = 10;
-			if (s.lat < 0) s.lat += 360;
-			if (s.lon < 0) s.lon += 360;
-			unBS3(b + 6, s.lat * 0x800000 / 180.0);
-			unBS3(b + 9, s.lon * 0x800000 / 180.0);
-			b[18] = s.track * 256 / 360.0;
-			b[19] = 0x7e;
-			return 20;
+	int packMsg10(unsigned char *b, State s) {
+		bzero(b, 32);
+		b[0] = 0x7e;
+		b[1] = 10;
+		if (s.lat < 0) s.lat += 360;
+		if (s.lon < 0) s.lon += 360;
+		unBS3(b + 6, s.lat * 0x800000 / 180.0);
+		unBS3(b + 9, s.lon * 0x800000 / 180.0);
+		b[18] = s.track * 256 / 360.0;
+
+		//unsigned int_crc =(((uint16_t)(buf[index - 1]))<<8) | buf[index-2];
+		unsigned int crc = crcCompute(b + 1, 28);
+		b[29] = crc & 0xff;
+		b[30] = (crc >> 8) & 0xff;
+		b[31] = 0x7e;
+		
+		return 32;
+		
+			
 	}
 	void add(char b) { // handle one character in GDL90 stream
 		if (b == 0x7e) { // got a flag byte

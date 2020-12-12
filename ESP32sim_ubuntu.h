@@ -12,6 +12,7 @@
 #include <map>
 #include <algorithm>
 #include "RunningLeastSquares.h"
+//#include "jimlib.h"
 
 // Stub out FreeRTOS stuff 
 typedef int SemaphoreHandle_t;
@@ -22,6 +23,7 @@ int xSemaphoreTake(int, int) { return 0; }
 #define tskIDLE_PRIORITY 0
 void xTaskCreate(void (*)(void *), const char *, int, void *, int, void *) {}
 
+std::string strfmt(const char *, ...); 
 using namespace std;
 static uint64_t _micros = 0;
 uint64_t micros() { return ++_micros & 0xffffffff; }
@@ -264,8 +266,13 @@ public:
 };
 
 std::map<int,String> WiFiUDP::inputMap;
+
 void ESP32sim_udpInput(int p, String s) { 
-	WiFiUDP::inputMap[p] = s;
+	std::map<int,String> &m = WiFiUDP::inputMap;
+	if (m.find(p) == m.end())
+		m[p] = s;
+	else
+		m[p] = m[p] + s;
 }
 
 #define INV_SUCCESS 1
@@ -284,15 +291,13 @@ struct {
 	int knobSel, age; 
 } g5;
 
-
-void ESP32sim_simulateG5Input(float pit, float roll, float hdg, float ias, float tas, float alt, int knobSel, float knobVal, int age) { 
+/*void ESP32sim_simulateG5Input(float pit, float roll, float hdg, float ias, float tas, float alt, int knobSel, float knobVal, int age) { 
 	char buf[128];
 	int mode = 0;
 	snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f %.3f %.3f %.3f %d %.3f %d %d CAN\n",
 		pit*M_PI/180, roll*M_PI/180, hdg*M_PI/180, 0.0, ias*0.5144, tas*0.5144, alt*3.2808, knobSel, knobVal, age, mode);
 	WiFiUDP::inputMap[7891] = String(buf);
-}
-
+}*/
 
 static const char *replayFile;
 ifstream ifile;
@@ -300,7 +305,7 @@ static int logSkip; //log entries to skip
 
 class MPU9250_DMP {
 	float bank = 0, track = 0, simPitch = 0;
-	RollingAverage<float,500> rollCmd;
+	RollingAverage<float,250> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
 public:
@@ -334,8 +339,12 @@ public:
 	int readId(uint8_t *) { return 0; } 
 	
 	std::queue<float> gxDelay, pitchDelay;
-
+private:
+	uint64_t lastMicros = 0;
 	void flightSim() { 
+		_micros += 3500;
+		const float servoTrim = 4915.0;
+
 		float rawCmd = ESP32sim_pitchCmd;
 		cmdPitch = rawCmd > 0 ? (940 - rawCmd) / 13 : 0;
 		float ngx = (cmdPitch - simPitch) * 1.3;
@@ -346,8 +355,6 @@ public:
 				
 		// Simulate simple airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm; 
-		_micros += 3500;
-		const float servoTrim = 4915.0;
 		rollCmd.add((ESP32sim_currentPwm - servoTrim) / servoTrim);
 		gy = 0.0 + rollCmd.average() * 10.0;
 		bank += gy * (3500.0 / 1000000.0);
@@ -355,13 +362,11 @@ public:
 		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm, track, desRoll, bank, gy);
-		}
-		
+		}		
 		gz = +1.5 + tan(bank * M_PI/180) / 100 * 1091;
 		
-		
 		uint64_t now = millis();
-		const float bper = .07;
+		const float bper = .05;
 		if (floor(lastMillis * bper) != floor(now * bper)) { // 10hz
 			track -= tan(bank * M_PI / 180) * 9.8 / 40 * 25 * bper;
 			if (track < 0) track += 360;
@@ -370,9 +375,9 @@ public:
 
 		float hdg = track - 35.555; // simluate mag var and WCA 
 		if (hdg < 0) hdg += 360;	
-		g5.hdg = hdg * M_PI / 180;
-		g5.roll = -bank * M_PI / 180;
-		g5.pitch = pitch * M_PI / 180;
+		//g5.hdg = hdg * M_PI / 180;
+		//g5.roll = -bank * M_PI / 180;
+		//g5.pitch = pitch * M_PI / 180;
 		ESP32sim_set_gpsTrackGDL90(track);
 
 		while(gxDelay.size() > 400) {
@@ -392,14 +397,18 @@ public:
 		
 		lastMillis = now;
 	}
-
+public:
 	void ESP32sim_run() { 
 		static float lastTime = 0;
 		float now = _micros / 1000000.0;
 
 		if (replayFile == NULL) { 
 			if (floor(now / .1) != floor(lastTime / .1)) {
-				ESP32sim_simulateG5Input(g5.pitch, g5.roll, g5.hdg, g5.ias, g5.tas, g5.alt, g5.knobSel, g5.knobVal, g5.age);
+				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", g5.ias, g5.tas, g5.alt));
+				ESP32sim_udpInput(7891, strfmt("P=%f R=%f\n", g5.pitch, g5.roll));
+				ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5.hdg));
+				
+				//ESP32sim_simulateG5Input(g5.pitch, g5.roll, g5.hdg, g5.ias, g5.tas, g5.alt, g5.knobSel, g5.knobVal, g5.age);
 			}
 			flightSim();
 		} else {
@@ -419,10 +428,7 @@ public:
 		lastTime = now;
 	}
 
-	
-	//LogItem l, prevl;
-	void updateGyro() {
-	}
+	void updateGyro() {}
 	void updateCompass() {}
 	float calcAccel(float x) { return x; }
 	float calcGyro(float x) { return x; }
