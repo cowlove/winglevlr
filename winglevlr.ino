@@ -960,11 +960,9 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 
 
 		if (ahrsInput.gpsTrackRMC != l.ai.gpsTrackRMC) { 
-			// TODO: clean up NMEA checksum 
-			char buf[128], buf2[128];
+			char buf[128];
 			sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", l.ai.gpsTrackRMC + magVar);
-
-			WiFiUDP::inputMap[7891] = String(nmeaChecksum(std::string(buf)));
+			ESP32sim_udpInput(7891, String(nmeaChecksum(std::string(buf))));
 		}
 		
 		if (ahrsInput.gpsTrackGDL90 != l.ai.gpsTrackGDL90) { 
@@ -972,7 +970,7 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 			GDL90Parser::State s;
 			s.track = l.ai.gpsTrackGDL90;
 			int len = gdl90.packMsg10(buf, s);
-			WiFiUDP::inputMap[4000] = String((char *)buf, len);
+			ESP32sim_udpInput(4000, String((char *)buf, len));
 		}
 			
 		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
