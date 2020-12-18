@@ -505,18 +505,8 @@ public:
 		timo((timeout+portTICK_PERIOD_MS-1)/portTICK_PERIOD_MS) {
 			
 		queue = xQueueCreate(len, sizeof(T));
-		Serial.printf("xQueueCreate = %d\n", queue);
-		//queue = xQueueCreateStatic(len, sizeof(T), malloc(len * sizeof(T)), &qb);
 		this->textMode = textMode;
-		open_TTGOTS_SD();
-		setFilename();
-		xTaskCreate(
-                    SDCardBufferedLogThread<T>,       /* Function that implements the task. */
-                    "NAME",          /* Text name for the task. */
-                    8192,      /* Stack size in words, not bytes. */
-                    ( void * ) this,    /* Parameter passed into the task. */
-                    tskIDLE_PRIORITY,/* Priority at which the task is created. */
-                    NULL );      /* Used to pass out the created task's handle. */
+		xTaskCreate(SDCardBufferedLogThread<T>, "SDCardBufferedLogThread", 8192, (void *)this, tskIDLE_PRIORITY, NULL );   
 	}
 	~SDCardBufferedLog() { 
 		 this->exit();
@@ -562,6 +552,9 @@ public:
 		uint64_t lastWrite, startTime, lastFlush;
 		lastFlush = lastWrite = startTime = millis();
 		msdFile f;
+
+		open_TTGOTS_SD();
+		setFilename();
 		{
 			ScopedMutex lock(mutexSPI);
 			SD.remove((char *)currentFile.c_str());
