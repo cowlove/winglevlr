@@ -221,6 +221,7 @@ bool imuRead() {
 
 LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
+bool logChanging = false;
 const char *logFileName = "AHRSD%03d.DAT";
 
 void sdLog()  {
@@ -237,8 +238,6 @@ void printMag() {
       Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.accelX(), (float)imu.accelY(), (float)imu.accelZ() );
       Serial.println("");
 }
-
-void DisplayUpdateThread(void *); 
 
 static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
 
@@ -263,11 +262,6 @@ void setup() {
 	Display::jd.begin();
 	Display::jd.clear();
 	
-	pinMode(button.pin, INPUT_PULLUP);
-	pinMode(button2.pin, INPUT_PULLUP);
-	pinMode(button3.pin, INPUT_PULLUP);
-	pinMode(button4.pin, INPUT_PULLUP);
-
 	attachInterrupt(digitalPinToInterrupt(button.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button2.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button3.pin), buttonISR, CHANGE);
@@ -283,7 +277,6 @@ void setup() {
 	wifi.addAP("Flora_2GEXT", "maynards");
 	wifi.addAP("Team America", "51a52b5354");
 	wifi.addAP("ChloeNet", "niftyprairie7");
-	wifi.addAP("TUK-PUBLIC", "");
 
 	if (digitalRead(button4.pin) != 0 || digitalRead(button3.pin) != 0) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
@@ -347,8 +340,6 @@ void setup() {
 	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
 
 	ArduinoOTA.begin();
-	
-	xTaskCreate(DisplayUpdateThread, "DisplayUpdateThread", 8192, NULL,	tskIDLE_PRIORITY, NULL);
 }
 
  
@@ -533,9 +524,21 @@ void loop() {
 					desiredTrk = -1;
 			}
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {		// LONG: stop/start logging
-				logActive = !logActive;
+				if (!logChanging) {
+					logChanging = true;
+					if (logFile == NULL) {	
+							logFile = new SDCardBufferedLog<LogItem>(logFileName, 800/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
+							logFilename = logFile->currentFile;
+							logChanging = false;
+					} else {
+						delete logFile;
+						logFile = NULL;
+						logChanging = false;
+					}
+				}
 			}
 		}
+								
 		if (butFilt4.newEvent()) { 	// main knob button
 			if (butFilt4.wasCount == 1 && butFilt4.wasLong != true) { 
 				ed.buttonPress(butFilt4.wasLong);
@@ -881,41 +884,6 @@ void loop() {
 			
 	if (logFile != NULL) {
 		sdLog();
-	}
-}
-
-void DisplayUpdateThread(void *) { 
-	Display::jd.forceUpdate();
-	ed.update();
-	
-	while(true) {
-		Display::jd.waitChange(); 
-		if (screenReset) {
-			screenReset = false; 
-			Display::jd.begin();
-			Display::jd.forceUpdate();
-		}
-		while(screenEnabled && (logFile == NULL || logFile->queueLen() < 20)) {
-			if (Display::jd.update(false, true) == false) // update 1 at a time only as long as queueLen < 20
-				break;
-		}
-			
-		if (logActive == true && logFile == NULL) {
-			//screenEnabled = false;
-			//delayMicroseconds(100000);
-			logFile = new SDCardBufferedLog<LogItem>(logFileName, 800/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
-			logFilename = logFile->currentFile;
-		} 
-		if (logActive == false && logFile != NULL) {
-			SDCardBufferedLog<LogItem> *l = logFile;
-			logFile = NULL;
-			//delayMicroseconds(50000);
-			delete l;
-			//delayMicroseconds(50000);
-			screenEnabled = true;
-			
-		}
-		delayMicroseconds(10);
 	}
 }
 

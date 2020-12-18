@@ -1,4 +1,4 @@
-#ifndef INC_JIMLIB_H
+#ifndef INC_JIMLIBpr_H
 #define INC_JIMLIB_H
 #include <functional>
 #include <string>
@@ -289,7 +289,6 @@ public:
 	}
 };
 
-
 class DigitalButtonLongShort { 
 	public:
 	LongShortFilter filter;
@@ -372,11 +371,11 @@ std::vector<std::string> split(const std::string &s, char delim) {
 
 #ifdef ESP32
 // mutex to serialize SD card and TFT writes. 
-Mutex mutex;
+Mutex mutexSPI;
 
 void open_TTGOTS_SD() { 
 	for (int retries = 0; retries < 2; retries++) { 	
-		ScopedMutex lock(mutex);
+		ScopedMutex lock(mutexSPI);
 		Serial.print("Initializing SD card...");
 		if (SD.begin(13, 15, 2, 14)) { 
 			Serial.println("initialization done.");
@@ -472,6 +471,7 @@ public:
 
 
 
+static bool logFileBusySPI = false;
 
 template <class T>
 class SDCardBufferedLog {
@@ -523,6 +523,7 @@ public:
 		 vQueueDelete(queue);
 		 printSD();
 		 SD.end();
+		 logFileBusySPI = false;
 	}
 	void add(T *v) {
 		add(v, timo);
@@ -531,6 +532,7 @@ public:
 		if (xQueueSend(queue, v, (t+portTICK_PERIOD_MS-1)/portTICK_PERIOD_MS) != pdTRUE) 
 			dropped++;
 		int waiting = uxQueueMessagesWaiting(queue);
+		logFileBusySPI = waiting > 20;
 		if (waiting > maxWaiting)
 			maxWaiting = waiting;
 			
@@ -545,7 +547,7 @@ public:
 		if (strchr(filename, '%')) { // if filename contains '%', scan for existing files  
 			for(fileVer = 1; fileVer < 999; fileVer++) {
 				snprintf(fname, sizeof(fname), filename, fileVer);
-				ScopedMutex lock(mutex);
+				ScopedMutex lock(mutexSPI);
 				if (!(f = SD.open(fname, (F_READ)))) {
 					f.close();
 					break;
@@ -561,7 +563,7 @@ public:
 		lastFlush = lastWrite = startTime = millis();
 		msdFile f;
 		{
-			ScopedMutex lock(mutex);
+			ScopedMutex lock(mutexSPI);
 			SD.remove((char *)currentFile.c_str());
 			f = SD.open((char *)currentFile.c_str(), (F_READ | F_WRITE | F_CREAT));
 		}
@@ -572,7 +574,7 @@ public:
 				if (!exitNow) {
 					uint64_t now = millis();
 					if (f) {
-						ScopedMutex lock(mutex);
+						ScopedMutex lock(mutexSPI);
 						if (textMode)  
 							f.println(v.toString());
 						else 
@@ -585,14 +587,16 @@ public:
 			uint64_t now = millis();
 			if (now - lastFlush >= flushInterval) {
 				if (f) {
-					ScopedMutex lock(mutex);
+					ScopedMutex lock(mutexSPI);
 					f.flush();
 				}
 				lastFlush = now;
 			}
+			int waiting = uxQueueMessagesWaiting(queue);
+			logFileBusySPI = waiting > 20;
 		}
 		if (f) {
-			ScopedMutex lock(mutex);
+			ScopedMutex lock(mutexSPI);
 			f.close();
 		}
 		exitNow = false;
@@ -663,16 +667,14 @@ class ChangeTimer {
 //Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #endif
 
-
-
-
-
-
+void JDisplayUpdateThread(void *);
 class JDisplayItemBase;
 class JDisplay {
 	std::vector<JDisplayItemBase *> items;
 	Semaphore changeSem;
+	int textSize, xoffset, yoffset;
 public:
+	JDisplay(int tsize = 1, int x = 0, int y = 0) : textSize(tsize), xoffset(x), yoffset(y) {}
 	static const struct Colors { 
 		int lf, lb, vf, vb; 
 	} defaultColors; 
@@ -680,22 +682,26 @@ public:
 	Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 	void begin() { 
 		{
-			ScopedMutex lock(mutex);
+			ScopedMutex lock(mutexSPI);
 			//pinMode(27,OUTPUT); 		//Backlight:27  TODO:JIM 27 appears to be an external pin 
 			//digitalWrite(27,HIGH);	//New version added to backlight control
 			tft.initR(INITR_18GREENTAB);                             // 1.44 v2.1
 			tft.fillScreen(ST7735_BLACK);                            // CLEAR
 			tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);           // GREEN
-			tft.setRotation(1);                                      // 
+			tft.setRotation(1);
+			tft.setTextSize(textSize); 
 		}
 		forceUpdate();
+		xTaskCreate(JDisplayUpdateThread, "JDisplayUpdateThread", 8192, this, tskIDLE_PRIORITY, NULL);
 	}
 	void clear() {
-		ScopedMutex lock(mutex);
+		ScopedMutex lock(mutexSPI);
 		tft.fillScreen(ST7735_BLACK);                            // CLEAR
 	}
 	void printAt(int x, int y, const char *s, int fg, int bg) { 
-		ScopedMutex lock(mutex);
+		ScopedMutex lock(mutexSPI);
+		x = x * textSize * xoffset;
+		y = y * textSize + yoffset;
 		tft.setTextColor(fg, bg); 
 		tft.setCursor(x, y);
 		tft.print(s);
@@ -725,7 +731,7 @@ public:
 	}
 #endif
 	void markChange() { changeSem.give(); } 
-	void waitChange() { changeSem.take(); }
+	void waitChange(int tmo = portMAX_DELAY) { changeSem.take(tmo); }
 
 	void addItem(JDisplayItemBase *i) { 
 		items.push_back(i);
@@ -770,7 +776,8 @@ public:
 			labelInverse = li;
 			valueInverse = vi;
 			changed = true;
-			d->markChange();
+			if (d != NULL) 
+				d->markChange();
 		}
 		//update(changed);
 	}
@@ -795,7 +802,7 @@ public:
 	}
 	void setValueString(const String &s) {
 		val = s;
-		if (lastVal != val) 
+		if (lastVal != val && d != NULL) 
 			d->markChange();
 	}
 };
@@ -818,6 +825,7 @@ template<class T>
 class JDisplayItem : public JDisplayItemBase { 
 	const char *fmt;
 public:
+	T value;
 	JDisplayItem(JDisplay *d, int x, int y, const char *label, const char *format, JDisplay::Colors colors = JDisplay::defaultColors) :
 		JDisplayItemBase(d, x, y, label, colors), fmt(format) {}
 	JDisplayItem<T>& operator =(const T&v) { setValue(v); return *this; }
@@ -828,6 +836,7 @@ public:
 		return String(buf);
 	};		
 	void setValue(const T&v) { 
+		value = v;
 		setValueString(toString(v));
 	}
 };
@@ -954,6 +963,27 @@ inline void JDisplayEditor::buttonPress(bool longpress) {
 	items[selectedItem]->update();
 }
 
+
+void JDisplayUpdateThread(void *p) { 
+	JDisplay *jd = (JDisplay *)p;
+	jd->forceUpdate();
+#ifndef UBUNTU	
+	esp_task_wdt_delete(NULL);	
+	while(true) {
+		jd->waitChange(10); 
+		esp_task_wdt_reset();
+		while(logFileBusySPI == false) {
+			esp_task_wdt_reset();
+			if (jd->update(false, true) == false || logFileBusySPI)
+				break;
+		}
+		delayMicroseconds(10);
+	}
+#endif
+}
+
+
+
 template <class T>  
 class CircularBoundedQueue { 
 	Semaphore empty, full;
@@ -1041,6 +1071,26 @@ public:
 		}
 	}
 };
+
+#include "RunningLeastSquares.h"
+
+class LoopTimer { 
+	uint64_t lastTime;
+	bool first = true;
+public:
+	TwoStageRollingAverage<int,40,40> stats;
+	float tick() {
+		uint64_t now = micros();
+		if (!first) { 
+			stats.add(now - lastTime);
+		} else { 
+			first = false;
+		}
+		lastTime = now;
+		return stats.average();
+	}
+};
+
 
 std::string nmeaChecksum(const std::string &s) { 
 	char check = 0;

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <strings.h>
 
 class GDL90Parser {
 	bool lock() { return true; } 
