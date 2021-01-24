@@ -1,7 +1,15 @@
-#ifndef INC_JIMLIBpr_H
+#ifndef INC_JIMLIB_H
 #define INC_JIMLIB_H
 #include <functional>
 #include <string>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <iterator>
+#ifndef UBUNTU
+#include <SPIFFS.h>
+#include <esp_task_wdt.h>
+#endif
 
 std::string strfmt(const char *format, ...) { 
     va_list args;
@@ -12,7 +20,7 @@ std::string strfmt(const char *format, ...) {
 	return std::string(buf);
 }
 
-
+#ifdef ESP32
 class Mutex {
 	SemaphoreHandle_t xSem;
  public:
@@ -41,7 +49,7 @@ class Semaphore {
 	bool take(int delay = portMAX_DELAY) { return xSemaphoreTake(xSem, delay); } 
 	void give() { xSemaphoreGive(xSem); }
 };
-
+#endif
 
 class LineBuffer {
 public:
@@ -238,19 +246,20 @@ class LongShortFilter {
 	unsigned long lastEndTime;
 public:
 	bool wasLong;
-	int wasDuration;
+	int last, wasDuration;
 	int count, wasCount;
 	int lastDuration;
 	int events;
 	bool countedLongPress;
-
+	bool finishingLong = false;
 	LongShortFilter(int longMs, int resetTimeMs) : longPressMs(longMs), resetMs(resetTimeMs) {
-		events = lastDuration = count = wasCount = lastEndTime = 0;
+		last = events = lastDuration = count = wasCount = lastEndTime = 0;
 		countedLongPress = false;
 	}
 	
-	bool check(int last) { 
+	bool check(int l) { 
 		unsigned long now = millis();
+		last = l;
 		int rval = false;
 		if (last == 0) { 
 			if (lastDuration > 0) {  // press just ended, button up 
@@ -283,6 +292,8 @@ public:
 		}
 		return false;
 	}
+	bool inProgress() { return ((last != 0) || (lastEndTime > 0 && millis() - lastEndTime < resetMs)) && (countedLongPress == false); }
+	int inProgressCount() { return count + ((last != 0) ? 1 : 0); }
 	Changed<int> eventCount;
 	bool newEvent() { 
 		return eventCount.changed(events);
@@ -300,6 +311,8 @@ class DigitalButtonLongShort {
 	}
 	bool newEventR() { run(); return newEvent(); }
 	int count() { return filter.wasCount; } 
+	bool inProgress() { return filter.inProgress(); } 
+	int inProgressCount() { return filter.count; } 
 	int wasLong() { return filter.wasLong; } 
 };
 
@@ -354,6 +367,7 @@ public:
 		return rval; }
 };
 
+#ifdef ESP32
 template <typename Out>
 void split(const std::string &s, char delim, Out result) {
     std::istringstream iss(s);
@@ -369,7 +383,6 @@ std::vector<std::string> split(const std::string &s, char delim) {
     return elems;
 }
 
-#ifdef ESP32
 // mutex to serialize SD card and TFT writes. 
 Mutex mutexSPI;
 
@@ -693,7 +706,7 @@ public:
 	}
 	void printAt(int x, int y, const char *s, int fg, int bg) { 
 		ScopedMutex lock(mutexSPI);
-		x = x * textSize * xoffset;
+		x = x * textSize + xoffset;
 		y = y * textSize + yoffset;
 		tft.setTextColor(fg, bg); 
 		tft.setCursor(x, y);
@@ -752,7 +765,7 @@ class JDisplayItemBase {
 	bool first = true;
 public:
 	bool changed = false;
-	const char *label;
+	std::string label;
 	JDisplay::Colors color;
 	JDisplayItemBase(JDisplay *d, int x, int y, const char *label, JDisplay::Colors colors) {
 		this->x = x;
@@ -785,9 +798,9 @@ public:
 		}
 		first = false;
 		if (force)
-			d->printAt(x, y, label, labelInverse ? color.lb : color.lf , labelInverse ? color.lf : color.lb);
+			d->printAt(x, y, label.c_str(), labelInverse ? color.lb : color.lf , labelInverse ? color.lf : color.lb);
 		if (force || val != lastVal) {
-			d->printAt(x + 6 * strlen(label), y, val.c_str(), valueInverse ? color.vb : color.vf, valueInverse ? color.vf : color.vb);
+			d->printAt(x + 6 * strlen(label.c_str()), y, val.c_str(), valueInverse ? color.vb : color.vf, valueInverse ? color.vf : color.vb);
 			lastVal = val;
 			return true;
 		}
@@ -1033,7 +1046,9 @@ public:
         }
         void pmrrv(const std::string& r) {
                 std::string s = std::string("$PMRRV") + r + twoenc(chksum(r)) + "\r\n";
+#ifdef ESP32
                 Serial2.write(s.c_str());
+#endif
 				//Serial.printf("G5: %s", s.c_str());
                 //Serial.write(s.c_str());
         }
@@ -1094,4 +1109,107 @@ std::string nmeaChecksum(const std::string &s) {
 	return std::string("$") + s + std::string(buf);
 		
 }
+
+
+
+//
+// DS18 one-wire temperature sensor library
+
+#ifndef UBUNTU
+#include <OneWireNg.h>
+#endif 
+
+/* DS therms commands */
+#define CMD_CONVERT_T           0x44
+#define CMD_COPY_SCRATCHPAD     0x48
+#define CMD_WRITE_SCRATCHPAD    0x4E
+#define CMD_RECALL_EEPROM       0xB8
+#define CMD_READ_POW_SUPPLY     0xB4
+#define CMD_READ_SCRATCHPAD     0xBE
+
+/* supported DS therms families */
+#define DS18S20     0x10
+#define DS1822      0x22
+#define DS18B20     0x28
+#define DS1825      0x3B
+#define DS28EA00    0x42
+
+inline void swapEndian(void *p1, void *p2, int s) { 
+	for(int n = 0; n < s; n++) 
+		((char *)p1)[n] = ((char *)p2)[s - n - 1];
+}
+
+struct DsTempData { 
+	uint64_t id;
+	uint64_t time;
+	float degC;
+};
+
+class OneWireNg;	
+inline std::vector<DsTempData> readTemps(OneWireNg *ow) { 
+
+	std::vector<DsTempData> rval;
+#ifndef UBUNTU
+    OneWireNg::Id id;
+    OneWireNg::ErrorCode ec;
+    ow->searchReset();
+
+    do
+    {
+        ec = ow->search(id);
+        if (!(ec == OneWireNg::EC_MORE || ec == OneWireNg::EC_DONE))
+            break;
+
+        /* start temperature conversion */
+        ow->addressSingle(id);
+        ow->writeByte(CMD_CONVERT_T);
+
+        delay(750);
+
+        uint8_t touchScrpd[] = {
+            CMD_READ_SCRATCHPAD,
+            /* the read scratchpad will be placed here (9 bytes) */
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        };
+
+        ow->addressSingle(id);
+        ow->touchBytes(touchScrpd, sizeof(touchScrpd));
+        uint8_t *scrpd = &touchScrpd[1];  /* scratchpad data */
+
+        if (OneWireNg::crc8(scrpd, 8) != scrpd[8]) {
+            //Serial.println("  Invalid CRC!");
+            continue;
+        }
+
+        long temp = ((long)(int8_t)scrpd[1] << 8) | scrpd[0];
+
+        if (id[0] != DS18S20) {
+            unsigned res = (scrpd[4] >> 5) & 3;
+            temp = (temp >> (3-res)) << (3-res);  /* zeroed undefined bits */
+            temp = (temp*1000)/16;
+        } else
+        if (scrpd[7]) {
+            temp = 1000*(temp >> 1) - 250;
+            temp += 1000*(scrpd[7] - scrpd[6]) / scrpd[7];
+        } else {
+            /* shall never happen */
+            temp = (temp*1000)/2;
+			continue;
+        }
+		
+		uint64_t lid;
+		swapEndian(&lid, &id, sizeof(lid));
+		float ftemp = temp / 1000.0;
+		DsTempData dsData;
+		dsData.degC = temp / 1000.0;
+		dsData.id = lid;
+		dsData.time = millis();
+		
+		rval.push_back(dsData);
+    } while (ec == OneWireNg::EC_MORE);
+#endif
+    return rval;
+}
+
+
 #endif //#ifndef INC_JIMLIB_H
