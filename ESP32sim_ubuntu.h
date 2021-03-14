@@ -11,6 +11,11 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
+
+static uint64_t _micros = 0;
+uint64_t micros() { return ++_micros & 0xffffffff; }
+uint64_t millis() { return ++_micros / 1000; }
+
 #include "RunningLeastSquares.h"
 //#include "jimlib.h"
 
@@ -25,9 +30,6 @@ void xTaskCreate(void (*)(void *), const char *, int, void *, int, void *) {}
 
 std::string strfmt(const char *, ...); 
 using namespace std;
-static uint64_t _micros = 0;
-uint64_t micros() { return ++_micros & 0xffffffff; }
-uint64_t millis() { return ++_micros / 1000; }
 void pinMode(int, int) {}
 static int ESP32sim_currentPwm = 0;
 extern float ESP32sim_getPitchCmd();
@@ -143,7 +145,7 @@ class String {
 	int length() { return st.length(); } 
 	bool operator!=(const String& x) { return st != x.st; } 
 	String &operator+(const String& x) { st = st + x.st; return *this; } 
-	const char *c_str(void) { return st.c_str(); }
+	const char *c_str(void) const { return st.c_str(); }
 };
 
 class IPAddress {
@@ -499,3 +501,19 @@ int main(int argc, char **argv) {
 	}
 	printFinalReport();
 }
+
+
+class WebServer {
+        public:
+        WebServer(int) {}
+};
+
+class WireC {
+public:
+        void begin(int, int) {}
+} Wire;
+
+
+void analogSetCycles(int) {}
+void adcAttachPin(int) {}
+int analogRead(int) { return 0; } 

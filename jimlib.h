@@ -7,10 +7,9 @@
 #include <vector>
 #include <iterator>
 #ifndef UBUNTU
-#include <SPIFFS.h>
-#include <esp_task_wdt.h>
 #endif
 
+#include <stdarg.h>
 std::string strfmt(const char *format, ...) { 
     va_list args;
     va_start(args, format);
@@ -20,7 +19,28 @@ std::string strfmt(const char *format, ...) {
 	return std::string(buf);
 }
 
+
+
+class FakeMutex {
+	public:
+	void lock() {}
+	void unlock() {}
+};
+
+class FakeSemaphore { 
+ public:
+	FakeSemaphore(int max = 1, int init = 1) {}
+	bool take(int delay = portMAX_DELAY) { return true; } 
+	void give() {}
+};
+
+#ifndef UBUNTU
 #ifdef ESP32
+#include <SPIFFS.h>
+#include <esp_task_wdt.h>
+#endif
+
+
 class Mutex {
 	SemaphoreHandle_t xSem;
  public:
@@ -32,14 +52,6 @@ class Mutex {
 	void unlock() { xSemaphoreGive(xSem); }
 };
 
-class ScopedMutex {
-	Mutex &mutex; 
-  public:
-	ScopedMutex(Mutex &m) : mutex(m) { mutex.lock(); } 
-	~ScopedMutex() { mutex.unlock(); } 
-};
-
-
 class Semaphore { 
 	SemaphoreHandle_t xSem;
  public:
@@ -49,7 +61,22 @@ class Semaphore {
 	bool take(int delay = portMAX_DELAY) { return xSemaphoreTake(xSem, delay); } 
 	void give() { xSemaphoreGive(xSem); }
 };
+#else
+typedef FakeMutex Mutex;
+typedef FakeSemaphore Semaphore; 
 #endif
+
+class ScopedMutex {
+	Mutex *mutex; 
+  public:
+	ScopedMutex(Mutex &m) : mutex(&m) { mutex->lock(); } 
+#ifndef UBUNTU
+	ScopedMutex(FakeMutex &m) : mutex(NULL) {} 
+#endif
+	~ScopedMutex() { if (mutex != NULL) mutex->unlock(); } 
+};
+
+
 
 class LineBuffer {
 public:
@@ -70,16 +97,17 @@ public:
 
 class EggTimer {
 	uint64_t last;
-	int interval; 
+	float interval; 
+	bool first = true;
 public:
-	EggTimer(int ms) : interval(ms), last(0) { reset(); }
+	EggTimer(float ms) : interval(ms), last(0) { reset(); }
 	bool tick() { 
 		uint64_t now = micros();
 		if (now - last >= interval * 1000) { 
 			last += interval * 1000;
 			// reset last to now if more than one full interval behind 
 			if (now - last >= interval * 1000) 
-				last = now + interval;
+				last = now;
 			return true;
 		} 
 		return false;
@@ -491,6 +519,7 @@ class SDCardBufferedLog {
 public:
 	int dropped = 0;
 	int maxWaiting = 0;
+	int written = 0;
 #ifndef UBUNTU
 	QueueHandle_t queue;
 	int timo;
@@ -528,10 +557,13 @@ public:
 		 SD.end();
 		 logFileBusySPI = false;
 	}
-	void add(T *v) {
+	void add(const T *v) {
 		add(v, timo);
 	}
-	void add(T *v, int t) {
+	void add(const T &v) {
+		add(&v, timo);
+	}
+	void add(const T *v, int t) {
 		if (xQueueSend(queue, v, (t+portTICK_PERIOD_MS-1)/portTICK_PERIOD_MS) != pdTRUE) 
 			dropped++;
 		int waiting = uxQueueMessagesWaiting(queue);
@@ -585,6 +617,7 @@ public:
 							f.println(v.toString());
 						else 
 							f.write((uint8_t *)&v, sizeof(v));
+						written++;
 					}
 					lastWrite = now;
 					//Serial.printf("WROTE\n");
@@ -617,9 +650,12 @@ public:
 public:
 	String currentFile;
 	int fd;
-	void add(T *v, int t) { 
+	void add(const T *v, int timo = 0) { 
 		int s = write(fd, (void *)v, sizeof(T));
 		printf("%s LOG\n", v->toString().c_str()); 
+	}
+	void add(const T &v, int timo = 0) { 
+		add(&v);
 	}
 	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true) {
 		currentFile = fname;
@@ -680,7 +716,8 @@ class JDisplay {
 	Semaphore changeSem;
 	int textSize, xoffset, yoffset;
 public:
-	JDisplay(int tsize = 1, int x = 0, int y = 0) : textSize(tsize), xoffset(x), yoffset(y) {}
+	bool autoupdate;
+	JDisplay(int tsize = 1, int x = 0, int y = 0, bool au = false) : textSize(tsize), xoffset(x), yoffset(y), autoupdate(au) {}
 	static const struct Colors { 
 		int lf, lb, vf, vb; 
 	} defaultColors; 
@@ -689,8 +726,8 @@ public:
 	void begin() { 
 		{
 			ScopedMutex lock(mutexSPI);
-			//pinMode(27,OUTPUT); 		//Backlight:27  TODO:JIM 27 appears to be an external pin 
-			//digitalWrite(27,HIGH);	//New version added to backlight control
+			pinMode(27,OUTPUT); 		//Backlight:27  TODO:JIM 27 appears to be an external pin 
+			digitalWrite(27,HIGH);		//New version added to backlight control
 			tft.initR(INITR_18GREENTAB);                             // 1.44 v2.1
 			tft.fillScreen(ST7735_BLACK);                            // CLEAR
 			tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);           // GREEN
@@ -808,8 +845,11 @@ public:
 	}
 	void setValueString(const String &s) {
 		val = s;
-		if (lastVal != val && d != NULL) 
+		if (lastVal != val && d != NULL) {
 			d->markChange();
+			if (d->autoupdate)
+				update(true);
+		}
 	}
 };
 
@@ -1080,25 +1120,6 @@ public:
 	}
 };
 
-#include "RunningLeastSquares.h"
-
-class LoopTimer { 
-	uint64_t lastTime;
-	bool first = true;
-public:
-	TwoStageRollingAverage<int,40,40> stats;
-	float tick() {
-		uint64_t now = micros();
-		if (!first) { 
-			stats.add(now - lastTime);
-		} else { 
-			first = false;
-		}
-		lastTime = now;
-		return stats.average();
-	}
-};
-
 
 std::string nmeaChecksum(const std::string &s) { 
 	char check = 0;
@@ -1210,6 +1231,286 @@ inline std::vector<DsTempData> readTemps(OneWireNg *ow) {
 #endif
     return rval;
 }
+
+
+
+#ifdef ESP32
+const char* host = "esp32";
+const char* ssid = "xxx";
+const char* password = "xxxx";
+
+WebServer server(80);
+
+/*
+ * Login page
+ */
+
+const char* loginIndex = 
+ "<form name='loginForm'>"
+    "<table width='20%' bgcolor='A09F9F' align='center'>"
+        "<tr>"
+            "<td colspan=2>"
+                "<center><font size=4><b>ESP32 Login Page</b></font></center>"
+                "<br>"
+            "</td>"
+            "<br>"
+            "<br>"
+        "</tr>"
+        "<td>Username:</td>"
+        "<td><input type='text' size=25 name='userid'><br></td>"
+        "</tr>"
+        "<br>"
+        "<br>"
+        "<tr>"
+            "<td>Password:</td>"
+            "<td><input type='Password' size=25 name='pwd'><br></td>"
+            "<br>"
+            "<br>"
+        "</tr>"
+        "<tr>"
+            "<td><input type='submit' onclick='check(this.form)' value='Login'></td>"
+        "</tr>"
+    "</table>"
+"</form>"
+"<script>"
+    "function check(form)"
+    "{"
+    "if(form.userid.value=='admin' && form.pwd.value=='admin')"
+    "{"
+    "window.open('/serverIndex')"
+    "}"
+    "else"
+    "{"
+    " alert('Error Password or Username')/*displays error message*/"
+    "}"
+    "}"
+"</script>";
+ 
+/*
+ * Server Index Page
+ */
+ 
+const char* serverIndex = 
+"<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
+"<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
+   "<input type='file' name='update'>"
+        "<input type='submit' value='Update'>"
+    "</form>"
+ "<div id='prg'>progress: 0%</div>"
+ "<script>"
+  "$('form').submit(function(e){"
+  "e.preventDefault();"
+  "var form = $('#upload_form')[0];"
+  "var data = new FormData(form);"
+  " $.ajax({"
+  "url: '/update',"
+  "type: 'POST',"
+  "data: data,"
+  "contentType: false,"
+  "processData:false,"
+  "xhr: function() {"
+  "var xhr = new window.XMLHttpRequest();"
+  "xhr.upload.addEventListener('progress', function(evt) {"
+  "if (evt.lengthComputable) {"
+  "var per = evt.loaded / evt.total;"
+  "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+  "}"
+  "}, false);"
+  "return xhr;"
+  "},"
+  "success:function(d, s) {"
+  "console.log('success!')" 
+ "},"
+ "error: function (a, b, c) {"
+ "}"
+ "});"
+ "});"
+ "</script>";
+
+
+
+class JimWiFi { 
+	EggTimer report = EggTimer(1000);
+	bool firstRun = true, firstConnect = true;
+	std::function<void(void)> connectFunc = NULL;
+	bool updateInProgress = false;
+public:
+	WiFiUDP udp;
+	WiFiMulti wifi;
+	void onConnect(std::function<void(void)> oc) { 
+		connectFunc = oc;
+	}
+	void run() { 
+#ifndef UBUNTU
+		if (firstRun) {
+			wifi.addAP("ChloeNet", "niftyprairie7");
+			//wifi.addAP("TUK-FIRE", "FD priv n3t 20 q4");
+			firstRun = false;
+		}
+		wifi.run();
+		if (WiFi.status() == WL_CONNECTED) { 
+			if (firstConnect ==  true) { 
+				firstConnect = false;
+			  server.on("/", HTTP_GET, []() {
+				server.sendHeader("Connection", "close");
+				server.send(200, "text/html", loginIndex);
+			  });
+			  server.on("/serverIndex", HTTP_GET, []() {
+				server.sendHeader("Connection", "close");
+				server.send(200, "text/html", serverIndex);
+			  });
+			  /*handling uploading firmware file */
+			  server.on("/update", HTTP_POST, []() {
+				server.sendHeader("Connection", "close");
+				server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+				ESP.restart();
+			  }, []() {
+				HTTPUpload& upload = server.upload();
+				esp_task_wdt_reset();
+
+				if (upload.status == UPLOAD_FILE_START) {
+				  Serial.printf("Update: %s\n", upload.filename.c_str());
+				  if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+					Update.printError(Serial);
+				  }
+				} else if (upload.status == UPLOAD_FILE_WRITE) {
+				  Serial.printf("Update: write %d bytes\n", upload.currentSize);
+				  /* flashing firmware to ESP*/
+				  if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+					Update.printError(Serial);
+				  }
+				} else if (upload.status == UPLOAD_FILE_END) {
+				  if (Update.end(true)) { //true to set the size to the current progress
+					Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+				  } else {
+					Update.printError(Serial);
+				  }
+				}
+			  });
+			  server.begin();
+
+
+				ArduinoOTA.onStart([]() {
+				String type;
+				if (ArduinoOTA.getCommand() == U_FLASH) {
+				  type = "sketch";
+				} else { // U_FS
+				  type = "filesystem";
+				}
+
+				// NOTE: if updating FS this would be the place to unmount FS using FS.end()
+				Serial.println("Start updating " + type);
+				});
+				ArduinoOTA.onEnd([]() {
+				Serial.println("\nEnd");
+				});
+				ArduinoOTA.onProgress([&](unsigned int progress, unsigned int total) {
+				Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
+				esp_task_wdt_reset();
+				updateInProgress = true;
+				});
+				ArduinoOTA.onError([&](ota_error_t error) {
+				Serial.printf("Error[%u]: ", error);
+				if (error == OTA_AUTH_ERROR) {
+				  Serial.println("Auth Failed");
+				} else if (error == OTA_BEGIN_ERROR) {
+				  Serial.println("Begin Failed");
+				} else if (error == OTA_CONNECT_ERROR) {
+				  Serial.println("Connect Failed");
+				} else if (error == OTA_RECEIVE_ERROR) {
+				  Serial.println("Receive Failed");
+				} else if (error == OTA_END_ERROR) {
+				  Serial.println("End Failed");
+				}
+				updateInProgress = false;
+				});
+ 
+				
+				ArduinoOTA.begin();
+
+				udp.begin(9999);
+				if (connectFunc != NULL) { 
+					connectFunc();
+				}
+			}
+			
+			do {
+				ArduinoOTA.handle();
+			} while(updateInProgress == true); 
+			server.handleClient();
+			
+			if (report.tick()) { 
+				udp.beginPacket("255.255.255.255", 9000);
+				char b[128];
+				snprintf(b, sizeof(b), "%d %s    " __BASE_FILE__ "   " __DATE__ "   " __TIME__ "   0x%08x\n", 
+					(int)(millis() / 1000), WiFi.localIP().toString().c_str(), /*(int)ESP.getEfuseMac()*/0);
+				udp.write((const uint8_t *)b, strlen(b));
+				udp.endPacket();
+			}
+			
+			
+		}
+#endif
+	}
+	bool connected() { return WiFi.status() == WL_CONNECTED;  }  
+
+};
+
+class ShortBootDebugMode {
+	SPIFFSVariable<int> shortBootCount = SPIFFSVariable<int>("/shortBootCount", 1);
+	bool initialized = false;
+	bool cleared = false;
+	int sbCount; 
+  public:
+	void begin() { 
+		SPIFFS.begin();
+		shortBootCount = shortBootCount + 1;
+		sbCount = shortBootCount;
+		
+		Serial.printf("Short boot count %d\n", sbCount);
+		initialized = true;
+	}
+	int check() {
+		if (initialized == false) { 
+			begin();
+		}
+		if (millis() > 5000 && cleared == false) { 
+			cleared = true;
+			shortBootCount = 0 ;
+		}
+		return sbCount;
+	} 
+};
+#endif
+
+
+template<class T>
+class ExtrapolationTable {
+        bool between(T a, T b, T c) { 
+                return (c >= a && c < b) || (c <= a && c > b);
+        }
+public:
+        struct Pair {
+             T a,b;        
+        } *table;
+        ExtrapolationTable(struct Pair *t) : table(t) {}
+        T extrapolate(T in, bool reverse = false) {
+                for(int index = 1; table[index].a != -1 || table[index].b != -1; index++) {     
+                        if (!reverse && between(table[index - 1].a, table[index].a, in))  
+                                return table[index - 1].b + (in - table[index - 1].a) 
+                                        * (table[index].b - table[index - 1].b) 
+                                        / (table[index].a - table[index - 1].a);
+                        if (reverse && between(table[index - 1].b, table[index].b, in)) 
+                                return table[index - 1].a + (in - table[index - 1].b) 
+                                        * (table[index].a - table[index - 1].a) 
+                                        / (table[index].b - table[index - 1].b);                
+          
+                }
+                return -1;
+        }
+        T operator () (T in) { return extrapolate(in); }
+};
+
 
 
 #endif //#ifndef INC_JIMLIB_H

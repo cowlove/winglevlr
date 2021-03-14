@@ -279,4 +279,28 @@ public:
 	bool full() { return stage2.count == stage2.size; } 
 };
 
+
+class LoopTimer { 
+	uint64_t lastTime;
+	bool first = true;
+public:
+	TwoStageRollingAverage<int,40,40> stats;
+	float tick() {
+		uint64_t now = micros();
+		if (!first) { 
+			stats.add(now - lastTime);
+		} else { 
+			first = false;
+		}
+		lastTime = now;
+		return stats.average();
+	}
+	std::string getStats() {
+		//return strfmt("%d/%d/%d", (int)stats.min(), (int)stats.max(), (int)stats.average()); 
+		return "";
+	}
+};
+
+
+
 #endif 
