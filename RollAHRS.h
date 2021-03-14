@@ -34,7 +34,7 @@ struct AhrsInputB {
 	float ax, ay, az;  
 	float gx, gy, gz, mx, my, mz, dtk, g5Track;
 	float palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
-	String toString() { 
+	String toString() const { 
 		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f " /* 1 - 10 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 11 - 20 */
@@ -483,7 +483,7 @@ struct LogItemD {
 	short pwmOutput, flags;  
 	float desRoll, roll; 
 	AhrsInputB ai;
-	String toString() {
+	String toString() const {
 		char buf[200];
 		snprintf(buf, sizeof(buf), " %d %d %f %f", (int)pwmOutput, (int)flags,
 			desRoll, roll);
