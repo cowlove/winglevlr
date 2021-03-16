@@ -174,10 +174,8 @@ MPU9250_asukiaaa imu(0x69);
 
 void imuLog(); 
 void imuInit() { 
-#ifndef UBUNTU
 	Wire.begin(21,22);
 	imu.setWire(&Wire);
-#endif
 
 	imu.beginAccel(ACC_FULL_SCALE_4_G);
 	imu.beginGyro(GYRO_FULL_SCALE_250_DPS);
@@ -453,8 +451,6 @@ void loop() {
 #ifndef UBUNTU
 	if (!loopTimer.tick())
 		return;
-#else
-	imu.ESP32sim_run();
 #endif
 
 	
@@ -888,8 +884,146 @@ void loop() {
 }
 
 #ifdef UBUNTU
-float ESP32sim_getRollErr() {  return totalRollErr;}
-void ESP32sim_setLogFile(const char *p) { logFilename = p; } 
+
+ifstream ifile;
+bool ESP32sim_replayLogItem(ifstream &);
+float ESP32sim_pitchCmd = 940.0;
+void ESP32sim_set_gpsTrackGDL90(float v);
+void ESP32sim_set_desiredTrk(float v);
+
+class FlightSim { 
+public:
+	const char *replayFile = NULL;
+	int logSkip = 0;
+	int logEntries = 0;
+	float bank = 0, track = 0, pitch = 0, roll = 0, yaw = 0, simPitch = 0, hdg = 0;
+	RollingAverage<float,250> rollCmd;
+	uint64_t lastMillis = 0;
+	float cmdPitch;
+	std::queue<float> gxDelay, pitchDelay;
+	
+	uint64_t lastMicros = 0;
+	
+	void flightSim(MPU9250_DMP &imu) { 
+		_micros += 3500;
+		const float servoTrim = 4915.0;
+
+		float rawCmd = ESP32sim_pitchCmd;
+		cmdPitch = rawCmd > 0 ? (940 - rawCmd) / 13 : 0;
+		float ngx = (cmdPitch - simPitch) * 1.3;
+		ngx = max((float)-5.0,min((float)5.0, ngx));
+		simPitch += (cmdPitch - simPitch) * .0015;
+		gxDelay.push(ngx);
+		pitchDelay.push(simPitch);
+				
+		// Simulate simple airplane roll/bank/track turn response to 
+		// servooutput read from ESP32sim_currentPwm; 
+		rollCmd.add((ESP32sim_currentPwm - servoTrim) / servoTrim);
+		imu.gy = 0.0 + rollCmd.average() * 10.0;
+		bank += imu.gy * (3500.0 / 1000000.0);
+		bank = max(-20.0, min(20.0, (double)bank));
+		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
+			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
+			ESP32sim_currentPwm, track, 0.0, bank, imu.gy);
+		}		
+		imu.gz = +1.5 + tan(bank * M_PI/180) / 100 * 1091;
+		
+		uint64_t now = millis();
+		const float bper = .05;
+		if (floor(lastMillis * bper) != floor(now * bper)) { // 10hz
+			track -= tan(bank * M_PI / 180) * 9.8 / 40 * 25 * bper;
+			if (track < 0) track += 360;
+			if (track > 360) track -= 360;
+		}
+
+		hdg = track - 35.555; // simluate mag var and WCA 
+		if (hdg < 0) hdg += 360;	
+		ESP32sim_set_gpsTrackGDL90(track);
+
+		while(gxDelay.size() > 400) {
+			gxDelay.pop();
+			pitchDelay.pop();
+			imu.gx = gxDelay.front();
+			pitch = pitchDelay.front();
+		}
+		//printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
+		imu.az = cos(pitch * M_PI / 180) * 1.0;
+		imu.ay = sin(pitch * M_PI / 180) * 1.0;
+		imu.ax = 0;
+
+		// simulate meaningless mag readings that stabilize when bank == 0 
+		imu.mx = imu.my = bank * 1.4;
+		imu.mz += imu.mx;
+		
+		lastMillis = now;
+	}
+	
+	bool firstLoop = true;
+	void ESP32sim_run(MPU9250_DMP &imu) { 
+		static float lastTime = 0;
+		float now = _micros / 1000000.0;
+		
+		if (replayFile == NULL) { 
+			if (floor(now / .1) != floor(lastTime / .1)) {
+				float g5hdg = hdg * M_PI / 180;
+				float g5roll = -bank * M_PI / 180;
+				float g5pitch = pitch * M_PI / 180;
+				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", 90, 100, 1000));
+				ESP32sim_udpInput(7891, strfmt("P=%f R=%f\n", g5pitch, g5roll));
+				ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5hdg));
+			}
+			flightSim(imu);
+		} else {
+			if (firstLoop == true) { 
+				ifile = ifstream(replayFile, ios_base::in | ios::binary);
+			}
+			while(logSkip > 0 && logSkip-- > 0) {
+				ESP32sim_replayLogItem(ifile);
+			}
+			if (ESP32sim_replayLogItem(ifile) == false) { 
+				ESP32sim_done();
+				exit(0);
+			}
+			logEntries++;
+		}
+	
+		//if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
+		//if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
+		firstLoop = false;
+		lastTime = now;
+	}	
+} fsim;
+
+void ESP32sim_parseArg(char **&a, char **endA) {
+	if (strcmp(*a, "--replay") == 0) fsim.replayFile = *(++a);
+	else if (strcmp(*a, "--replaySkip") == 0) fsim.logSkip = atoi(*(++a));
+	else if (strcmp(*a, "--log") == 0) { 
+		bm.addPress(39, 1, 1, true);  // long press top button - start log 1 second in  
+		logFileName = (*(++a));
+	}	
+	else if (strcmp(*a, "--logConvert") == 0) {
+		ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
+		ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
+		ESP32sim_convertLogCtoD(i, o);
+		exit(0);
+	}
+}
+
+void ESP32sim_setup() { 
+	bm.addPress(32, 1, 1, true); // knob long press - arm servo
+	bm.addPress(37, 250, 1, true); // mid long press - test turn activate 
+	bm.addPress(39, 500, 1, false); // top short press - hdg hold 
+	ESP32sim_set_desiredTrk(90);
+}
+
+void ESP32sim_loop() { 
+	fsim.ESP32sim_run(imu);
+}
+
+void ESP32sim_done() { 
+	printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", totalRollErr / fsim.logEntries, totalHdgError / fsim.logEntries,  fsim.logEntries, millis() / 1000.0);
+	exit(0);
+}
 
 void ESP32sim_setDebug(const char *s) { 
 	vector<string> l = split(string(s), ',');
@@ -980,6 +1114,7 @@ void ESP32sim_set_desiredTrk(float v) {
 	ahrsInput.dtk = v;
 }
 
-
+#include "TinyGPS++.h"
+#include "TinyGPS++.cpp"
 
 #endif

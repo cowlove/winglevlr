@@ -14,8 +14,8 @@ FIELD=2
 #ARGS=--seconds 500
 
 
-# List of parameters to sweep, each with min, max, increment 
+# List of parameters to sweep, each with midpoint, range, increment 
 #############################################################
-zeros.mx 30 20 3
-zeros.my 30 20 3
+zeros.mx 30 35 3
+zeros.my 30 35 3
 dipconstant  4 4 .5	
