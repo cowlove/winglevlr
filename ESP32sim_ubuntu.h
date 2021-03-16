@@ -104,14 +104,45 @@ void ledcWrite(int chan, int val) {
 	ESP32sim_currentPwm = val;
 } 
 
+class InterruptManager { 
+	ifstream ifile;
+	uint64_t nextInt = 0; 
+	int count = 0;
+public:
+	void (*intFunc)() = NULL;
+	void getNext() { 
+		int delta;
+		ifile >> delta;
+		delta = min(100000, delta);
+		nextInt += delta;
+		//ifile >> delta;
+		//delta = min(50000, delta);
+		//nextInt += delta;
+		count++;
+	}
+	void setInterruptFile(char const *fn) { 
+		ifile = ifstream(fn, ios_base::in);
+		getNext();
+	}
+	void run() {
+		if (intFunc != NULL && ifile && micros() >= nextInt) { 
+			intFunc();
+			getNext();
+		}
+	}
+} intMan;
+
 int digitalPinToInterrupt(int) { return 0; }
 void digitalWrite(int, int) {};
-void attachInterrupt(int, void (*)(), int) {} 
+void attachInterrupt(int, void (*i)(), int) { intMan.intFunc = i; } 
 void ledcSetup(int, int, int) {}
 void ledcAttachPin(int, int) {}
-void delayMicroseconds(int m) { _micros += m; }
+void delayMicroseconds(int m) { _micros += m; intMan.run(); }
 void delay(int m) { delayMicroseconds(m*1000); }
-void yield() {}
+void yield() { intMan.run(); }
+void analogSetCycles(int) {}
+void adcAttachPin(int) {}
+int analogRead(int) { return 0; } 
 
 #define radians(x) ((x)*M_PI/180)
 #define degrees(x) ((x)*180.0/M_PI)
@@ -120,6 +151,8 @@ void yield() {}
 #define INPUT_PULLUP 0 
 #define OUTPUT 0 
 #define CHANGE 0 
+#define RISING 0
+#define FALLING 0
 #define INPUT 0 
 #define INPUT_PULLDOWN 0
 #define SERIAL_8N1 0
@@ -142,7 +175,7 @@ class String {
 	} 
 	String(int s) : st(std::to_string(s)) {}
 	String() {}
-	int length() { return st.length(); } 
+	int length() const { return st.length(); } 
 	bool operator!=(const String& x) { return st != x.st; } 
 	String &operator+(const String& x) { st = st + x.st; return *this; } 
 	const char *c_str(void) const { return st.c_str(); }
@@ -151,7 +184,7 @@ class String {
 class IPAddress {
 public:
 	void fromString(const char *) {}
-	String toString() { return String(); }	
+	String toString() const { return String(); }	
 };
 
 class FakeSerial { 
@@ -216,12 +249,10 @@ public:
 	void run() {}
 };
 
-
 void ESP32sim_JDisplay_forceUpdate();
-bool ESP32sim_replayLogItem(ifstream &);
-int logEntries = 0;
 const int ACC_FULL_SCALE_4_G = 0, GYRO_FULL_SCALE_250_DPS = 0, MAG_MODE_CONTINUOUS_100HZ = 0;
-float ESP32sim_pitchCmd = 940.0;
+
+extern float ESP32sim_pitchCmd; 
 
 class WiFiUDP {
 	int port, txPort;
@@ -263,7 +294,6 @@ public:
 			return 0;
 		}
 	}
-
 	IPAddress remoteIP() { return IPAddress(); } 
 };
 
@@ -277,46 +307,20 @@ void ESP32sim_udpInput(int p, String s) {
 		m[p] = m[p] + s;
 }
 
+class WireC {
+public:
+	void begin(int, int) {}
+} Wire;
+
 #define INV_SUCCESS 1
 #define INV_XYZ_GYRO 1
 #define INV_XYZ_ACCEL 1
 #define INV_XYZ_COMPASS 0
-// TODO: remove these pokes, instead send NMEA or GDL90 data 
-// to the simulated UDP ports
-void ESP32sim_set_gpsTrackGDL90(float v);
-//void ESP32sim_set_g5(float p, float r, float h);
-void ESP32sim_set_desiredTrk(float v);
-extern float desRoll;
-
-struct { 
-	float pitch, roll, hdg, ias, tas, alt, knobVal;
-	int knobSel, age; 
-} g5;
-
-/*void ESP32sim_simulateG5Input(float pit, float roll, float hdg, float ias, float tas, float alt, int knobSel, float knobVal, int age) { 
-	char buf[128];
-	int mode = 0;
-	snprintf(buf, sizeof(buf), "%.3f %.3f %.3f %.3f %.3f %.3f %.3f %d %.3f %d %d CAN\n",
-		pit*M_PI/180, roll*M_PI/180, hdg*M_PI/180, 0.0, ias*0.5144, tas*0.5144, alt*3.2808, knobSel, knobVal, age, mode);
-	WiFiUDP::inputMap[7891] = String(buf);
-}*/
-
-static const char *replayFile;
-ifstream ifile;
-static int logSkip; //log entries to skip
 
 class MPU9250_DMP {
-	float bank = 0, track = 0, simPitch = 0;
-	RollingAverage<float,250> rollCmd;
-	uint64_t lastMillis = 0;
-	float cmdPitch;
 public:
-	int begin(){ 
-		if (replayFile != NULL) { 
-			ifile = ifstream(replayFile, ios_base::in | ios::binary);
-		}
-		return true; 
-	}
+	int begin(){ return 1; }
+	void setWire(WireC *) {}
 	void setGyroFSR(int) {};
     void setAccelFSR(int) {};
     void setSensors(int) {}
@@ -340,180 +344,66 @@ public:
 	void beginMag(int) {}
 	int readId(uint8_t *) { return 0; } 
 	
-	std::queue<float> gxDelay, pitchDelay;
-private:
-	uint64_t lastMicros = 0;
-	void flightSim() { 
-		_micros += 3500;
-		const float servoTrim = 4915.0;
-
-		float rawCmd = ESP32sim_pitchCmd;
-		cmdPitch = rawCmd > 0 ? (940 - rawCmd) / 13 : 0;
-		float ngx = (cmdPitch - simPitch) * 1.3;
-		ngx = max((float)-5.0,min((float)5.0, ngx));
-		simPitch += (cmdPitch - simPitch) * .0015;
-		gxDelay.push(ngx);
-		pitchDelay.push(simPitch);
-				
-		// Simulate simple airplane roll/bank/track turn response to 
-		// servooutput read from ESP32sim_currentPwm; 
-		rollCmd.add((ESP32sim_currentPwm - servoTrim) / servoTrim);
-		gy = 0.0 + rollCmd.average() * 10.0;
-		bank += gy * (3500.0 / 1000000.0);
-		bank = max(-20.0, min(20.0, (double)bank));
-		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
-			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
-			ESP32sim_currentPwm, track, desRoll, bank, gy);
-		}		
-		gz = +1.5 + tan(bank * M_PI/180) / 100 * 1091;
-		
-		uint64_t now = millis();
-		const float bper = .05;
-		if (floor(lastMillis * bper) != floor(now * bper)) { // 10hz
-			track -= tan(bank * M_PI / 180) * 9.8 / 40 * 25 * bper;
-			if (track < 0) track += 360;
-			if (track > 360) track -= 360;
-		}
-
-		float hdg = track - 35.555; // simluate mag var and WCA 
-		if (hdg < 0) hdg += 360;	
-		//g5.hdg = hdg * M_PI / 180;
-		//g5.roll = -bank * M_PI / 180;
-		//g5.pitch = pitch * M_PI / 180;
-		ESP32sim_set_gpsTrackGDL90(track);
-
-		while(gxDelay.size() > 400) {
-			gxDelay.pop();
-			pitchDelay.pop();
-			gx = gxDelay.front();
-			pitch = pitchDelay.front();
-		}
-		//printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
-		az = cos(pitch * M_PI / 180) * 1.0;
-		ay = sin(pitch * M_PI / 180) * 1.0;
-		ax = 0;
-
-		// simulate meaningless mag readings that stabilize when bank == 0 
-		mx = my = bank * 1.4;
-		mz += mx;
-		
-		lastMillis = now;
-	}
-public:
-	void ESP32sim_run() { 
-		static float lastTime = 0;
-		float now = _micros / 1000000.0;
-
-		if (replayFile == NULL) { 
-			if (floor(now / .1) != floor(lastTime / .1)) {
-				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", g5.ias, g5.tas, g5.alt));
-				ESP32sim_udpInput(7891, strfmt("P=%f R=%f\n", g5.pitch, g5.roll));
-				ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5.hdg));
-				
-				//ESP32sim_simulateG5Input(g5.pitch, g5.roll, g5.hdg, g5.ias, g5.tas, g5.alt, g5.knobSel, g5.knobVal, g5.age);
-			}
-			flightSim();
-		} else {
-			while(logSkip > 0 && logSkip-- > 0) {
-				ESP32sim_replayLogItem(ifile);
-			}
-			if (ESP32sim_replayLogItem(ifile) == false) { 
-				printFinalReport();
-				exit(0);
-			}
-			logEntries++;
-		}
-
-		//if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
-		//if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
-
-		lastTime = now;
-	}
-
 	void updateGyro() {}
 	void updateCompass() {}
 	float calcAccel(float x) { return x; }
 	float calcGyro(float x) { return x; }
 	float calcQuat(float x) { return x; }
 	float calcMag(float x) { return x; }
-	float ax,ay,az,gx,gy,gz,mx,my,mz,qw,qx,qy,qz,pitch,roll,yaw;
+	float ax,ay,az,gx,gy,gz,mx,my,mz,qw,qx,qy,qz;
+	//pitch,roll,yaw;
 	MPU9250_DMP(int addr = 0x68) { bzero(this, sizeof(this)); } 
 };
 
 typedef MPU9250_DMP MPU9250_asukiaaa;
-
 typedef char byte;
 
-#include "TinyGPS++.h"
-#include "TinyGPS++.cpp"
+class WebServer {
+	public:
+	WebServer(int) {}
+};
 
 void setup(void);
 void loop(void);
 static void JDisplayToConsole(bool b);
 
-void printFinalReport() { 
-	printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", ESP32sim_getRollErr() / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
-	exit(0);
-}
+void ESP32sim_parseArg(char **&a, char **end);
+void ESP32sim_setup();
+void ESP32sim_loop();
+void ESP32sim_done();
 
 int main(int argc, char **argv) {
 	float seconds = 0;
 	for(char **a = argv + 1; a < argv+argc; a++) {
 		if (strcmp(*a, "--serial") == 0) Serial.toConsole = true;
-		if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
-		if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
-		if (strcmp(*a, "--debug") == 0) {
+		else if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
+		else if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
+		else if (strcmp(*a, "--debug") == 0) {
 			ESP32sim_setDebug(*(++a));
 		} 
-		if (strcmp(*a, "--replay") == 0) replayFile = *(++a);
-		if (strcmp(*a, "--replaySkip") == 0) logSkip = atoi(*(++a));
-		if (strcmp(*a, "--log") == 0) { 
-			bm.addPress(39, 1, 1, true);  // long press top button - start log 1 second in  
-			ESP32sim_setLogFile(*(++a));
-		}	
-		if (strcmp(*a, "--logConvert") == 0) {
-			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
-			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);
-			
-			ESP32sim_convertLogCtoD(i, o);
-			exit(0);
+		else if (strcmp(*a, "--interruptFile") == 0) {
+			intMan.setInterruptFile(*(++a));
 		}
+		else ESP32sim_parseArg(a, argv + argc);		
 	}
 	
-	bm.addPress(32, 1, 1, true); // knob long press - arm servo
-	bm.addPress(37, 250, 1, true); // mid long press - test turn activate 
-	bm.addPress(39, 500, 1, false); // top short press - hdg hold 
-
-	ESP32sim_set_desiredTrk(90);
-
+	ESP32sim_setup();
 	setup();
+
 	uint64_t lastMillis = 0;
 	double totalErr = 0;
 	while(seconds <= 0 || _micros / 1000000.0 < seconds) {
 		uint64_t now = millis();
+		ESP32sim_loop();
 		loop();
- 
+		intMan.run();
 
 		if (floor(now / 1000) != floor(lastMillis / 1000)) { 
 			ESP32sim_JDisplay_forceUpdate();	
 		}
 		lastMillis = now;
 	}
-	printFinalReport();
+	ESP32sim_done();
 }
 
 
-class WebServer {
-        public:
-        WebServer(int) {}
-};
-
-class WireC {
-public:
-        void begin(int, int) {}
-} Wire;
-
-
-void analogSetCycles(int) {}
-void adcAttachPin(int) {}
-int analogRead(int) { return 0; } 
