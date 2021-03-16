@@ -16,7 +16,7 @@ static uint64_t _micros = 0;
 uint64_t micros() { return ++_micros & 0xffffffff; }
 uint64_t millis() { return ++_micros / 1000; }
 
-#include "RunningLeastSquares.h"
+//#include "RunningLeastSquares.h"
 //#include "jimlib.h"
 
 // Stub out FreeRTOS stuff 
@@ -406,4 +406,17 @@ int main(int argc, char **argv) {
 	ESP32sim_done();
 }
 
+/************************************************
+ * Add the following stubs to project *.INO file 
+ ************************************************
+#ifdef UBUNTU
+void ESP32sim_setDebug(char const *) {}
+void ESP32sim_parseArg(char **&a, char **endA) {}
+void ESP32sim_setup() {} // called before arduino setup()
+void ESP32sim_loop() {}  // called before each arduino loop()
+void ESP32sim_done() {}  // called before exit();
+void ESP32sim_JDisplay_forceUpdate() {}
+#endif
+
+*/
 

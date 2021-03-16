@@ -17,8 +17,9 @@
  * 
  */
 
-
-#ifndef UBUNTU
+#ifdef UBUNTU
+#include "ESP32sim_ubuntu.h"
+#else // #ifndef UBUNTU
 #include <HardwareSerial.h>
 #include "SPI.h"
 #include "Update.h"
@@ -35,13 +36,10 @@
 #include "Wire.h"
 #include <MPU9250_asukiaaa.h>
 #include "SPIFFS.h"
-#if defined(ESP32)
 #include <esp_task_wdt.h>
-#endif
-#else // #ifndef UBUNTU
-#include "ESP32sim_ubuntu.h"
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 #endif // #else // UBUNTU
-
 
 #include <string>
 #include <sstream>
@@ -49,6 +47,7 @@
 #include <iterator>
 #include "jimlib.h"
 
+#include "RunningLeastSquares.h"
 #include "PidControl.h"
 #include "TinyGPS++.h"
 #include "G90Parser.h"
@@ -76,17 +75,28 @@ static int servoTrim = 1325;
 WiFiUDP udpSL30;
 WiFiUDP udpNMEA;
 WiFiUDP udpG90;
-WiFiUDP udpMAV;
+//WiFiUDP udpMAV;
 
 #define LED_PIN 22
+/* Old hardware pins: I2C pins/variant seems to determine layout 
+struct {
+	int topButton = 39;
+	int midButton = 34;
+	int botButton = 35;
+	int knobButton = 32;
+} pins;
+*/
+
+
+
 DigitalButton button3(39); // top
 DigitalButton button(37); // middle
 DigitalButton button2(36); // bottom
 DigitalButton button4(32); // knob press
 
-static IPAddress mavRemoteIp;
-#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
-static uint8_t buf[BUFFER_LENGTH];
+//static IPAddress mavRemoteIp;
+//#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
+//`static uint8_t buf[BUFFER_LENGTH];
 EggTimer screenTimer(200);
 
 LongShortFilter butFilt(1500,600);
@@ -169,23 +179,58 @@ public:
 
 
 //MPU9250_DMP imu;
-MPU9250_asukiaaa imu(0x69);
+MPU9250_asukiaaa imu(0x68);
 #define IMU_INT_PIN 4
+
+int scanI2c() { 
+	int count = 0;
+	for (byte i = 8; i < 120; i++)
+	{
+			Wire.beginTransmission (i);          // Begin I2C transmission Address (i)
+			if (Wire.endTransmission () == 0)  // Receive 0 = success (ACK response) 
+			{
+					Serial.print ("Found address: ");
+					Serial.print (i, DEC);
+					Serial.print (" (0x");
+					Serial.print (i, HEX);     // PCF8574 7 bit address
+					Serial.println (")");
+					count++;
+			}
+	}
+	Serial.print ("Found ");      
+	Serial.print (count, DEC);        // numbers of devices
+	Serial.println (" device(s).");
+
+	return count;
+}
 
 void imuLog(); 
 void imuInit() { 
 	Wire.begin(21,22);
+	Serial.println("Scanning I2C bus on pins 21,22");
+	if (scanI2c() == 0) { 
+		Wire.begin(19,18);
+		Serial.println("Scanning I2C bus on pins 19,18");
+		scanI2c();
+	}
 	imu.setWire(&Wire);
 
+	for(int addr = 0x68; addr <= 0x69; addr++) { 
+		imu.address = addr;
+		uint8_t sensorId;
+		Serial.printf("Checking MPU addr 0x%x: ", addr);
+		if (imu.readId(&sensorId) == 0) {
+			Serial.printf("Found MPU sensor id: 0x%x\n", (int)sensorId);
+			break;
+		} else {
+			Serial.println("Cannot read sensorId");
+		}
+	}
+
+	//while(1) { delay(1000); printPins(); } 
 	imu.beginAccel(ACC_FULL_SCALE_4_G);
 	imu.beginGyro(GYRO_FULL_SCALE_250_DPS);
 	imu.beginMag(MAG_MODE_CONTINUOUS_100HZ);
-	uint8_t sensorId;
-	if (imu.readId(&sensorId) == 0) {
-		Serial.print(sensorId);
-	} else {
-		Serial.println("Cannot read sensorId");
-	}
 }
 
 static AhrsInput ahrsInput;
@@ -251,6 +296,8 @@ void setup() {
 	esp_task_wdt_init(15, true);
 	esp_err_t err = esp_task_wdt_add(NULL);
 
+    //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector   
+ 
 	//esp_register_freertos_idle_hook(bApplicationIdleHook);
 	pinMode(LED_PIN, OUTPUT);
 	digitalWrite(LED_PIN, 1);
@@ -260,11 +307,12 @@ void setup() {
 	Display::jd.begin();
 	Display::jd.clear();
 	
+	
 	attachInterrupt(digitalPinToInterrupt(button.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button2.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button3.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(button4.pin), buttonISR, CHANGE);
-
+	
 	imuInit();	
 	
 	WiFi.disconnect(true);
@@ -464,13 +512,13 @@ void loop() {
 		Serial.printf(
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
+			"R %+05.2f P %+05.2f DR %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
 			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d\n", 
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
+			roll, pitch, desRoll, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
 			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
@@ -495,16 +543,25 @@ void loop() {
 				}
 					
 			} else { 
-				testTurnActive = !testTurnActive;
-				testTurnAlternate = 0;
+				if (!logChanging) {
+					logChanging = true;
+					if (logFile == NULL) {	
+							logFile = new SDCardBufferedLog<LogItem>(logFileName, 800/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
+							logFilename = logFile->currentFile;
+							logChanging = false;
+					} else {
+						delete logFile;
+						logFile = NULL;
+						logChanging = false;
+					}
+				}
 			}
 			
 		}
 		if (butFilt2.newEvent()) { // BOTTOM or LfffEFT button
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {	// LONG: zero AHRS sensors
-				//ahrs.zeroSensors();
-				//screenReset = true;
-				armServo = !armServo;
+				testTurnActive = !testTurnActive;
+				testTurnAlternate = 0;
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	// SHORT: arm servo
 				desiredTrk = angularDiff(desiredTrk + 10);
@@ -520,18 +577,7 @@ void loop() {
 					desiredTrk = -1;
 			}
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {		// LONG: stop/start logging
-				if (!logChanging) {
-					logChanging = true;
-					if (logFile == NULL) {	
-							logFile = new SDCardBufferedLog<LogItem>(logFileName, 800/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
-							logFilename = logFile->currentFile;
-							logChanging = false;
-					} else {
-						delete logFile;
-						logFile = NULL;
-						logChanging = false;
-					}
-				}
+				armServo = !armServo; 
 			}
 		}
 								
@@ -578,7 +624,8 @@ void loop() {
 	do {
 		recsize = 0;
 		int avail = udpG90.parsePacket();
-		while(avail > 0) { 
+		while(avail > 0) {
+			char buf[1024]; 
 			recsize = udpG90.read(buf, min(avail,(int)sizeof(buf)));
 			if (recsize <= 0)
 				break;
@@ -603,7 +650,7 @@ void loop() {
 	} while(recsize > 0);
 
 	if (Serial.available()) {
-		static char line[32]; // TODO make a line parser class with a lambda/closure
+		static char line[32], buf[128]; // TODO make a line parser class with a lambda/closure
 		static int index;
 		int n = Serial.readBytes(buf, sizeof(buf));
 		for (int i = 0; i < n; i++) {
@@ -642,7 +689,7 @@ void loop() {
 
 	int avail = 0;
 	while((avail = udpSL30.parsePacket()) > 0) { 
-		static char line[200];
+		static char line[200], buf[256];
 		static int index;
 		
 		int n = udpSL30.read(buf, sizeof(buf));
@@ -784,7 +831,7 @@ void loop() {
 		}
 
 		pwmOutput = 0;
-		if (1 /*ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0*/) { // hold down button to override and make servo work  
+		if (true || ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0) { // hold down button to override and make servo work  
 			if (hdgPIDTimer.tick()) {
 				if (ahrsInput.dtk != -1) { 
 					if (apMode == 4) {
@@ -867,7 +914,7 @@ void loop() {
 		Display::navt = navDTK; 
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
-		Display::gdl = (float)gpsTrackGDL90;
+		Display::gdl = (float)pwmOutput;(float)gpsTrackGDL90;
 		Display::maghdg = (float)ahrs.magHdg;
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
@@ -885,14 +932,13 @@ void loop() {
 
 #ifdef UBUNTU
 
-ifstream ifile;
 bool ESP32sim_replayLogItem(ifstream &);
 float ESP32sim_pitchCmd = 940.0;
 void ESP32sim_set_gpsTrackGDL90(float v);
-void ESP32sim_set_desiredTrk(float v);
 
 class FlightSim { 
 public:
+	ifstream ifile;
 	const char *replayFile = NULL;
 	int logSkip = 0;
 	int logEntries = 0;
@@ -998,7 +1044,7 @@ void ESP32sim_parseArg(char **&a, char **endA) {
 	if (strcmp(*a, "--replay") == 0) fsim.replayFile = *(++a);
 	else if (strcmp(*a, "--replaySkip") == 0) fsim.logSkip = atoi(*(++a));
 	else if (strcmp(*a, "--log") == 0) { 
-		bm.addPress(39, 1, 1, true);  // long press top button - start log 1 second in  
+		bm.addPress(36, 1, 1, true);  // long press bottom button - start log 1 second in  
 		logFileName = (*(++a));
 	}	
 	else if (strcmp(*a, "--logConvert") == 0) {
@@ -1010,10 +1056,10 @@ void ESP32sim_parseArg(char **&a, char **endA) {
 }
 
 void ESP32sim_setup() { 
-	bm.addPress(32, 1, 1, true); // knob long press - arm servo
+	bm.addPress(39, 1, 1, true); // knob long press - arm servo
 	bm.addPress(37, 250, 1, true); // mid long press - test turn activate 
 	bm.addPress(39, 500, 1, false); // top short press - hdg hold 
-	ESP32sim_set_desiredTrk(90);
+	ahrsInput.dtk = desiredTrk = 90;
 }
 
 void ESP32sim_loop() { 
@@ -1066,7 +1112,6 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		imu.my = l.ai.my;
 		imu.mz = l.ai.mz;
 	
-	
 		// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
 		if ((l.flags & LogFlags::g5Ps) || l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt) { 
 			ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt)); 
@@ -1099,7 +1144,6 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 	return false;
 }
 
-
 void ESP32sim_set_gpsTrackGDL90(float v) { 
 	gpsTrackGDL90 = v; // TODO - pass this through ESP32sim_udpInput()
 	ahrsInput.g5Hdg = v;
@@ -1109,10 +1153,6 @@ void ESP32sim_JDisplay_forceUpdate() {
 	Display::jd.forceUpdate();
 }
 
-void ESP32sim_set_desiredTrk(float v) {
-	desiredTrk = v;
-	ahrsInput.dtk = v;
-}
 
 #include "TinyGPS++.h"
 #include "TinyGPS++.cpp"
