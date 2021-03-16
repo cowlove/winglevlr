@@ -21,6 +21,24 @@ std::string strfmt(const char *format, ...) {
 
 
 
+void printPins() { 
+        for (int n = 0; n <= 1; n++) {
+                pinMode(n, INPUT_PULLUP); 
+                Serial.printf("%02d:%d ", n, digitalRead(n));
+        }
+        for (int n = 2; n <= 5; n++) {
+                pinMode(n, INPUT_PULLUP); 
+                Serial.printf("%02d:%d ", n, digitalRead(n));
+        }
+        for (int n = 12; n <= 39; n++) { 
+                pinMode(n, INPUT_PULLUP); 
+                Serial.printf("%02d:%d ", n, digitalRead(n));
+        }
+        Serial.print("\n");
+}
+
+
+
 class FakeMutex {
 	public:
 	void lock() {}
@@ -97,16 +115,16 @@ public:
 
 class EggTimer {
 	uint64_t last;
-	float interval; 
+	uint64_t interval; 
 	bool first = true;
 public:
-	EggTimer(float ms) : interval(ms), last(0) { reset(); }
+	EggTimer(float ms) : interval(ms * 1000), last(0) { reset(); }
 	bool tick() { 
 		uint64_t now = micros();
-		if (now - last >= interval * 1000) { 
-			last += interval * 1000;
+		if (now - last >= interval) { 
+			last += interval;
 			// reset last to now if more than one full interval behind 
-			if (now - last >= interval * 1000) 
+			if (now - last >= interval) 
 				last = now;
 			return true;
 		} 
