@@ -187,9 +187,9 @@ public:
 	float magScaleY = 1.0;
 	float magScaleZ = 1.0;
 	
-	float gyrOffX = -1; 
-	float gyrOffY = -1.066; 
-	float gyrOffZ = +1.012;
+	float gyrOffX = -0.83; 
+	float gyrOffY = -0.89; 
+	float gyrOffZ = -0.68;
 		  
 	float accOffX = +0,
 		  accOffY = -0,

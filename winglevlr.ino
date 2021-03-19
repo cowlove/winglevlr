@@ -144,11 +144,11 @@ namespace Display {
 	JDisplayItem<float> roll(&jd,10,y+=10,"ROLL:", "%+03.1f");   JDisplayItem<int>    mode(&jd,c2x,y,  "MODE:", "%05d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> maghdg(&jd,c2x,y,  " MAG:", "%05.1f ");
 	//JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
-	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s "); JDisplayItem<int>   drop(&jd,c2x+30,y,    "", "%03d ");
+	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s-"); JDisplayItem<int>   drop(&jd,c2x+30,y,    "", "%03d ");
     //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,c2x,y,    "SERV:", "%04d ");
 	
-	JDisplayItem<float> pidpl(&jd,00,y+=20,"PL:", "%03.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    " TT1:", "%04.0f ");
-	JDisplayItem<float> pidph(&jd,00,y+=10,"PH:", "%03.2f "); JDisplayItem<float> ttlt(&jd,c2x,y,    " TT2:", "%04.0f ");;
+	JDisplayItem<float> pidpl(&jd,00,y+=20,"PL:", "%03.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    " TT1:", "%04.1f ");
+	JDisplayItem<float> pidph(&jd,00,y+=10,"PH:", "%03.2f "); JDisplayItem<float> ttlt(&jd,c2x,y,    " TT2:", "%04.1f ");;
 	JDisplayItem<float>  pidi(&jd,00,y+=10," I:", "%03.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> maxi(&jd,c2x,y,    "MAXI:", "%04.1f ");
 	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); 	
@@ -539,6 +539,20 @@ void loop() {
 		serialLogFlags = 0;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////
+	// KNOB/BUTTON INTERFACE
+	// 
+	// TOP:    short   - apMode = 1, toggle between wing level and hdg hold 
+	//         long    - arm servo
+	//         double  - zero sensors
+	// MIDDLE: short   - left 10 degrees
+	//         double  - hdg select mode
+	//         long    - start/stop log
+	// BOTTOM: short   - right 10 degrees
+	//         long    - active test turn sequence 
+	// KNOB    long    - arm servo
+	//         triple  - servo test mode
+	           
 	//ed.re.check();
 	if (buttonCheckTimer.tick()) { 
 		buttonISR();
@@ -550,8 +564,11 @@ void loop() {
 				else 
 					desiredTrk = -1;
 			}
-			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {		// LONG: arm servos 
+			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) { 
 				armServo = !armServo; 
+			}
+			if (butFilt3.wasCount == 3) {
+				ahrs.zeroSensors();
 			}
 		}
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
@@ -603,6 +620,12 @@ void loop() {
 			}
 			if (butFilt4.wasLong && butFilt4.wasCount == 2) {
 				ed.negateSelectedValue();
+			}
+			if (butFilt4.wasCount == 3) {		
+				ed.tttt.setValue(.1); 
+				ed.ttlt.setValue(.1);
+				armServo = testTurnActive = true;
+				 
 			}
 		}
 	}
@@ -926,14 +949,14 @@ void loop() {
 		Display::navt = navDTK; 
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
-		Display::gdl = (float)pwmOutput;(float)gpsTrackGDL90;
+		Display::gdl = (float)gpsTrackGDL90;
 		Display::maghdg = (float)ahrs.magHdg;
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
 		Display::drop = logFile != NULL ? logFile->dropped : -1;
 		//Display::pitch = pitch;
 		//Display::xtec = xteCorrection; 
-		Display::log = logFilename.c_str();
+		Display::log = (logFile != NULL) ? logFile->currentFile.c_str() : "none";
 		Display::log.setInverse(false, (logFile != NULL));
 	}
 			

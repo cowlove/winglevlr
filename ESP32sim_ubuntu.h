@@ -35,6 +35,9 @@ int xSemaphoreTake(int, int) { return 0; }
 #define tskIDLE_PRIORITY 0
 void xTaskCreate(void (*)(void *), const char *, int, void *, int, void *) {}
 
+#define WRITE_PERI_REG(a, b) if(0) {}
+#define RTC_CNTL_BROWN_OUT_REG 0
+
 std::string strfmt(const char *, ...); 
 using namespace std;
 void pinMode(int, int) {}
@@ -122,9 +125,9 @@ public:
 		ifile >> delta;
 		delta = min(100000, delta);
 		nextInt += delta;
-		//ifile >> delta;
-		//delta = min(50000, delta);
-		//nextInt += delta;
+		ifile >> delta;
+		delta = min(50000, delta);
+		nextInt += delta;
 		count++;
 	}
 	void setInterruptFile(char const *fn) { 
