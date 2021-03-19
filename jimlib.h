@@ -621,7 +621,7 @@ public:
 			SD.remove((char *)currentFile.c_str());
 			f = SD.open((char *)currentFile.c_str(), (F_READ | F_WRITE | F_CREAT));
 		}
-		//Serial.printf("Opened %s\n", fname);
+		Serial.printf("Opened %s\n", currentFile.c_str());
 		while(!exitNow) { // TODO: doesn't flush queue before exiting 	
 			T v;
 			if (xQueueReceive(queue, &v, timo) == pdTRUE) {
@@ -730,8 +730,8 @@ class JDisplayItemBase;
 class JDisplay {
 	std::vector<JDisplayItemBase *> items;
 	Semaphore changeSem;
-	int textSize, xoffset, yoffset;
 public:
+	int textSize, xoffset, yoffset;
 	bool autoupdate;
 	JDisplay(int tsize = 1, int x = 0, int y = 0, bool au = false) : textSize(tsize), xoffset(x), yoffset(y), autoupdate(au) {}
 	static const struct Colors { 
@@ -757,12 +757,13 @@ public:
 		ScopedMutex lock(mutexSPI);
 		tft.fillScreen(ST7735_BLACK);                            // CLEAR
 	}
-	void printAt(int x, int y, const char *s, int fg, int bg) { 
+	void printAt(int x, int y, const char *s, int fg, int bg, int size) { 
 		ScopedMutex lock(mutexSPI);
-		x = x * textSize + xoffset;
-		y = y * textSize + yoffset;
+		x = x + xoffset;
+		y = y + yoffset;
 		tft.setTextColor(fg, bg); 
 		tft.setCursor(x, y);
+		tft.setTextSize(size); 
 		tft.print(s);
 	}
 #else
@@ -778,7 +779,7 @@ public:
 	}
 	void clear() {}
 	static bool displayToConsole;
-	void printAt(int x, int y, const char *f, int, int) { 
+	void printAt(int x, int y, const char *f, int, int, int) {
 		if (displayToConsole) {
 			char *line = lines[y/10];
 			int flen = strlen(f);
@@ -801,7 +802,7 @@ public:
 
 
 #ifndef UBUNTU
-const JDisplay::Colors JDisplay::defaultColors = { ST7735_WHITE, ST7735_BLACK, ST7735_YELLOW, ST7735_BLACK };
+const JDisplay::Colors JDisplay::defaultColors = { ST7735_GREEN, ST7735_BLACK, ST7735_WHITE, ST7735_BLACK };
 #else
 const JDisplay::Colors JDisplay::defaultColors = { 0, 0, 0, 0 };
 bool JDisplay::displayToConsole = false;
@@ -816,11 +817,14 @@ class JDisplayItemBase {
 	String val, lastVal;
 	bool labelInverse = false, valueInverse = false;
 	bool first = true;
+	int labelFontSize = 0;
 public:
 	bool changed = false;
+	int labelSpace = 0;
 	std::string label;
 	JDisplay::Colors color;
-	JDisplayItemBase(JDisplay *d, int x, int y, const char *label, JDisplay::Colors colors) {
+	JDisplayItemBase(JDisplay *d, int x, int y, const char *label, JDisplay::Colors colors, int labelFontSize) {
+		this->labelFontSize = labelFontSize;
 		this->x = x;
 		this->y = y;
 		this->label = label;
@@ -850,10 +854,15 @@ public:
 			changed = false; 
 		}
 		first = false;
+#ifdef UBUNTU
+		labelFontSize = d->textSize = 1;
+#endif
 		if (force)
-			d->printAt(x, y, label.c_str(), labelInverse ? color.lb : color.lf , labelInverse ? color.lf : color.lb);
+			d->printAt(x * d->textSize, y * d->textSize, label.c_str(), labelInverse ? color.lb : color.lf , labelInverse ? color.lf : color.lb, 
+			labelFontSize != 0 ? labelFontSize : d->textSize);
 		if (force || val != lastVal) {
-			d->printAt(x + 6 * strlen(label.c_str()), y, val.c_str(), valueInverse ? color.vb : color.vf, valueInverse ? color.vf : color.vb);
+			int xpixel = labelSpace + x * d->textSize + 6 * strlen(label.c_str()) * (labelFontSize != 0 ? labelFontSize : d->textSize);
+			d->printAt(xpixel, y * d->textSize, val.c_str(), valueInverse ? color.vb : color.vf, valueInverse ? color.vf : color.vb, d->textSize);
 			lastVal = val;
 			return true;
 		}
@@ -888,8 +897,8 @@ class JDisplayItem : public JDisplayItemBase {
 	const char *fmt;
 public:
 	T value;
-	JDisplayItem(JDisplay *d, int x, int y, const char *label, const char *format, JDisplay::Colors colors = JDisplay::defaultColors) :
-		JDisplayItemBase(d, x, y, label, colors), fmt(format) {}
+	JDisplayItem(JDisplay *d, int x, int y, const char *label, const char *format, int labelFontSize = 0,  JDisplay::Colors colors = JDisplay::defaultColors) :
+		JDisplayItemBase(d, x, y, label, colors, labelFontSize), fmt(format) {}
 	JDisplayItem<T>& operator =(const T&v) { setValue(v); return *this; }
 
 	std::function<String(const T&)> toString = [this](const T& v)->String { 
