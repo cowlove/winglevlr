@@ -370,8 +370,8 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.setValue(12);
-	ed.tttt.setValue(20); // seconds to make each test turn 
-	ed.ttlt.setValue(20); // seconds betweeen test turn  
+	ed.tttt.setValue(.25); // seconds to make each test turn 
+	ed.ttlt.setValue(.25); // seconds betweeen test turn  
 	ed.tzer.setValue(1000);
 	ed.pidsel.setValue(0);
 	setKnobPid(ed.pidsel.value);
@@ -512,13 +512,13 @@ void loop() {
 		Serial.printf(
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"R %+05.2f P %+05.2f DR %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
+			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
 			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d\n", 
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, desRoll, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
+			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
 			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
@@ -625,7 +625,7 @@ void loop() {
 		recsize = 0;
 		int avail = udpG90.parsePacket();
 		while(avail > 0) {
-			char buf[1024]; 
+			unsigned char buf[1024]; 
 			recsize = udpG90.read(buf, min(avail,(int)sizeof(buf)));
 			if (recsize <= 0)
 				break;
@@ -650,7 +650,8 @@ void loop() {
 	} while(recsize > 0);
 
 	if (Serial.available()) {
-		static char line[32], buf[128]; // TODO make a line parser class with a lambda/closure
+		static char line[32];
+		static unsigned char buf[128]; // TODO make a line parser class with a lambda/closure
 		static int index;
 		int n = Serial.readBytes(buf, sizeof(buf));
 		for (int i = 0; i < n; i++) {
@@ -689,7 +690,8 @@ void loop() {
 
 	int avail = 0;
 	while((avail = udpSL30.parsePacket()) > 0) { 
-		static char line[200], buf[256];
+		static char line[200];
+		static unsigned char buf[256];
 		static int index;
 		
 		int n = udpSL30.read(buf, sizeof(buf));

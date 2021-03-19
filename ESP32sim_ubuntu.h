@@ -1,3 +1,10 @@
+/* Simple library and simulation environment to compile and run an Arduino sketch as a 
+ * standard C command line program. 
+ * 
+ * Most functionality is unimplemented, and just stubbed out but minimal simluated 
+ * Serial/UDP/Interrupts/buttons are sketched in. 
+ */
+
 #include <cstdint>
 #include <algorithm>
 #include <vector>
@@ -194,6 +201,7 @@ class FakeSerial {
 	void begin() {}
 	void begin(int, int, int, int) {}
 	void begin(int, int) {}
+	void print(int, int) {}
 	void print(const char *p) { this->printf("%s", p); }
 	void println(const char *p= NULL) { this->printf("%s\n", p != NULL ? p : ""); }
 	void print(char c) { this->printf("%c", c); } 
@@ -219,6 +227,9 @@ class FakeSerial {
 
 #define WL_CONNECTED 0
 #define WIFI_STA 0
+#define DEC 0
+#define HEX 0 
+
 class FakeWiFi {
 	public:
 	int status() { return WL_CONNECTED; } 
@@ -310,6 +321,8 @@ void ESP32sim_udpInput(int p, String s) {
 class WireC {
 public:
 	void begin(int, int) {}
+	void beginTransmission(int) {}
+	bool endTransmission() { return false; }
 } Wire;
 
 #define INV_SUCCESS 1
@@ -319,6 +332,7 @@ public:
 
 class MPU9250_DMP {
 public:
+	int address = 0;
 	int begin(){ return 1; }
 	void setWire(WireC *) {}
 	void setGyroFSR(int) {};
