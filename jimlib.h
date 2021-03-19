@@ -48,15 +48,13 @@ class FakeMutex {
 class FakeSemaphore { 
  public:
 	FakeSemaphore(int max = 1, int init = 1) {}
-	bool take(int delay = portMAX_DELAY) { return true; } 
+	bool take(int delay = 0) { return true; } 
 	void give() {}
 };
 
-#ifndef UBUNTU
-#ifdef ESP32
+#if !defined UBUNTU && defined ESP32 
 #include <SPIFFS.h>
 #include <esp_task_wdt.h>
-#endif
 
 
 class Mutex {
@@ -88,7 +86,7 @@ class ScopedMutex {
 	Mutex *mutex; 
   public:
 	ScopedMutex(Mutex &m) : mutex(&m) { mutex->lock(); } 
-#ifndef UBUNTU
+#if !defined UBUNTU && defined ESP32 
 	ScopedMutex(FakeMutex &m) : mutex(NULL) {} 
 #endif
 	~ScopedMutex() { if (mutex != NULL) mutex->unlock(); } 
