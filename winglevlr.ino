@@ -478,12 +478,11 @@ static int manualRelayMs = 60;
 static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 static uint64_t lastLoop = micros();
 static bool selEditing = false;
-static int knobSel = 0;
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
 
-void setObsKnob(float v) { 
+void setObsKnob(float knobSel, float v) { 
 	if (knobSel == 1 || knobSel == 4) {
 		obs = v * 180.0 / M_PI;
 		if (obs <= 0) obs += 360;
@@ -725,7 +724,7 @@ void loop() {
 		static char line[200];
 		static unsigned char buf[256];
 		static int index;
-		
+		float knobSel = -1;
 		int n = udpSL30.read(buf, sizeof(buf));
 		//printf("READ: %s\n", buf);
 		if (n <= 0)
@@ -754,7 +753,7 @@ void loop() {
 					else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) { ahrsInput.g5Track = v; logItem.flags |= LogFlags::g5Nav; } 
 					else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) { apMode = v; } 
 					else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) { knobSel = v; } 
-					else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) { setObsKnob(v); } 
+					else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) { setObsKnob(knobSel, v); } 
 				}
 				
 				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
@@ -764,7 +763,7 @@ void loop() {
 				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
 					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
-					//printf("CAN: %s", line);
+					Serial.printf("CAN: %s\n", line);
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
 					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
@@ -776,7 +775,8 @@ void loop() {
 					apMode = mode;
 					ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
 					logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
-					setObsKnob(knobVal);
+					setObsKnob(knobSel, knobVal);
+					Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
 					canMsgCount = canMsgCount + 1;
 				}
 			}
