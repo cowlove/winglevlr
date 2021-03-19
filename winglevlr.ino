@@ -84,8 +84,17 @@ struct {
 	int midButton = 34;
 	int botButton = 35;
 	int knobButton = 32;
+	int pwm = 33;
 } pins;
 */
+
+struct {
+	int topButton = 39;
+	int midButton = 37;
+	int botButton = 36;
+	int knobButton = 32;
+	int pwm = 33;
+} pins;
 
 
 
@@ -370,8 +379,8 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.setValue(12);
-	ed.tttt.setValue(.25); // seconds to make each test turn 
-	ed.ttlt.setValue(.25); // seconds betweeen test turn  
+	ed.tttt.setValue(20); // seconds to make each test turn 
+	ed.ttlt.setValue(20); // seconds betweeen test turn  
 	ed.tzer.setValue(1000);
 	ed.pidsel.setValue(0);
 	setKnobPid(ed.pidsel.value);
@@ -381,9 +390,9 @@ void setup() {
 	//ed.mnrl.value = 70;
 	//ed.pmin.value = 0.5; // PID total error that triggers relay minimum actuation
 	//ed.pmax.value = 2.5; // PID total error that triggers relay maximum actuation 
-	pinMode(33, OUTPUT);
+	pinMode(pins.pwm, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
-	ledcAttachPin(33, 1);   // GPIO 33 assigned to channel 1
+	ledcAttachPin(pins.pwm, 1);   // GPIO 33 assigned to channel 1
 
 	ArduinoOTA.begin();
 }
@@ -533,6 +542,18 @@ void loop() {
 	//ed.re.check();
 	if (buttonCheckTimer.tick()) { 
 		buttonISR();
+		if (butFilt3.newEvent()) { // TOP or RIGHT button 
+			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {		// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
+				apMode = 1;
+				if (desiredTrk == -1) 
+					desiredTrk = ahrsInput.selTrack;
+				else 
+					desiredTrk = -1;
+			}
+			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {		// LONG: arm servos 
+				armServo = !armServo; 
+			}
+		}
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
 				if (butFilt.wasCount == 1) {
@@ -566,18 +587,6 @@ void loop() {
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	// SHORT: arm servo
 				desiredTrk = angularDiff(desiredTrk + 10);
 				apMode = 1;
-			}
-		}
-		if (butFilt3.newEvent()) { // TOP or RIGHT button 
-			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {		// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
-				apMode = 1;
-				if (desiredTrk == -1) 
-					desiredTrk = ahrsInput.selTrack;
-				else 
-					desiredTrk = -1;
-			}
-			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {		// LONG: stop/start logging
-				armServo = !armServo; 
 			}
 		}
 								
@@ -886,7 +895,8 @@ void loop() {
 #ifdef UBUNTU
 		if (millis() < 1000) // don't count error during the first second while stuff initializes 
 			totalRollErr = totalHdgError = 0;
-			
+
+		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
 			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " " << ahrs.magBank/*33*/  << " LOG U" << endl;
 		}
@@ -933,6 +943,8 @@ void loop() {
 }
 
 #ifdef UBUNTU
+///////////////////////////////////////////////////////////////////////////////
+// Code below this point is used in compiling/running ESP32sim simulation
 
 bool ESP32sim_replayLogItem(ifstream &);
 float ESP32sim_pitchCmd = 940.0;
@@ -1046,7 +1058,7 @@ void ESP32sim_parseArg(char **&a, char **endA) {
 	if (strcmp(*a, "--replay") == 0) fsim.replayFile = *(++a);
 	else if (strcmp(*a, "--replaySkip") == 0) fsim.logSkip = atoi(*(++a));
 	else if (strcmp(*a, "--log") == 0) { 
-		bm.addPress(36, 1, 1, true);  // long press bottom button - start log 1 second in  
+		bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 		logFileName = (*(++a));
 	}	
 	else if (strcmp(*a, "--logConvert") == 0) {
@@ -1058,9 +1070,9 @@ void ESP32sim_parseArg(char **&a, char **endA) {
 }
 
 void ESP32sim_setup() { 
-	bm.addPress(39, 1, 1, true); // knob long press - arm servo
-	bm.addPress(37, 250, 1, true); // mid long press - test turn activate 
-	bm.addPress(39, 500, 1, false); // top short press - hdg hold 
+	bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
+	bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
+	bm.addPress(pins.topButton, 500, 1, false); // top short press - hdg hold 
 	ahrsInput.dtk = desiredTrk = 90;
 }
 
@@ -1137,6 +1149,7 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 			ESP32sim_udpInput(4000, String((char *)buf, len));
 		}
 			
+		// special logfile name "-", just replay existing log back out to stdout 
 		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
 			l.ai.sec = _micros / 1000000.0; 
 			cout << l.toString().c_str() << " -1 LOG" << endl;
