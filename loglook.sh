@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 
 
@@ -44,6 +44,7 @@ XRANGE='[*:*]'
 #	float desRoll, roll; // 29,30
 
 F2=./logs/AHRSD$NUM.plog
+PROG=./winglevlr_ubuntu
 make $F2
 
 
@@ -91,10 +92,14 @@ while (( $# > 0 )); do
 	fi  
 	if [ "$1" == "-git" ]; then
 		GIT="$2"
-		git checkout $GIT
-		rm -f ./winglevlr_ubuntu
-		make winglevlr_ubuntu
-		shift
+        GITDIR=/tmp/loglook.sh/$GIT
+        mkdir -p $GITDIR
+        git archive $GIT | tar -x -C $GITDIR
+        echo Building in $GITDIR ...
+        (cd $GITDIR && sed -i 's/include /#/' Makefile && make winglevlr_ubuntu)
+        PROG=$GITDIR/winglevlr_ubuntu
+        echo done 
+ 		shift
 	fi
 	if [ "$1" == "-debug" ]; then
 		DARGS="$2"
@@ -108,9 +113,9 @@ while (( $# > 0 )); do
 		F2="./logs/AHRSD$NUM-R${GIT}${DARGS}.plog";
 		IN="./logs/AHRSD$NUM.dat"
 		echo "Replay $F2"
-		if [ "./winglevlr_ubuntu" -nt "$F2" ] || [ ! -f "$F2" ]; then
-			echo ./winglevlr_ubuntu $MARGS --debug "$DARGS" --replay ./logs/AHRSD$NUM.DAT --log + \> \""$F2"\" 
-			./winglevlr_ubuntu $MARGS --debug "$DARGS" --replay ./logs/AHRSD$NUM.DAT --log + | grep LOG > "$F2"
+		if [ "$PROG" -nt "$F2" ] || [ ! -f "$F2" ]; then
+			echo $PROG $MARGS --debug "$DARGS" --replay ./logs/AHRSD$NUM.DAT --log + \> \""$F2"\" 
+			$PROG $MARGS --debug "$DARGS" --replay ./logs/AHRSD$NUM.DAT --log + | grep LOG > "$F2"
 		fi
 	fi  
 
@@ -125,8 +130,6 @@ while (( $# > 0 )); do
 	shift;
 done
 echo $XRANGE $PS
-
-
 
 
 cat << EOF | gnuplot
