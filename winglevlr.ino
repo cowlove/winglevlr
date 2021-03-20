@@ -189,8 +189,7 @@ public:
 } ed;
 
 
-//MPU9250_DMP imu;
-MPU9250_asukiaaa imu(0x68);
+MPU9250_asukiaaa *imu = NULL;
 #define IMU_INT_PIN 4
 
 int scanI2c() { 
@@ -224,24 +223,25 @@ void imuInit() {
 		Serial.println("Scanning I2C bus on pins 19,18");
 		scanI2c();
 	}
-	imu.setWire(&Wire);
 
 	for(int addr = 0x68; addr <= 0x69; addr++) { 
+		imu = new MPU9250_asukiaaa(addr);
 		//imu.address = addr;
 		uint8_t sensorId;
-		Serial.printf("Checking MPU addr 0x%x: ", (int)imu.address);
-		if (imu.readId(&sensorId) == 0) {
+		Serial.printf("Checking MPU addr 0x%x: ", (int)imu->address);
+		if (imu->readId(&sensorId) == 0) {
 			Serial.printf("Found MPU sensor id: 0x%x\n", (int)sensorId);
 			break;
 		} else {
 			Serial.println("Cannot read sensorId");
+			delete imu;
 		}
 	}
 
 	//while(1) { delay(1000); printPins(); } 
-	imu.beginAccel(ACC_FULL_SCALE_4_G);
-	imu.beginGyro(GYRO_FULL_SCALE_250_DPS);
-	imu.beginMag(MAG_MODE_CONTINUOUS_100HZ);
+	imu->beginAccel(ACC_FULL_SCALE_4_G);
+	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
+	imu->beginMag(MAG_MODE_CONTINUOUS_100HZ);
 }
 
 static AhrsInput ahrsInput;
@@ -250,23 +250,23 @@ bool imuRead() {
 	AhrsInput &x = ahrsInput;
 	x.sec = millis() / 1000.0;
 #ifdef USE_ACCEL
-	imu.accelUpdate();
-	x.ax = imu.accelX();
-	x.ay = imu.accelY();
-	x.az = imu.accelZ();
+	imu->accelUpdate();
+	x.ax = imu->accelX();
+	x.ay = imu->accelY();
+	x.az = imu->accelZ();
 #endif
-	imu.gyroUpdate();
-	x.gx = imu.gyroX();
-	x.gy = imu.gyroY();
-	x.gz = imu.gyroZ();
+	imu->gyroUpdate();
+	x.gx = imu->gyroX();
+	x.gy = imu->gyroY();
+	x.gz = imu->gyroZ();
 
 	// limit magnometer update to 100Hz 
 	static uint64_t lastUsec = 0;
 	if (lastUsec / 10000 != micros() / 10000) { 
-		imu.magUpdate();
-		x.mx = imu.magX();
-		x.my = imu.magY();
-		x.mz = imu.magZ();
+		imu->magUpdate();
+		x.mx = imu->magX();
+		x.my = imu->magY();
+		x.mz = imu->magZ();
 	}
 	lastUsec = micros();
 	// remaining items set (alt, hdg, speed) set by main loop
@@ -286,10 +286,10 @@ void sdLog()  {
 }
 
 void printMag() {
-      //imu.updateCompass();
-      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.gyroX(), (float)imu.gyroY(), (float)imu.gyroZ() );
-      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.magX(), (float)imu.magY(), (float)imu.magZ() );
-      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu.accelX(), (float)imu.accelY(), (float)imu.accelZ() );
+      //imu->updateCompass();
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu->gyroX(), (float)imu->gyroY(), (float)imu->gyroZ() );
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu->magX(), (float)imu->magY(), (float)imu->magZ() );
+      Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu->accelX(), (float)imu->accelY(), (float)imu->accelZ() );
       Serial.println("");
 }
 
@@ -989,7 +989,7 @@ public:
 	
 	uint64_t lastMicros = 0;
 	
-	void flightSim(MPU9250_DMP &imu) { 
+	void flightSim(MPU9250_DMP *imu) { 
 		_micros += 3500;
 		const float servoTrim = 4915.0;
 
@@ -1004,14 +1004,14 @@ public:
 		// Simulate simple airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm; 
 		rollCmd.add((ESP32sim_currentPwm - servoTrim) / servoTrim);
-		imu.gy = 0.0 + rollCmd.average() * 10.0;
-		bank += imu.gy * (3500.0 / 1000000.0);
+		imu->gy = 0.0 + rollCmd.average() * 10.0;
+		bank += imu->gy * (3500.0 / 1000000.0);
 		bank = max(-20.0, min(20.0, (double)bank));
 		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
-			ESP32sim_currentPwm, track, 0.0, bank, imu.gy);
+			ESP32sim_currentPwm, track, 0.0, bank, imu->gy);
 		}		
-		imu.gz = +1.5 + tan(bank * M_PI/180) / 100 * 1091;
+		imu->gz = +1.5 + tan(bank * M_PI/180) / 100 * 1091;
 		
 		uint64_t now = millis();
 		const float bper = .05;
@@ -1028,23 +1028,23 @@ public:
 		while(gxDelay.size() > 400) {
 			gxDelay.pop();
 			pitchDelay.pop();
-			imu.gx = gxDelay.front();
+			imu->gx = gxDelay.front();
 			pitch = pitchDelay.front();
 		}
 		//printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
-		imu.az = cos(pitch * M_PI / 180) * 1.0;
-		imu.ay = sin(pitch * M_PI / 180) * 1.0;
-		imu.ax = 0;
+		imu->az = cos(pitch * M_PI / 180) * 1.0;
+		imu->ay = sin(pitch * M_PI / 180) * 1.0;
+		imu->ax = 0;
 
 		// simulate meaningless mag readings that stabilize when bank == 0 
-		imu.mx = imu.my = bank * 1.4;
-		imu.mz += imu.mx;
+		imu->mx = imu->my = bank * 1.4;
+		imu->mz += imu->mx;
 		
 		lastMillis = now;
 	}
 	
 	bool firstLoop = true;
-	void ESP32sim_run(MPU9250_DMP &imu) { 
+	void ESP32sim_run(MPU9250_DMP *imu) { 
 		static float lastTime = 0;
 		float now = _micros / 1000000.0;
 		
@@ -1141,15 +1141,15 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		if (logfileMicrosOffset == 0) 
 			logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
 		_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
-		imu.ax = l.ai.ax;
-		imu.ay = l.ai.ay;
-		imu.az = l.ai.az;
-		imu.gx = l.ai.gx;
-		imu.gy = l.ai.gy;
-		imu.gz = l.ai.gz;
-		imu.mx = l.ai.mx;
-		imu.my = l.ai.my;
-		imu.mz = l.ai.mz;
+		imu->ax = l.ai.ax;
+		imu->ay = l.ai.ay;
+		imu->az = l.ai.az;
+		imu->gx = l.ai.gx;
+		imu->gy = l.ai.gy;
+		imu->gz = l.ai.gz;
+		imu->mx = l.ai.mx;
+		imu->my = l.ai.my;
+		imu->mz = l.ai.mz;
 	
 		// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
 		if ((l.flags & LogFlags::g5Ps) || l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt) { 
