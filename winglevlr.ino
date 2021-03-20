@@ -33,8 +33,8 @@
 #include <WiFiMulti.h>
 #include <MPU9250_asukiaaa.h>
 #include <mySD.h>
-#include <FS.h>
-#include <SPIFFS.h>
+//#include <FS.h>
+//#include <SPIFFS.h>
 
 #include <esp_task_wdt.h>
 #include "soc/soc.h"
@@ -57,7 +57,8 @@
 WiFiMulti wifi;
 
 std::string strfmt(const char *, ...); 
-SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
+//SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
+int logFileNumber = 0;
 
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
@@ -226,9 +227,9 @@ void imuInit() {
 	imu.setWire(&Wire);
 
 	for(int addr = 0x68; addr <= 0x69; addr++) { 
-		imu.address = addr;
+		//imu.address = addr;
 		uint8_t sensorId;
-		Serial.printf("Checking MPU addr 0x%x: ", addr);
+		Serial.printf("Checking MPU addr 0x%x: ", (int)imu.address);
 		if (imu.readId(&sensorId) == 0) {
 			Serial.printf("Found MPU sensor id: 0x%x\n", (int)sensorId);
 			break;
@@ -295,7 +296,7 @@ void printMag() {
 static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
 
 void setup() {	
-	SPIFFS.begin();
+	//SPIFFS.begin();
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
 	Serial.printf("Reading log file number\n");

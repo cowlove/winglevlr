@@ -53,7 +53,7 @@ class FakeSemaphore {
 };
 
 #if !defined UBUNTU && defined ESP32 
-#include <SPIFFS.h>
+//#include <SPIFFS.h>
 #include <esp_task_wdt.h>
 
 
@@ -445,6 +445,7 @@ void open_TTGOTS_SD() {
 }
 
 #ifndef UBUNTU
+#define msdFile File
 void printDirectory(msdFile dir, int numTabs) {
   while(true) {
      msdFile entry =  dir.openNextFile();
@@ -490,8 +491,7 @@ void printSD() {}
 #ifdef ESP32
 template <class T>
 void SDCardBufferedLogThread(void *p);
-
-
+#if 0 
 template<class T> 
 class SPIFFSVariable { 
 	String filename;
@@ -525,8 +525,7 @@ public:
 		return *this;
 	}
 };
-
-
+#endif 
 
 static bool logFileBusySPI = false;
 
@@ -1483,13 +1482,14 @@ public:
 };
 
 class ShortBootDebugMode {
-	SPIFFSVariable<int> shortBootCount = SPIFFSVariable<int>("/shortBootCount", 1);
+	//SPIFFSVariable<int> shortBootCount = SPIFFSVariable<int>("/shortBootCount", 1);
+	int shortBootCount = 0;
 	bool initialized = false;
 	bool cleared = false;
 	int sbCount; 
   public:
 	void begin() { 
-		SPIFFS.begin();
+		//SPIFFS.begin();
 		shortBootCount = shortBootCount + 1;
 		sbCount = shortBootCount;
 		
