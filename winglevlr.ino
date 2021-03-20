@@ -20,36 +20,37 @@
 #ifdef UBUNTU
 #include "ESP32sim_ubuntu.h"
 #else // #ifndef UBUNTU
+
 #include <HardwareSerial.h>
-#include "SPI.h"
-#include "Update.h"
-#include "WebServer.h"
-#include "DNSServer.h"
-#include "FS.h"
-#include "ESPmDNS.h"
-#include "ArduinoOTA.h"
-#include "WiFiUdp.h"
-#include "WiFiMulti.h"
+#include <SPI.h>
+#include <Wire.h>
+#include <Update.h>
+#include <WebServer.h>
+#include <DNSServer.h>
+#include <ESPmDNS.h>
+#include <ArduinoOTA.h>
+#include <WiFiUdp.h>
+#include <WiFiMulti.h>
 #include <MPU9250_asukiaaa.h>
-#include <RunningLeastSquares.h>
 #include <mySD.h>
-#include "Wire.h"
-#include <MPU9250_asukiaaa.h>
-#include "SPIFFS.h"
+#include <FS.h>
+#include <SPIFFS.h>
+
 #include <esp_task_wdt.h>
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 #endif // #else // UBUNTU
 
+#include <TinyGPS++.h>
+
 #include <string>
 #include <sstream>
 #include <vector>
 #include <iterator>
-#include "jimlib.h"
 
+#include "jimlib.h"
 #include "RunningLeastSquares.h"
 #include "PidControl.h"
-#include "TinyGPS++.h"
 #include "G90Parser.h"
 #include "RollAHRS.h"
 

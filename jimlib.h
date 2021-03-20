@@ -572,6 +572,7 @@ public:
 		 printSD();
 		 SD.end();
 		 logFileBusySPI = false;
+
 	}
 	void add(const T *v) {
 		add(v, timo);
@@ -1366,7 +1367,7 @@ public:
 		connectFunc = oc;
 	}
 	void run() { 
-#ifndef UBUNTU
+#if 1//#ifndef UBUNTU
 		if (firstRun) {
 			wifi.addAP("ChloeNet", "niftyprairie7");
 			//wifi.addAP("TUK-FIRE", "FD priv n3t 20 q4");
