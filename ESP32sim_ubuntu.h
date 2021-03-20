@@ -398,8 +398,6 @@ public:
 typedef MPU9250_DMP MPU9250_asukiaaa;
 typedef char byte;
 
-
-
 #define UPLOAD_FILE_START 0 
 #define UPLOAD_FILE_END 0 
 #define UPLOAD_FILE_WRITE 0 
