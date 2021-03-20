@@ -30,7 +30,7 @@ CHIP=esp32
 OTA_ADDR=192.168.43.222
 IGNORE_STATE=1
 
-include ${HOME}/Arduino/makeEspArduino/makeEspArduino.mk
+include ${HOME}/Arduino/libraries/makeEspArduino/makeEspArduino.mk
 
 print-%  : ; @echo $* = $($*)
 

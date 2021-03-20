@@ -1,3 +1,5 @@
+* Switch to the standard SD library, quit using esp32_micro_sd library
+y
 
 
 * Run hardware test of new gpsTrackGDL90 stale data and timeout 
