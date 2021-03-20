@@ -24,8 +24,8 @@ simplot:	test.out
 	cat test.out | grep -a " R " > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; set y2tic; set ytic nomirror; p [*:*][-15:15] f u 1:5 w l t "Pitch", f u 1:3 w l t "Roll", f u 1:9 w l t "Hdg" ax x1y2; pause 111'
 
 winglevlr_ubuntu:	winglevlr.ino ESP32sim_ubuntu.h jimlib.h RollAHRS.h PidControl.h
-	g++  -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I/home/jim/Arduino/libraries/mavlink/common -I /home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src/
-# profile -pg 
+	g++  -x c++ -g $< -o $@ -DESP32 -DUBUNTU -I./ -I${HOME}/Arduino/libraries/TinyGPSPlus-1.0.2/src/ -I${HOME}/Arduino/libraries/TinyGPSPlus/src/
+# add -pg to profile 
 CHIP=esp32
 OTA_ADDR=192.168.43.222
 IGNORE_STATE=1
