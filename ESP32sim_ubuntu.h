@@ -70,13 +70,30 @@ struct {
 	File open(const char *, const char *) { return File(); } 
 } SPIFFS;
 
+#include <functional>
+#define HTTP_GET 0 
+#define HTTP_POST 0
+#define U_FLASH 0  
 struct {
 	void begin() {}
 	void handle() {}
+	int getCommand() { return 0; } 
+	void onEnd(std::function<void(void)>) {}
+	void onStart(std::function<void(void)>) {}
+	void onError(std::function<void(int)>) {}
+	void onProgress(std::function<void(int, int)>) {}
 } ArduinoOTA;
+
+typedef int ota_error_t; 
+#define OTA_AUTH_ERROR 0 
+#define OTA_BEGIN_ERROR 0 
+#define OTA_CONNECT_ERROR 0 
+#define OTA_RECEIVE_ERROR 0 
+#define OTA_END_ERROR 0 
 
 struct {
 	int getFreeHeap() { return 0; }
+	void restart() {}
 } ESP;
 
 class ButtonManager {
@@ -189,7 +206,13 @@ class String {
 	bool operator!=(const String& x) { return st != x.st; } 
 	String &operator+(const String& x) { st = st + x.st; return *this; } 
 	const char *c_str(void) const { return st.c_str(); }
+	operator const char *() { return c_str(); } 
 };
+
+String operator +(const char *a, String b) { 
+	return String(a) + b;
+}
+
 
 class IPAddress {
 public:
@@ -375,9 +398,39 @@ public:
 typedef MPU9250_DMP MPU9250_asukiaaa;
 typedef char byte;
 
+
+
+#define UPLOAD_FILE_START 0 
+#define UPLOAD_FILE_END 0 
+#define UPLOAD_FILE_WRITE 0 
+#define UPDATE_SIZE_UNKNOWN 0
+
+struct {
+	int hasError() { return 0; } 
+	int write(const char *, int) { return 0; }
+	int begin(int) { return 0; } 
+	void printError(FakeSerial &) {}
+	int end(int) { return 0; }
+} Update;
+
+class HTTPUpload {
+public:
+	int status, currentSize, totalSize;
+	String filename;
+	const char *buf;
+};
+
 class WebServer {
+	HTTPUpload u;
 	public:
 	WebServer(int) {}
+	void begin() {}
+	void on(const char *, int, std::function<void(void)>, std::function<void(void)>) {}
+	void on(const char *, int, std::function<void(void)>) {}
+	void sendHeader(const char *, const char *) {}
+	void send(int, const char *, const char *) {}
+	HTTPUpload &upload() { return u; }
+	void handleClient() {}
 };
 
 void setup(void);
