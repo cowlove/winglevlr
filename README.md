@@ -60,6 +60,6 @@ cd ~
 git clone https://github.com/cowlove/winglevlr.git
 cd winglevlr/
 make && make simplot
-## Build and install with DKMS
-'''
+```
 
+	
