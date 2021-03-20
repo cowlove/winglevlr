@@ -54,3 +54,5 @@ setap1:
 	./winglevlr_ubuntu --replay $< --log + > $@
 
 
+clean_tmp:
+	rm -rf /tmp/loglook.sh/
