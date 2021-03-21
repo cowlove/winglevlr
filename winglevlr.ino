@@ -2,19 +2,28 @@
 /*
  * TTGO TS 1.4 PINOUTS
  * 
- * 	VN			VP
+ * 	18			19 (LED)
  * 	33 (PWM)	RST
  * 	27 			32  (KNOB)
  * 	GND(GND)	26  (ROT)
  * 	0 (ROT)		GND 		
  * 	GND			3.3V
- * 	RXD			21  (used by I2c?)
- * 	TXD			22	(used by I2c?)
+ * 	RXD			22  (used by I2c?)
+ * 	TXD			21	(used by I2c?)
  * 	VBAT		5V
  * 
  * 
  * 
  * 
+ */
+
+/*  TTGO TS 1.2 old- buttons 39, 34, 35
+ *    39   36
+ *    33   RST
+ *    27   32
+ *    GND  26
+ *    0    GND
+ *    GND  
  */
 
 #ifdef UBUNTU
@@ -90,20 +99,70 @@ struct {
 } pins;
 */
 
+
 struct {
 	int topButton = 39;
 	int midButton = 37;
 	int botButton = 36;
 	int knobButton = 32;
 	int pwm = 33;
+	int servo_enable = 18;
+	int sda = 21; 
+	int scl = 22; 
+	int led = 19;
+	int tft_led = 27;
 } pins;
 
+MPU9250_asukiaaa *imu = NULL;
 
+void halInit() { 
+	Serial.begin(921600, SERIAL_8N1);
+	Serial.setTimeout(1);
 
-DigitalButton button3(39); // top
-DigitalButton button(37); // middle
-DigitalButton button2(36); // bottom
-DigitalButton button4(32); // knob press
+	Wire.begin(21,22);
+	Serial.println("Scanning I2C bus on pins 21,22");
+	if (scanI2c() == 0) { 
+		Wire.begin(19,18);
+		Serial.println("Scanning I2C bus on pins 19,18");
+		if (scanI2c() == 0) {
+			Serial.println("No I2C devices found, rebooting...");
+			ESP.restart();
+		}
+		Serial.println("Older TTGO-TS board, changing pin assignments, IMU likely oriented wrong");
+		pins.sda = 19;
+		pins.scl = 22;
+		pins.midButton = 34;
+		pins.botButton = 35;
+		pins.servo_enable = 36;
+		pins.led = 21; // dont know 
+		// TODO: IMU is inverted on these boards 
+	}
+	
+	for(int addr = 0x68; addr <= 0x69; addr++) { 
+		imu = new MPU9250_asukiaaa(addr);
+		//imu.address = addr;
+		uint8_t sensorId;
+		Serial.printf("Checking MPU addr 0x%x: ", (int)imu->address);
+		if (imu->readId(&sensorId) == 0) {
+			Serial.printf("Found MPU sensor id: 0x%x\n", (int)sensorId);
+			break;
+		} else {
+			Serial.println("Cannot read sensorId");
+			delete imu;
+		}
+	}
+
+	//while(1) { delay(100); printPins(); } 
+	
+	imu->beginAccel(ACC_FULL_SCALE_4_G);
+	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
+	imu->beginMag(MAG_MODE_CONTINUOUS_100HZ);
+}
+
+DigitalButton buttonTop(pins.topButton); // top
+DigitalButton buttonMid(pins.midButton); // middle
+DigitalButton buttonBot(pins.botButton); // bottom
+DigitalButton buttonKnob(pins.knobButton); // knob press
 
 //static IPAddress mavRemoteIp;
 //#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
@@ -118,14 +177,14 @@ LongShortFilter butFilt4(1500,600);
 void setKnobPid(int f); 
 
 void buttonISR() { 
-	button.check();
-	button2.check();
-	button3.check();
-	butFilt.check(button.duration());
-	butFilt2.check(button2.duration());
+	buttonMid.check();
+	buttonBot.check();
+	buttonTop.check();
+	butFilt.check(buttonMid.duration());
+	butFilt2.check(buttonBot.duration());
 	
-	butFilt3.check(button3.duration());
-	butFilt4.check(button4.duration());
+	butFilt3.check(buttonTop.duration());
+	butFilt4.check(buttonKnob.duration());
 }
 
 namespace LogFlags {
@@ -189,60 +248,10 @@ public:
 } ed;
 
 
-MPU9250_asukiaaa *imu = NULL;
-#define IMU_INT_PIN 4
 
-int scanI2c() { 
-	int count = 0;
-	for (byte i = 8; i < 120; i++)
-	{
-			Wire.beginTransmission (i);          // Begin I2C transmission Address (i)
-			if (Wire.endTransmission () == 0)  // Receive 0 = success (ACK response) 
-			{
-					Serial.print ("Found address: ");
-					Serial.print (i, DEC);
-					Serial.print (" (0x");
-					Serial.print (i, HEX);     // PCF8574 7 bit address
-					Serial.println (")");
-					count++;
-			}
-	}
-	Serial.print ("Found ");      
-	Serial.print (count, DEC);        // numbers of devices
-	Serial.println (" device(s).");
-
-	return count;
-}
 
 void imuLog(); 
-void imuInit() { 
-	Wire.begin(21,22);
-	Serial.println("Scanning I2C bus on pins 21,22");
-	if (scanI2c() == 0) { 
-		Wire.begin(19,18);
-		Serial.println("Scanning I2C bus on pins 19,18");
-		scanI2c();
-	}
 
-	for(int addr = 0x68; addr <= 0x69; addr++) { 
-		imu = new MPU9250_asukiaaa(addr);
-		//imu.address = addr;
-		uint8_t sensorId;
-		Serial.printf("Checking MPU addr 0x%x: ", (int)imu->address);
-		if (imu->readId(&sensorId) == 0) {
-			Serial.printf("Found MPU sensor id: 0x%x\n", (int)sensorId);
-			break;
-		} else {
-			Serial.println("Cannot read sensorId");
-			delete imu;
-		}
-	}
-
-	//while(1) { delay(1000); printPins(); } 
-	imu->beginAccel(ACC_FULL_SCALE_4_G);
-	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
-	imu->beginMag(MAG_MODE_CONTINUOUS_100HZ);
-}
 
 static AhrsInput ahrsInput;
 
@@ -297,8 +306,15 @@ static AhrsInput lastAhrsInput, lastAhrsGoodG5;
 
 void setup() {	
 	//SPIFFS.begin();
-	Serial.begin(921600, SERIAL_8N1);
-	Serial.setTimeout(1);
+	
+	halInit();
+	// ugh: redo pin assignments, hal may have changed them
+	buttonTop.pin = pins.topButton; 
+	buttonBot.pin = pins.botButton;
+	buttonMid.pin = pins.midButton;
+	
+	buttonTop.read(); buttonBot.read(); buttonMid.read(); buttonKnob.read();
+	
 	Serial.printf("Reading log file number\n");
 	int l = logFileNumber;
 	Serial.printf("Log file number %d\n", l);
@@ -310,22 +326,21 @@ void setup() {
     //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector   
  
 	//esp_register_freertos_idle_hook(bApplicationIdleHook);
-	pinMode(LED_PIN, OUTPUT);
-	digitalWrite(LED_PIN, 1);
-	pinMode(27, OUTPUT);
-	digitalWrite(27, 1);
+	//pinMode(LED_PIN, OUTPUT);
+	//digitalWrite(LED_PIN, 1);
+	pinMode(pins.tft_led, OUTPUT); // TFT backlight
+	digitalWrite(pins.tft_led, 1);
+	pinMode(pins.servo_enable, OUTPUT);
+	digitalWrite(pins.servo_enable, 1);
 
 	Display::jd.begin();
 	Display::jd.clear();
 	
-	
-	attachInterrupt(digitalPinToInterrupt(button.pin), buttonISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(button2.pin), buttonISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(button3.pin), buttonISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(button4.pin), buttonISR, CHANGE);
-	
-	imuInit();	
-	
+	attachInterrupt(digitalPinToInterrupt(buttonMid.pin), buttonISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(buttonBot.pin), buttonISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(buttonTop.pin), buttonISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(buttonKnob.pin), buttonISR, CHANGE);
+		
 	WiFi.disconnect(true);
 	WiFi.mode(WIFI_STA);
 	WiFi.setSleep(false);
@@ -335,13 +350,12 @@ void setup() {
 	wifi.addAP("Team America", "51a52b5354");
 	wifi.addAP("ChloeNet", "niftyprairie7");
 
-	if (digitalRead(button4.pin) != 0 || digitalRead(button3.pin) != 0) { // skip long setup stuff if we're debugging
+	if (!buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
 			wifi.run();
 			delay(10);
-		}
-		
+		}	
 	}
 
 	udpSL30.begin(7891);
@@ -480,6 +494,7 @@ static int manualRelayMs = 60;
 static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 static uint64_t lastLoop = micros();
 static bool selEditing = false;
+static bool servoCenterOverride = false;
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
@@ -531,7 +546,7 @@ void loop() {
 			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
-			digitalRead(button.pin), digitalRead(button2.pin), digitalRead(button3.pin), digitalRead(button4.pin), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
+			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			0
 		);
 		if (logFile != NULL) {
@@ -545,7 +560,7 @@ void loop() {
 	// 
 	// TOP:    short   - apMode = 1, toggle between wing level and hdg hold 
 	//         long    - arm servo
-	//         double  - zero sensors
+	//         triple  - zero sensors
 	// MIDDLE: short   - left 10 degrees
 	//         double  - hdg select mode
 	//         long    - start/stop log
@@ -579,8 +594,7 @@ void loop() {
 					apMode = 1;
 				} else { 
 					hdgSelect = (hdgSelect + 1) % 4;
-				}
-					
+				}					
 			} else { 
 				if (!logChanging) {
 					logChanging = true;
@@ -598,11 +612,11 @@ void loop() {
 			
 		}
 		if (butFilt2.newEvent()) { // BOTTOM or LfffEFT button
-			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {	// LONG: zero AHRS sensors
+			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
 				testTurnActive = !testTurnActive;
 				testTurnAlternate = 0;
 			}
-			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	// SHORT: arm servo
+			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	
 				desiredTrk = angularDiff(desiredTrk + 10);
 				apMode = 1;
 			}
@@ -612,8 +626,8 @@ void loop() {
 			if (butFilt4.wasCount == 1 && butFilt4.wasLong != true) { 
 				ed.buttonPress(butFilt4.wasLong);
 			}
-			if (butFilt4.wasLong && butFilt4.wasCount == 1) {			// LONG: arm servos
-				armServo = !armServo; 
+			if (butFilt4.wasLong && butFilt4.wasCount == 1) {			
+				armServo = !armServo;
 				//rollPID.reset();
 				//hdgPID.reset();
 				//pitchPID.reset();
@@ -625,10 +639,12 @@ void loop() {
 			if (butFilt4.wasCount == 3) {		
 				ed.tttt.setValue(.1); 
 				ed.ttlt.setValue(.1);
-				armServo = testTurnActive = true;
+				armServo = testTurnActive = servoCenterOverride = true;
 				 
 			}
 		}
+		if (servoCenterOverride && digitalRead(buttonKnob.pin) == 1) 
+			servoCenterOverride = false;
 	}
 	
 	if (testTurnActive) {
@@ -867,7 +883,7 @@ void loop() {
 		}
 
 		pwmOutput = 0;
-		if (true || ahrs.valid() || digitalRead(button4.pin) == 0 || servoOverride > 0) { // hold down button to override and make servo work  
+		if (true || ahrs.valid() || digitalRead(buttonKnob.pin) == 0 || servoOverride > 0) { // hold down button to override and make servo work  
 			if (hdgPIDTimer.tick()) {
 				if (ahrsInput.dtk != -1) { 
 					if (apMode == 4) {
@@ -902,11 +918,12 @@ void loop() {
 				servoOutput = servoTrim + rollPID.corr;
 				if (servoOverride > 0)
 					servoOutput = servoOverride;
+				if (servoCenterOverride)
+					servoOutput = servoTrim + 0;
 				servoOutput = max(550, min(2100, servoOutput));
 				pwmOutput = servoOutput * 4915 / 1500;
 			}			
 		}	
-		
 		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
@@ -930,6 +947,8 @@ void loop() {
 		lastAhrsInput = ahrsInput;
 	}
 
+	digitalWrite(pins.servo_enable, !armServo);
+	
 	if (ed.pidsel.changed()) {
 		setKnobPid(ed.pidsel.value);
 	}
@@ -965,6 +984,10 @@ void loop() {
 	if (logFile != NULL) {
 		sdLog();
 	}
+	
+	// Use onboard LED to indicate active logging 
+	pinMode(pins.led, OUTPUT);
+	digitalWrite(pins.led, logFile == NULL);
 }
 
 #ifdef UBUNTU

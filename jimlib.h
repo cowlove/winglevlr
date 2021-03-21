@@ -9,7 +9,13 @@
 #ifndef UBUNTU
 #endif
 
+#if !defined UBUNTU && defined ESP32 
+//#include <SPIFFS.h>
+#include <esp_task_wdt.h>
+#endif 
+
 #include <stdarg.h>
+
 std::string strfmt(const char *format, ...) { 
     va_list args;
     va_start(args, format);
@@ -19,7 +25,27 @@ std::string strfmt(const char *format, ...) {
 	return std::string(buf);
 }
 
+int scanI2c() { 
+	int count = 0;
+	for (byte i = 8; i < 120; i++)
+	{
+			Wire.beginTransmission (i);          // Begin I2C transmission Address (i)
+			if (Wire.endTransmission () == 0)  // Receive 0 = success (ACK response) 
+			{
+					Serial.print ("Found address: ");
+					Serial.print (i, DEC);
+					Serial.print (" (0x");
+					Serial.print (i, HEX);     // PCF8574 7 bit address
+					Serial.println (")");
+					count++;
+			}
+	}
+	Serial.print ("Found ");      
+	Serial.print (count, DEC);        // numbers of devices
+	Serial.println (" device(s).");
 
+	return count;
+}
 
 void printPins() { 
         for (int n = 0; n <= 1; n++) {
@@ -35,9 +61,8 @@ void printPins() {
                 Serial.printf("%02d:%d ", n, digitalRead(n));
         }
         Serial.print("\n");
+		esp_task_wdt_reset();
 }
-
-
 
 class FakeMutex {
 	public:
@@ -51,11 +76,6 @@ class FakeSemaphore {
 	bool take(int delay = 0) { return true; } 
 	void give() {}
 };
-
-#if !defined UBUNTU && defined ESP32 
-//#include <SPIFFS.h>
-#include <esp_task_wdt.h>
-
 
 class Mutex {
 	SemaphoreHandle_t xSem;
@@ -77,10 +97,6 @@ class Semaphore {
 	bool take(int delay = portMAX_DELAY) { return xSemaphoreTake(xSem, delay); } 
 	void give() { xSemaphoreGive(xSem); }
 };
-#else
-typedef FakeMutex Mutex;
-typedef FakeSemaphore Semaphore; 
-#endif
 
 class ScopedMutex {
 	Mutex *mutex; 
@@ -251,12 +267,17 @@ class DigitalButton {
 public:
 	int pin;
 	int count;
-	DigitalButton(int p, bool invert = true, int mode = INPUT_PULLUP, int debounceMs = 5) : pin(p), inverted(invert), deb(debounceMs) {
+	int mode;
+	DigitalButton(int p, bool invert = true, int m = INPUT_PULLUP, int debounceMs = 5) : pin(p), mode(m), inverted(invert), deb(debounceMs) {
+		//pinMode(pin, mode);
+	}
+	bool read() { 
 		pinMode(pin, mode);
+		bool in = digitalRead(pin);
+		return inverted ? !in : in;
 	}
 	bool check() {
-		bool in = digitalRead(pin);
-		if (inverted) in = !in;
+		bool in = read();
 		bool rval = deb.checkOneshot(in);
 		if (rval) count++;
 		return rval;
