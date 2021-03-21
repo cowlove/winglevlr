@@ -1,0 +1,8 @@
+
+Board#	Type	Size	Issues
+1		v1.4 	1.8"	USB power only, on-board voltage regulator fried/shorted 
+2		v1.4	1.8" 	USB power only, on-board voltage regulator fried/shorted
+3						Completely dead - USB port over-current 
+4		v1.2	1.4"	Broken connectors, flakey USB, frequent brownouts, junk use only 
+5		v1.4 	1.4" 	No issues
+6 		v1.2 	1.4" 	Physically broken bottom button 
