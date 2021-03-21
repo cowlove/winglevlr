@@ -110,10 +110,11 @@ struct {
 	int sda = 21; 
 	int scl = 22; 
 	int led = 19;
-	int tft_led = 27;
+	int tft_backlight = 27;
 } pins;
 
 MPU9250_asukiaaa *imu = NULL;
+
 
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
@@ -152,7 +153,19 @@ void halInit() {
 		}
 	}
 
-	//while(1) { delay(100); printPins(); } 
+	pinMode(pins.tft_backlight, OUTPUT); // TFT backlight
+	digitalWrite(pins.tft_backlight, 1);
+
+	while(0) { // basic hardware testing - halt here and debug pins 
+		static int alternate = 0;
+		delay(100); 
+		printPins();
+		pinMode(pins.tft_backlight, OUTPUT);
+		pinMode(pins.led, OUTPUT);
+		alternate = !alternate;
+		digitalWrite(pins.led, alternate);
+		digitalWrite(pins.tft_backlight, !alternate);
+	} 
 	
 	imu->beginAccel(ACC_FULL_SCALE_4_G);
 	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
@@ -328,8 +341,8 @@ void setup() {
 	//esp_register_freertos_idle_hook(bApplicationIdleHook);
 	//pinMode(LED_PIN, OUTPUT);
 	//digitalWrite(LED_PIN, 1);
-	pinMode(pins.tft_led, OUTPUT); // TFT backlight
-	digitalWrite(pins.tft_led, 1);
+	pinMode(pins.tft_backlight, OUTPUT); // TFT backlight
+	digitalWrite(pins.tft_backlight, 1);
 	pinMode(pins.servo_enable, OUTPUT);
 	digitalWrite(pins.servo_enable, 1);
 
