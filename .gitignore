@@ -6,3 +6,7 @@ out.dat
 typescript
 x.dat
 test.out
+*.txt
+*.1
+tests.OLD
+*.out
