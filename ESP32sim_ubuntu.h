@@ -31,6 +31,7 @@ typedef int SemaphoreHandle_t;
 int xSemaphoreCreateCounting(int, int) { return 0; } 
 int xSemaphoreGive(int) { return 0; } 
 int xSemaphoreTake(int, int) { return 0; }
+int uxSemaphoreGetCount(int) { return 0; } 
 #define portMAX_DELAY 0 
 #define tskIDLE_PRIORITY 0
 #define pdMS_TO_TICKS(x) (x) 	
