@@ -20,7 +20,8 @@ class GDL90Parser {
 public:
 	int msgCount = 0, errCount = 0;
 	struct State {
-		double lat, lon, track;
+		double lat, lon;
+		float track;
 		int palt; // (palt * 25) - 1000
 		int alt;  // meters above geoid 
 		int vvel; // units	 of 64 fpm, fpm = 64 * hvel
@@ -111,10 +112,21 @@ public:
 		b[29] = crc & 0xff;
 		b[30] = (crc >> 8) & 0xff;
 		b[31] = 0x7e;
-		
-		return 32;
-		
-			
+		return 32;	
+	}
+	int packMsg11(unsigned char *b, State s) {
+		bzero(b, 7);
+		b[0] = 0x7e;
+		b[1] = 11;
+		int a = (s.alt - 20) * 3.3208 / 5.0;
+		b[2] = a >> 8;
+		b[3] = a & 0xff;
+		//state.alt = ((int16_t)(((buf[1]) << 8) | buf[2])) * 5.0 / 3.3208 + 20; // 20m geoid height
+		unsigned int crc = crcCompute(b + 1, 3);
+		b[4] = crc & 0xff;
+		b[5] = (crc >> 8) & 0xff;
+		b[6] = 0x7e;
+		return 7;	
 	}
 	void add(char b) { // handle one character in GDL90 stream
 		if (b == 0x7e) { // got a flag byte
