@@ -225,6 +225,7 @@ class IPAddress {
 public:
 	void fromString(const char *) {}
 	String toString() const { return String(); }	
+    int operator [](int) { return 0; }  
 };
 
 class FakeSerial { 
@@ -279,6 +280,7 @@ class msdFile {
 	operator bool() { return false; } 
 	msdFile openNextFile(void) { return *this; }
 	void close() {}
+        int print(const char *) { return 0; }
 	int printf(const char *, ...) { return 0; } 
 	int write(const char *, int) { return 0; } 
 	int flush() { return 0; }	
