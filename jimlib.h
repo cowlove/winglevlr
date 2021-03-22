@@ -96,6 +96,7 @@ class Semaphore {
 	}
 	bool take(int delay = portMAX_DELAY) { return xSemaphoreTake(xSem, delay); } 
 	void give() { xSemaphoreGive(xSem); }
+	int getCount() { return uxSemaphoreGetCount(xSem); } 
 };
 
 class ScopedMutex {
@@ -1108,6 +1109,7 @@ public:
 	void freeTail() {
 		empty.give();
 	}
+	int getCount() { return full.getCount(); } 
 };
 #endif //#ifdef ESP32
 
