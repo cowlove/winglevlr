@@ -476,7 +476,7 @@ int main(int argc, char **argv) {
 	float seconds = 0;
 	for(char **a = argv + 1; a < argv+argc; a++) {
 		if (strcmp(*a, "--serial") == 0) Serial.toConsole = true;
-		else if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
+			else if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
 		else if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
 		else if (strcmp(*a, "--debug") == 0) {
 			ESP32sim_setDebug(*(++a));
