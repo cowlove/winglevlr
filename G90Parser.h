@@ -27,6 +27,7 @@ public:
 		int hvel; // knots
 		int timestamp;
 		bool updated, valid;
+		int misc;
 	} state, lastState;
 
 	GDL90Parser() : index(-1), esc(0) {
@@ -54,8 +55,10 @@ public:
 		if (found_crc != crc) 
 			return false;
 		
-		// TODO HACK use these ad-hoc sanity checks until CRC works 
-		// if (state.lon < -130 || state.lon > -120) return false;
+		// TODO HACK use these ad-hoc sanit	y checks until CRC works 
+		if (state.lon == 0 || state.lat == 0) return false;
+		if (state.palt > 20000 / 25) return false; 
+		//if (state.lon < -130 || state.lon > -120) return false;
 		//if (state.lat < 45 || state.lat > 49) return false;
 		//if (state.hvel < 0 || state.hvel > 140) return false;
 		//if (state.alt < -500 || state.alt > 15000) return false;
@@ -116,7 +119,6 @@ public:
 	void add(char b) { // handle one character in GDL90 stream
 		if (b == 0x7e) { // got a flag byte
 			if (index >= 0) { // end of packet flag, packet complete
-				setValid();
 				if (buf[0] == 0) { // MSG00 heartbeat
 					state.timestamp = (((unsigned long)buf[4]) << 8) + ((unsigned long)(buf[3]));
 				}
@@ -130,6 +132,7 @@ public:
 						state.hvel = (((unsigned long)buf[14]) << 4) | (buf[15] >> 4);
 						state.vvel = ((((unsigned long)buf[15]) & 0xf) << 8) | buf[16];
 						state.track = buf[17] * 360.0 / 256;
+						state.misc = buf[12] & 0xf;
 						state.updated = true;
 						unlock();
 						//printf("MSG10: %.4f %.4f %.1f %d\n", state.lat, state.lon, state.track, state.hvel	);
@@ -144,9 +147,9 @@ public:
 				}
 				if (index > 0) // finished packet, wait for next one 
 					index = -1;
+				setValid();
 				return;
-				}
-			else { // start of packet flag
+			} else { // start of packet flag
 				index = 0;
 			}
 		}
