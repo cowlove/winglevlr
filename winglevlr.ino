@@ -1200,14 +1200,14 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 		if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
 			char buf[128];
 			sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", l.ai.gpsTrackRMC + magVar);
-			ESP32sim_udpInput(7891, String(nmeaChecksum(std::string(buf))));
+			ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 		}
 		if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0) { 
 			unsigned char buf[64];
 			GDL90Parser::State s;
 			s.track = l.ai.gpsTrackGDL90 + magVar;
 			int len = gdl90.packMsg10(buf, s);
-			ESP32sim_udpInput(4000, String((char *)buf, len));
+			ESP32sim_udpInput(4000, string((char *)buf, len));
 		}
 			
 		// special logfile name "-", just replay existing log back out to stdout 

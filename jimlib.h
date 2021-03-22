@@ -1088,7 +1088,7 @@ public:
 	}
 	T *peekHead(int tmo) {
 		if (!empty.take(tmo)) 
-			return false;
+			return NULL;
 
 		T *rval = &array[head];
 		head = (head + 1) % size;
@@ -1099,7 +1099,7 @@ public:
 	}
 	T *peekTail(int tmo) {
 		if (!full.take(tmo)) 
-			return false;
+			return NULL;
 
 		T *rval = &array[tail];
 		tail = (tail + 1) % size;
