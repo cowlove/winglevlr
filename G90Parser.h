@@ -21,7 +21,11 @@ public:
 	int msgCount = 0, errCount = 0;
 	struct State {
 		double lat, lon, track;
-		int palt, alt, hvel, vvel, timestamp;
+		int palt; // (palt * 25) - 1000
+		int alt;  // meters above geoid 
+		int vvel; // units	 of 64 fpm, fpm = 64 * hvel
+		int hvel; // knots
+		int timestamp;
 		bool updated, valid;
 	} state, lastState;
 
@@ -128,7 +132,7 @@ public:
 						state.track = buf[17] * 360.0 / 256;
 						state.updated = true;
 						unlock();
-						//printf("MSG10: %.4f %.4f %.1f %d\n", state.lat, state.lon, state.track, state.hvel);
+						//printf("MSG10: %.4f %.4f %.1f %d\n", state.lat, state.lon, state.track, state.hvel	);
 					}
 				}
 				if (buf[0] == 11) { // MSG11 geometric altitude packet
@@ -141,7 +145,7 @@ public:
 				if (index > 0) // finished packet, wait for next one 
 					index = -1;
 				return;
-			}
+				}
 			else { // start of packet flag
 				index = 0;
 			}

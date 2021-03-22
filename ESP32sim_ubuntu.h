@@ -33,6 +33,7 @@ int xSemaphoreGive(int) { return 0; }
 int xSemaphoreTake(int, int) { return 0; }
 #define portMAX_DELAY 0 
 #define tskIDLE_PRIORITY 0
+#define pdMS_TO_TICKS(x) (x) 	
 void xTaskCreate(void (*)(void *), const char *, int, void *, int, void *) {}
 
 #define WRITE_PERI_REG(a, b) if(0) {}
@@ -55,6 +56,8 @@ typedef int esp_err_t;
 void esp_task_wdt_init(int, int) {}
 void esp_task_wdt_reset() {}
 esp_err_t esp_task_wdt_add(void *) { return 0; }
+esp_err_t esp_task_wdt_delete(const void *) { return 0; }
+
 
 class File {
 public:
@@ -131,6 +134,10 @@ void ledcWrite(int chan, int val) {
 	ESP32sim_currentPwm = val;
 } 
 
+
+// Takes an input of a text file with line-delimited usec intervals between 
+// interrupts, delivers an interrupt to the sketch-provided ISR
+// TODO: only handles one ISR and one interrupt source 
 class InterruptManager { 
 	ifstream ifile;
 	uint64_t nextInt = 0; 
@@ -213,7 +220,6 @@ String operator +(const char *a, String b) {
 	return String(a) + b;
 }
 
-
 class IPAddress {
 public:
 	void fromString(const char *) {}
@@ -258,6 +264,7 @@ class FakeSerial {
 
 class FakeWiFi {
 	public:
+	int begin(const char *, const char *) { return 0; }
 	int status() { return WL_CONNECTED; } 
 	IPAddress localIP() { return IPAddress(); } 
 	void setSleep(bool) {}
@@ -270,8 +277,10 @@ class msdFile {
 	bool operator!() { return false; } 
 	operator bool() { return false; } 
 	msdFile openNextFile(void) { return *this; }
-	void close(void) {}
-	
+	void close() {}
+	int printf(const char *, ...) { return 0; } 
+	int write(const char *, int) { return 0; } 
+	int flush() { return 0; }	
 };
 
 class FakeSD {
@@ -287,41 +296,40 @@ public:
 };
 
 void ESP32sim_JDisplay_forceUpdate();
-const int ACC_FULL_SCALE_4_G = 0, GYRO_FULL_SCALE_250_DPS = 0, MAG_MODE_CONTINUOUS_100HZ = 0;
 
-extern float ESP32sim_pitchCmd; 
 
 class WiFiUDP {
 	int port, txPort;
 	bool toSerial = false;
 public:
 	void begin(int p) { port = p; }
-	void beginPacket(IPAddress, int p) { beginPacket(NULL, p); }
-	void beginPacket(const char *, int p) { txPort = p; }
+	int beginPacket(IPAddress, int p) { return beginPacket(NULL, p); }
+	int beginPacket(const char *, int p) { txPort = p; return 1; }
 	void write(const uint8_t *b, int len) {
 		float f;
 		if (txPort == 7892 && sscanf((const char *)b, "trim %f", &f) == 1) {
-			ESP32sim_pitchCmd = f;
+			//ESP32sim_pitchCmd = f;
 		}
 	}
-	void endPacket() {}
+	int endPacket() { return 1; }
 
-	static std::map<int,String> inputMap;
+	typedef std::vector<unsigned char> InputData;
+	typedef std::map<int, InputData> InputMap;
+	static InputMap inputMap;
 	int  parsePacket() { 
 		if (inputMap.find(port) != inputMap.end()) { 
-			return inputMap.find(port)->second.length();
+			return inputMap.find(port)->second.size();
 		} else { 
 			return 0;
 		}
 	}
 	int read(uint8_t *b, int l) {
 		if (inputMap.find(port) != inputMap.end()) { 
-			String inputLine = inputMap.find(port)->second;
-			int rval =  min(inputLine.length(), l);
+			InputData in = inputMap.find(port)->second;
+			int rval = min((int)in.size(), l);
 			for (int n = 0; n < rval; n++) { 
-				b[n] = inputLine.st[n];
+				b[n] = in.at(n);
 			}
-			//strncpy((char *)b, inputLine.c_str(), rval);
 			if (toSerial) { 
 				printf("UDP: %s", b);
 			}
@@ -334,17 +342,22 @@ public:
 	IPAddress remoteIP() { return IPAddress(); } 
 };
 
-std::map<int,String> WiFiUDP::inputMap;
+// TODO: extend this to use std::vector<unsigned char> to handle binary data	
+WiFiUDP::InputMap WiFiUDP::inputMap;
 
-void ESP32sim_udpInput(int p, String s) { 
-	std::map<int,String> &m = WiFiUDP::inputMap;
+void ESP32sim_udpInput(int p, const WiFiUDP::InputData &s) { 
+	WiFiUDP::InputMap &m = WiFiUDP::inputMap;
 	if (m.find(p) == m.end())
 		m[p] = s;
 	else
-		m[p] = m[p] + s;
+		m[p].insert(m[p].end(), s.begin(), s.end());
 }
 
-class WireC {
+void ESP32sim_udpInput(int p, const std::string &s) {
+	ESP32sim_udpInput(p, WiFiUDP::InputData(s.begin(), s.end()));
+} 
+
+class FakeWire {
 public:
 	void begin(int, int) {}
 	void beginTransmission(int) {}
@@ -355,12 +368,13 @@ public:
 #define INV_XYZ_GYRO 1
 #define INV_XYZ_ACCEL 1
 #define INV_XYZ_COMPASS 0
+const int ACC_FULL_SCALE_4_G = 0, GYRO_FULL_SCALE_250_DPS = 0, MAG_MODE_CONTINUOUS_100HZ = 0;
 
 class MPU9250_DMP {
 public:
 	int address = 0;
 	int begin(){ return 1; }
-	void setWire(WireC *) {}
+	void setWire(FakeWire *) {}
 	void setGyroFSR(int) {};
     void setAccelFSR(int) {};
     void setSensors(int) {}
@@ -431,6 +445,24 @@ class WebServer {
 	void handleClient() {}
 };
 
+class FakeCAN {
+public:
+  FakeCAN() {}
+  int begin(long baudRate) { return 1; }
+  void end() {}
+  int endPacket() { return 0; }
+  int parsePacket() { return 0; }
+  int packetId() { return 0; }
+  int read() { return 0; }
+  int packetRtr()  { return 0; }
+  void onReceive(void(*callback)(int)) {}
+  int filter(int id, int mask) { return 0; }
+  int filterExtended(long id, long mask) { return 0; }
+  int setPins(int, int) { return 0; }
+  int write(int) { return 0; } 
+  int beginExtendedPacket(int) { return 0; } 
+} CAN;
+
 void setup(void);
 void loop(void);
 static void JDisplayToConsole(bool b);
@@ -449,7 +481,7 @@ int main(int argc, char **argv) {
 		else if (strcmp(*a, "--debug") == 0) {
 			ESP32sim_setDebug(*(++a));
 		} 
-		else if (strcmp(*a, "--interruptFile") == 0) {
+		else if (strcmp(*a, "--interruptFile") == 0) { 
 			intMan.setInterruptFile(*(++a));
 		}
 		else ESP32sim_parseArg(a, argv + argc);		
