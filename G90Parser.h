@@ -97,36 +97,47 @@ public:
 			msgCount++;
 		}
 	}
-	int packMsg10(unsigned char *b, State s) {
-		bzero(b, 32);
-		b[0] = 0x7e;
-		b[1] = 10;
+	int packStuff(unsigned char *out, unsigned char *in, int l) { 
+		int outl = 0;
+		out[outl++] = 0x7e;
+		for(int n = 0; n < l; n++) { 
+			if (in[n] == 0x7e || in[n] == 0x7d) {
+				out[outl++] = 0x7d;
+				out[outl++] = in[n] ^ 0x20;
+			} else 
+				out[outl++] = in[n];
+		}
+		out[outl++] = 0x7e;
+		return outl;
+	}
+	int packMsg10(unsigned char *out, State s) {
+		unsigned char b[30];
+		bzero(b, sizeof(b));
+		b[0] = 10;
 		if (s.lat < 0) s.lat += 360;
 		if (s.lon < 0) s.lon += 360;
-		unBS3(b + 6, s.lat * 0x800000 / 180.0);
-		unBS3(b + 9, s.lon * 0x800000 / 180.0);
-		b[18] = s.track * 256 / 360.0;
+		unBS3(b + 5, s.lat * 0x800000 / 180.0);
+		unBS3(b + 8, s.lon * 0x800000 / 180.0);
+		b[17] = s.track * 256 / 360.0;
 
 		//unsigned int_crc =(((uint16_t)(buf[index - 1]))<<8) | buf[index-2];
-		unsigned int crc = crcCompute(b + 1, 28);
-		b[29] = crc & 0xff;
-		b[30] = (crc >> 8) & 0xff;
-		b[31] = 0x7e;
-		return 32;	
+		unsigned int crc = crcCompute(b, 28);
+		b[28] = crc & 0xff;
+		b[29] = (crc >> 8) & 0xff;
+		return packStuff(out, b, sizeof(b));
 	}
-	int packMsg11(unsigned char *b, State s) {
-		bzero(b, 7);
-		b[0] = 0x7e;
-		b[1] = 11;
+	int packMsg11(unsigned char *out, State s) {
+		unsigned char b[5];
+		bzero(b, sizeof(b));
+		b[0] = 11;
 		int a = (s.alt - 20) * 3.3208 / 5.0;
-		b[2] = a >> 8;
-		b[3] = a & 0xff;
+		b[1] = a >> 8;
+		b[2] = a & 0xff;
 		//state.alt = ((int16_t)(((buf[1]) << 8) | buf[2])) * 5.0 / 3.3208 + 20; // 20m geoid height
-		unsigned int crc = crcCompute(b + 1, 3);
-		b[4] = crc & 0xff;
-		b[5] = (crc >> 8) & 0xff;
-		b[6] = 0x7e;
-		return 7;	
+		unsigned int crc = crcCompute(b, 3);
+		b[3] = crc & 0xff;
+		b[4] = (crc >> 8) & 0xff;
+		return packStuff(out, b, sizeof(b));
 	}
 	void add(char b) { // handle one character in GDL90 stream
 		if (b == 0x7e) { // got a flag byte
