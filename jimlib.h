@@ -690,7 +690,7 @@ public:
 	int fd;
 	void add(const T *v, int timo = 0) { 
 		int s = write(fd, (void *)v, sizeof(T));
-		printf("%s LOG\n", v->toString().c_str()); 
+		//printf("%s LOG\n", v->toString().c_str()); 
 	}
 	void add(const T &v, int timo = 0) { 
 		add(&v);
