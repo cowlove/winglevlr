@@ -15,7 +15,7 @@
 #include <TinyGPS++.h>
 
 #include "jimlib.h"
-#include "RunningLeastSquares.h"
+#include "RollingLeastSquares.h"
 #include "PidControl.h"
 #include "RollAHRS.h"
 #include "G90Parser.h"
@@ -1147,10 +1147,6 @@ bool ESP32sim_replayLogItem(ifstream &i) {
 void ESP32sim_set_gpsTrackGDL90(float v) { 
 	gpsTrackGDL90 = v; // TODO - pass this through ESP32sim_udpInput()
 	ahrsInput.g5Hdg = v;
-}
-
-void ESP32sim_JDisplay_forceUpdate() { 
-	Display::jd.forceUpdate();
 }
 
 class ESP32sim_winglevlr : public ESP32sim_Module {
