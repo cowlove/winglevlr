@@ -1,6 +1,6 @@
 #include <cmath>
-#include "RunningLeastSquares.h"
 #include <math.h>
+#include "RollingLeastSquares.h"
 
 using namespace std;
 
@@ -227,10 +227,10 @@ public:
 	float hdg;
 	bool hdgInitialized = false;
 	
-	typedef TwoStageRunningLeastSquares<float> TwoStageRLS;
-	RunningLeastSquares // all at about 200 HZ */
-		gyroDriftFit = RunningLeastSquares(300), // 10HZ 
-		magHdgFit = RunningLeastSquares(50); // 10Hz
+	typedef TwoStageRollingLeastSquares<float> TwoStageRLS;
+	RollingLeastSquares // all at about 200 HZ */
+		gyroDriftFit = RollingLeastSquares(300), // 10HZ 
+		magHdgFit = RollingLeastSquares(50); // 10Hz
 				
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;

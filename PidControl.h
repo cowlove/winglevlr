@@ -49,7 +49,7 @@ public:
 
     // these values are set in reset() method
     double i;
-    RunningLeastSquares histError, histMeasurement, histCorrection;
+    RollingLeastSquares histError, histMeasurement, histCorrection;
 	   
     long starttime = 0;
 	double corr = 0;
