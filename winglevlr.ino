@@ -7,8 +7,8 @@
 #include "ESP32sim_ubuntu.h"
 #else // #ifndef UBUNTU
 #include <esp_task_wdt.h>
-#include "soc/soc.h"
-#include "soc/rtc_cntl_reg.h"
+#include <soc/soc.h>
+#include <soc/rtc_cntl_reg.h>
 #include <MPU9250_asukiaaa.h>
 #endif // #else // UBUNTU
 

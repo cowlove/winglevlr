@@ -6,24 +6,6 @@
  * 
  * Currently replaces the following block of Arduino include files:
  * 
-#include <Update.h>                     
-#include <WebServer.h>
-#include <HardwareSerial.h>
-#include <CAN.h>
-#include <SPI.h>
-#include <SPIFFS.h>
-#include <FS.h>
-#include <mySD.h>
-#include <ArduinoOTA.h>
-#include <WiFiUdp.h>
-#include <Wire.h>
-#include <WiFiMulti.h>
-#include <OneWireNg.h>
-#include <MPU9250_asukiaaa.h>
-#include <esp_task_wdt.h>
-#include "soc/soc.h"
-#include "soc/rtc_cntl_reg.h"
-#
  *
  */
 
@@ -43,7 +25,11 @@
 #include <functional>
 
 using namespace std;
+#ifndef GIT_VERSION
+#define GIT_VERSION "no-git-version"
+#endif
 
+typedef char byte;
 static uint64_t _micros = 0;
 uint64_t micros() { return ++_micros & 0xffffffff; }
 uint64_t millis() { return ++_micros / 1000; }
@@ -109,9 +95,14 @@ typedef int ota_error_t;
 struct FakeESP {
 	int getFreeHeap() { return 0; }
 	void restart() {}
+	int getChipId() { return 0xdeadbeef; }
 } ESP;
 
+struct WiFiManager {
+};
+
 struct OneWireNg {
+	OneWireNg(int, int) {}
 	typedef int ErrorCode; 
 	typedef int Id[8];
 	static const int EC_MORE = 0, EC_DONE = 0;
@@ -122,6 +113,7 @@ struct OneWireNg {
 	static int crc8(const unsigned char *, int) { return 0; }
 	int search(Id) { return 0; }
 };
+typedef OneWireNg OneWireNg_CurrentPlatform;
 
 class ButtonManager {
 	struct PressInfo { int pin; float start; float duration; };
@@ -255,9 +247,7 @@ class FakeSerial {
 	public:
 	String inputLine;
 	bool toConsole = false;
-	void begin() {}
-	void begin(int, int, int, int) {}
-	void begin(int, int) {}
+	void begin(int a = 0, int b = 0, int c = 0, int d = 0) {}
 	void print(int, int) {}
 	void print(const char *p) { this->printf("%s", p); }
 	void println(const char *p= NULL) { this->printf("%s\n", p != NULL ? p : ""); }
@@ -295,6 +285,7 @@ class FakeWiFi {
 	void setSleep(bool) {}
 	void mode(int) {}
 	void disconnect(bool) {}
+	int waitForConnectResult() { return 0; }
 } WiFi;
 
 class FakeSD {
@@ -368,6 +359,19 @@ void ESP32sim_udpInput(int p, const string &s) {
 	ESP32sim_udpInput(p, WiFiUDP::InputData(s.begin(), s.end()));
 } 
 
+struct NTPClient {
+	NTPClient(WiFiUDP &a) {}
+	void update() {}
+	void begin() {}
+	long getEpochTime() { return 50000000 + millis() / 1000.0; }
+	int getMinutes() { return millis() % (60 * 60 * 1000) / (60 * 1000); }
+	int getHours() { return millis() % (60 * 60 * 24 * 1000) / (60 * 60 * 1000); }
+	int getSeconds() { return millis() % (60 * 1000) / (1000); }
+	void setUpdateInterval(int) {}
+	String getFormattedTime() { return String("TIMESTRING"); }
+
+};
+
 class FakeWire {
 public:
 	void begin(int, int) {}
@@ -421,7 +425,6 @@ public:
 };
 
 typedef MPU9250_DMP MPU9250_asukiaaa;
-typedef char byte;
 
 #define UPLOAD_FILE_START 0 
 #define UPLOAD_FILE_END 0 
@@ -477,6 +480,9 @@ public:
   int write(int) { return 0; } 
   int beginExtendedPacket(int) { return 0; } 
 } CAN;
+
+struct RTC_DS3231 {
+};
 
 void setup(void);
 void loop(void);
