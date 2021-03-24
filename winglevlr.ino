@@ -965,6 +965,7 @@ void loop() {
 bool ESP32sim_replayLogItem(ifstream &);
 float ESP32sim_pitchCmd = 940.0;
 void ESP32sim_set_gpsTrackGDL90(float v);
+void ESP32sim_done();
 
 class FlightSim { 
 public:
@@ -1057,8 +1058,7 @@ public:
 				ESP32sim_replayLogItem(ifile);
 			}
 			if (ESP32sim_replayLogItem(ifile) == false) { 
-				ESP32sim_done();
-				exit(0);
+				ESP32sim_exit();
 			}
 			logEntries++;
 		}
@@ -1069,37 +1069,6 @@ public:
 		lastTime = now;
 	}	
 } fsim;
-
-void ESP32sim_parseArg(char **&a, char **endA) {
-	if (strcmp(*a, "--replay") == 0) fsim.replayFile = *(++a);
-	else if (strcmp(*a, "--replaySkip") == 0) fsim.logSkip = atoi(*(++a));
-	else if (strcmp(*a, "--log") == 0) { 
-		bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
-		logFileName = (*(++a));
-	}	
-	else if (strcmp(*a, "--logConvert") == 0) {
-		ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
-		ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
-		ESP32sim_convertLogCtoD(i, o);
-		exit(0);
-	}
-}
-
-void ESP32sim_setup() { 
-	bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
-	bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
-	bm.addPress(pins.topButton, 500, 1, false); // top short press - hdg hold 
-	ahrsInput.dtk = desiredTrk = 90;
-}
-
-void ESP32sim_loop() { 
-	fsim.ESP32sim_run(imu);
-}
-
-void ESP32sim_done() { 
-	printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", totalRollErr / fsim.logEntries, totalHdgError / fsim.logEntries,  fsim.logEntries, millis() / 1000.0);
-	exit(0);
-}
 
 void ESP32sim_setDebug(const char *s) { 
 	vector<string> l = split(string(s), ',');
@@ -1183,6 +1152,36 @@ void ESP32sim_set_gpsTrackGDL90(float v) {
 void ESP32sim_JDisplay_forceUpdate() { 
 	Display::jd.forceUpdate();
 }
+
+class ESP32sim_winglevlr : public ESP32sim_Module {
+	void parseArg(char **&a, char **la) override {
+		if (strcmp(*a, "--replay") == 0) fsim.replayFile = *(++a);
+		else if (strcmp(*a, "--replaySkip") == 0) fsim.logSkip = atoi(*(++a));
+		else if (strcmp(*a, "--log") == 0) { 
+			bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
+			logFileName = (*(++a));
+		}	
+		else if (strcmp(*a, "--logConvert") == 0) {
+			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
+			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
+			ESP32sim_convertLogCtoD(i, o);
+			exit(0);
+		}
+		else if (strcmp(*a, "--debug") == 0) ESP32sim_setDebug(*(++a));
+	}	
+	void setup() override {
+		bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
+		bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
+		bm.addPress(pins.topButton, 500, 1, false); // top short press - hdg hold 
+		ahrsInput.dtk = desiredTrk = 90;
+	}
+	void loop() override {
+		fsim.ESP32sim_run(imu);
+	}
+	void done() override { 
+		printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", totalRollErr / fsim.logEntries, totalHdgError / fsim.logEntries,  fsim.logEntries, millis() / 1000.0);
+	}
+} espsim;
 
 
 #include "TinyGPS++.h"
