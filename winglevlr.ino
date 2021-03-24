@@ -1,73 +1,28 @@
-
-/*
- * TTGO TS 1.4 PINOUTS
- * 
- * 	18			19 (LED)
- * 	33 (PWM)	RST
- * 	27 			32  (KNOB)
- * 	GND(GND)	26  (ROT)
- * 	0 (ROT)		GND 		
- * 	GND			3.3V
- * 	RXD			22  (used by I2c?)
- * 	TXD			21	(used by I2c?)
- * 	VBAT		5V
- * 
- * 
- * 
- * 
- */
-
-/*  TTGO TS 1.2 old- buttons 39, 34, 35
- *    39   36
- *    33   RST
- *    27   32
- *    GND  26
- *    0    GND
- *    GND  
- */
-
-#ifdef UBUNTU
-#include "ESP32sim_ubuntu.h"
-#else // #ifndef UBUNTU
-
-#include <HardwareSerial.h>
-#include <SPI.h>
-#include <Wire.h>
-#include <Update.h>
-#include <WebServer.h>
-#include <DNSServer.h>
-#include <ESPmDNS.h>
-#include <ArduinoOTA.h>
-#include <WiFiUdp.h>
-#include <WiFiMulti.h>
-#include <MPU9250_asukiaaa.h>
-#include <mySD.h>
-//#include <FS.h>
-//#include <SPIFFS.h>
-
-#include <esp_task_wdt.h>
-#include "soc/soc.h"
-#include "soc/rtc_cntl_reg.h"
-#endif // #else // UBUNTU
-
-#include <TinyGPS++.h>
-
 #include <string>
 #include <sstream>
 #include <vector>
 #include <iterator>
 
+#ifdef UBUNTU
+#include "ESP32sim_ubuntu.h"
+#else // #ifndef UBUNTU
+#include <esp_task_wdt.h>
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+#include <MPU9250_asukiaaa.h>
+#endif // #else // UBUNTU
+
+#include <TinyGPS++.h>
+
 #include "jimlib.h"
 #include "RunningLeastSquares.h"
 #include "PidControl.h"
-#include "G90Parser.h"
 #include "RollAHRS.h"
+#include "G90Parser.h"
 
 WiFiMulti wifi;
 
-std::string strfmt(const char *, ...); 
-//SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
-int logFileNumber = 0;
+SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
 
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
@@ -1234,3 +1189,32 @@ void ESP32sim_JDisplay_forceUpdate() {
 #include "TinyGPS++.cpp"
 
 #endif
+
+
+
+/*
+ * TTGO TS 1.4 PINOUTS
+ * 
+ * 	18			19 (LED)
+ * 	33 (PWM)	RST
+ * 	27 			32  (KNOB)
+ * 	GND(GND)	26  (ROT)
+ * 	0 (ROT)		GND 		
+ * 	GND			3.3V
+ * 	RXD			22  (used by I2c?)
+ * 	TXD			21	(used by I2c?)
+ * 	VBAT		5V
+ * 
+ * 
+ * 
+ * 
+ */
+
+/*  TTGO TS 1.2 old- buttons 39, 34, 35
+ *    39   36
+ *    33   RST
+ *    27   32
+ *    GND  26
+ *    0    GND
+ *    GND  
+ */
