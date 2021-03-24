@@ -60,19 +60,22 @@ esp_err_t esp_task_wdt_add(void *) { return 0; }
 esp_err_t esp_task_wdt_delete(const void *) { return 0; }
 
 
-class File {
-public:
-	operator bool() { return false; } 
-	int read(uint8_t *, int) { return 0; } 
-	int close() { return 0; } 
-	int printf(const char *, ...) { return 0; } 
+namespace fs { 
+	class File {
+	public:
+		operator bool() { return false; } 
+		int read(uint8_t *, int) { return 0; } 
+		int close() { return 0; } 
+		int printf(const char *, ...) { return 0; } 
+	};
 };
 
-struct {
+struct FakeSPIFFS {
 	void begin() {}
 	void format() {}
-	File open(const char *, const char *) { return File(); } 
+	fs::File open(const char *, const char *) { return fs::File(); } 
 } SPIFFS;
+
 
 #include <functional>
 #define HTTP_GET 0 

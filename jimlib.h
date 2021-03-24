@@ -6,11 +6,26 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
+#include <fcntl.h>
 #ifndef UBUNTU
+#include <Update.h>			
+#include "WebServer.h"
+#include "DNSServer.h"
+#include "ESPmDNS.h"
+#include <esp_task_wdt.h>
+#include <HardwareSerial.h>
+#include <SPI.h>
+#define FS_NO_GLOBALS
+#include <FS.h>
+#include <mySD.h>
+#include "ArduinoOTA.h"
+#include "WiFiUdp.h"
+#include "Wire.h"
+#include "WiFiMulti.h"
 #endif
 
 #if !defined UBUNTU && defined ESP32 
-//#include <SPIFFS.h>
+#include <SPIFFS.h>
 #include <esp_task_wdt.h>
 #endif 
 
@@ -456,7 +471,8 @@ void open_TTGOTS_SD() {
 	for (int retries = 0; retries < 2; retries++) { 	
 		ScopedMutex lock(mutexSPI);
 		Serial.print("Initializing SD card...");
-		if (SD.begin(13, 15, 2, 14)) { 
+		//SPI.begin(15, 2, 14);
+		if (SD.begin(13, 15, 2, 14)) {
 			Serial.println("initialization done.");
 			return;
 		}
@@ -513,7 +529,7 @@ void printSD() {}
 #ifdef ESP32
 template <class T>
 void SDCardBufferedLogThread(void *p);
-#if 0 
+#if 1
 template<class T> 
 class SPIFFSVariable { 
 	String filename;
@@ -522,7 +538,7 @@ public:
 	SPIFFSVariable(const char *f, const T &d) : filename(f), def(d) {}
 	operator const T() {
 		T val = def;
-		File file = SPIFFS.open(filename.c_str(), "r");
+		fs::File file = SPIFFS.open(filename.c_str(), "r");
 		if (file) { 
 			uint8_t buf[64];
 			int b = file.read(buf, sizeof(buf) - 1);
@@ -536,7 +552,7 @@ public:
 		return val;
 	} 
 	SPIFFSVariable & operator=(const T&v) { 
-		File file = SPIFFS.open(filename.c_str(), "w");
+		fs::File file = SPIFFS.open(filename.c_str(), "w");
 		if (file) { 
 			file.printf("%d\n", v);
 			file.close();
@@ -621,7 +637,7 @@ public:
 			for(fileVer = 1; fileVer < 999; fileVer++) {
 				snprintf(fname, sizeof(fname), filename, fileVer);
 				ScopedMutex lock(mutexSPI);
-				if (!(f = SD.open(fname, (F_READ)))) {
+				if (!(f = SD.open(fname, FILE_READ))) {
 					f.close();
 					break;
 				}
@@ -641,7 +657,7 @@ public:
 		{
 			ScopedMutex lock(mutexSPI);
 			SD.remove((char *)currentFile.c_str());
-			f = SD.open((char *)currentFile.c_str(), (F_READ | F_WRITE | F_CREAT));
+			f = SD.open((char *)currentFile.c_str(), FILE_WRITE);
 		}
 		Serial.printf("Opened %s\n", currentFile.c_str());
 		while(!exitNow) { // TODO: doesn't flush queue before exiting 	
