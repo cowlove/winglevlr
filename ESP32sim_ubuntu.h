@@ -481,60 +481,69 @@ public:
 void setup(void);
 void loop(void);
 
-// TODO: move JDisplay dependencies out of this header, keep this pretty generic 
-static void JDisplayToConsole(bool b);
-static void ESP32sim_JDisplay_forceUpdate();
+class ESP32sim_Module {
+public:
+	ESP32sim_Module();
+	virtual void parseArg( char **&, char **) {}
+	virtual void setup() {};
+	virtual void loop() {};
+	virtual void done() {};
+};
 
-extern void ESP32sim_parseArg(char **&a, char **end);
-extern void ESP32sim_setup();
-extern void ESP32sim_loop();
-extern void ESP32sim_done();
-extern void ESP32sim_setDebug(const char *);
-
-int main(int argc, char **argv) {
-	float seconds = 0;
-	for(char **a = argv + 1; a < argv+argc; a++) {
-		if (strcmp(*a, "--serial") == 0) Serial.toConsole = true;
-			else if (strcmp(*a, "--jdisplay") == 0) JDisplayToConsole(true);
-		else if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
-		else if (strcmp(*a, "--debug") == 0) {
-			ESP32sim_setDebug(*(++a));
-		} 
-		else if (strcmp(*a, "--interruptFile") == 0) { 
-			intMan.setInterruptFile(*(++a));
+class ESP32sim {
+public:
+	vector<ESP32sim_Module *> modules;
+	struct TimerInfo { 
+		uint64_t last;
+		uint64_t period;
+		function<void(void)> func;
+	};
+	typedef vector<TimerInfo> timers;
+	void main(int argc, char **argv) {
+		float seconds = 0;
+		for(char **a = argv + 1; a < argv+argc; a++) {
+			if (strcmp(*a, "--serial") == 0) Serial.toConsole = true;
+			else if (strcmp(*a, "--seconds") == 0) sscanf(*(++a), "%f", &seconds); 
+			else if (strcmp(*a, "--interruptFile") == 0) { 
+				intMan.setInterruptFile(*(++a));
+			}
+			else for(vector<ESP32sim_Module *>::iterator it = modules.begin(); it != modules.end(); it++) {
+				(*it)->parseArg(a, argv + argc);
+			}
 		}
-		else ESP32sim_parseArg(a, argv + argc);		
-	}
-	
-	ESP32sim_setup();
-	setup();
+		
+		for(vector<ESP32sim_Module *>::iterator it = modules.begin(); it != modules.end(); it++) 
+			(*it)->setup();
+		setup();
 
-	uint64_t lastMillis = 0;
-	while(seconds <= 0 || _micros / 1000000.0 < seconds) {
-		uint64_t now = millis();
-		ESP32sim_loop();
-		loop();
-		intMan.run();
+		uint64_t lastMillis = 0;
+		while(seconds <= 0 || _micros / 1000000.0 < seconds) {
+			uint64_t now = millis();
+			for(vector<ESP32sim_Module *>::iterator it = modules.begin(); it != modules.end(); it++) 
+				(*it)->loop();
+			loop();
+			intMan.run();
 
-		if (floor(now / 1000) != floor(lastMillis / 1000)) { 
-			ESP32sim_JDisplay_forceUpdate();	
+			//if (floor(now / 1000) != floor(lastMillis / 1000)) { 
+			//	ESP32sim_JDisplay_forceUpdate();	
+			//}
+			lastMillis = now;
 		}
-		lastMillis = now;
 	}
-	ESP32sim_done();
+	void exit() { 
+		for(vector<ESP32sim_Module *>::iterator it = modules.begin(); it != modules.end(); it++) 
+			(*it)->done();	
+		::exit(0);
+	}
+} esp32sim;
+
+void ESP32sim_exit() { 	esp32sim.exit(); }
+
+inline 	ESP32sim_Module::ESP32sim_Module() { 
+	esp32sim.modules.push_back(this);
 }
 
-/************************************************
- * Add the following stubs to project *.INO file 
- ************************************************
-#ifdef UBUNTU
-void ESP32sim_setDebug(char const *) {}
-void ESP32sim_parseArg(char **&a, char **endA) {}
-void ESP32sim_setup() {} // called before arduino setup()
-void ESP32sim_loop() {}  // called before each arduino loop()
-void ESP32sim_done() {}  // called before exit();
-void ESP32sim_JDisplay_forceUpdate() {}
-#endif
-
-*/
+int main(int argc, char **argv) {
+	esp32sim.main(argc, argv);
+}
 

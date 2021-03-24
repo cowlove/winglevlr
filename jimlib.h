@@ -144,6 +144,17 @@ public:
 	}
 };
 
+class IntervalTimer {
+public: 
+	double last, interval;
+	IntervalTimer(double i) : interval(i) {}
+	bool tick(double now) {
+		bool rval = (floor(now / interval) != floor(last / interval));
+		last = now;
+		return rval;
+	}
+};
+
 class EggTimer {
 	uint64_t last;
 	uint64_t interval; 
@@ -772,7 +783,10 @@ class JDisplay {
 public:
 	int textSize, xoffset, yoffset;
 	bool autoupdate;
-	JDisplay(int tsize = 1, int x = 0, int y = 0, bool au = false) : textSize(tsize), xoffset(x), yoffset(y), autoupdate(au) {}
+	static JDisplay *instanceP;
+	JDisplay(int tsize = 1, int x = 0, int y = 0, bool au = false) : textSize(tsize), xoffset(x), yoffset(y), autoupdate(au) {
+		instanceP = this;
+	}
 	static const struct Colors { 
 		int lf, lb, vf, vb; 
 	} defaultColors; 
@@ -835,19 +849,11 @@ public:
 	void addItem(JDisplayItemBase *i) { 
 		items.push_back(i);
 	}
-	inline void forceUpdate();	
+	inline void forceUpdate() { update(true, false); }
 	inline bool update(bool update, bool onlyOne);	
 };
 
-
-#ifndef UBUNTU
-const JDisplay::Colors JDisplay::defaultColors = { ST7735_GREEN, ST7735_BLACK, ST7735_WHITE, ST7735_BLACK };
-#else
-const JDisplay::Colors JDisplay::defaultColors = { 0, 0, 0, 0 };
-bool JDisplay::displayToConsole = false;
-static void JDisplayToConsole(bool b) { JDisplay::displayToConsole = b; } 
-#endif
-
+JDisplay *JDisplay::instanceP = NULL;
 
 class JDisplayItemBase {
 	int x, y, updates;
@@ -927,10 +933,6 @@ inline bool JDisplay::update(bool force, bool onlyOne) {
 	return false;
 }
 
-inline void JDisplay::forceUpdate() { 
-	update(true, false);
-}
-
 template<class T>
 class JDisplayItem : public JDisplayItemBase { 
 	const char *fmt;
@@ -950,6 +952,26 @@ public:
 		setValueString(toString(v));
 	}
 };
+
+
+#ifndef UBUNTU
+const JDisplay::Colors JDisplay::defaultColors = { ST7735_GREEN, ST7735_BLACK, ST7735_WHITE, ST7735_BLACK };
+#else // UBUNTU
+const JDisplay::Colors JDisplay::defaultColors = { 0, 0, 0, 0 };
+bool JDisplay::displayToConsole = false;
+
+class ESP32sim_jdisplay : public ESP32sim_Module {
+	IntervalTimer sec = IntervalTimer(1.0);
+	void parseArg(char **&a, char **la) override {
+		if (strcmp(*a, "--jdisplay") == 0) JDisplay::displayToConsole = true;
+	}	
+	void setup() override {}
+	void loop() override { 
+		if (sec.tick(millis() / 1000.0) && JDisplay::instanceP != NULL) JDisplay::instanceP->forceUpdate();
+	}
+	void done() override {}
+} esp32sim_jdisplay;
+#endif // else UBUNTU
 
 class JDisplayEditableItem;
 
@@ -1556,7 +1578,6 @@ public:
         }
         T operator () (T in) { return extrapolate(in); }
 };
-
 
 
 #endif //#ifndef INC_JIMLIB_H
