@@ -22,6 +22,7 @@
 #include "WiFiUdp.h"
 #include "Wire.h"
 #include "WiFiMulti.h"
+#include <OneWireNg.h>
 #endif
 
 #if !defined UBUNTU && defined ESP32 
@@ -483,10 +484,10 @@ void open_TTGOTS_SD() {
 }
 
 #ifndef UBUNTU
-#define msdFile File
-void printDirectory(msdFile dir, int numTabs) {
+
+void printDirectory(File dir, int numTabs) {
   while(true) {
-     msdFile entry =  dir.openNextFile();
+     File entry =  dir.openNextFile();
      if (! entry) {
        break;
      }
@@ -509,7 +510,7 @@ void printDirectory(msdFile dir, int numTabs) {
 }
 
 void printSD() { 
-	msdFile root = SD.open("/");
+	File root = SD.open("/");
 	if (root) {
 		printDirectory(root, 0);
 		root.close();
@@ -527,9 +528,7 @@ void printSD() {}
 #endif
 
 #ifdef ESP32
-template <class T>
-void SDCardBufferedLogThread(void *p);
-#if 1
+
 template<class T> 
 class SPIFFSVariable { 
 	String filename;
@@ -563,9 +562,10 @@ public:
 		return *this;
 	}
 };
-#endif 
 
 static bool logFileBusySPI = false;
+template <class T>
+void SDCardBufferedLogThread(void *p);
 
 template <class T>
 class SDCardBufferedLog {
@@ -632,7 +632,7 @@ public:
 	void setFilename() { 
 		int fileVer = 1;
 		char fname[20];
-		msdFile f;
+		File f;
 		if (strchr(filename, '%')) { // if filename contains '%', scan for existing files  
 			for(fileVer = 1; fileVer < 999; fileVer++) {
 				snprintf(fname, sizeof(fname), filename, fileVer);
@@ -650,7 +650,7 @@ public:
 	void *thread() {
 		uint64_t lastWrite, startTime, lastFlush;
 		lastFlush = lastWrite = startTime = millis();
-		msdFile f;
+		File f;
 
 		open_TTGOTS_SD();
 		setFilename();
@@ -717,7 +717,9 @@ public:
 		snprintf(buf, sizeof(buf), fname, 1);
 		fd = open(buf, O_WRONLY | O_CREAT, 0666);
 	}
+	~SDCardBufferedLog() { close(fd); }
 	int queueLen() { return 0; }
+	void flush();
 #endif
 };	
 
@@ -760,7 +762,6 @@ class ChangeTimer {
 #define TFT_SCLK 5   
 #define TFT_MOSI 23  
 #define ST7735
-//Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #endif
 
 void JDisplayUpdateThread(void *);
@@ -950,7 +951,6 @@ public:
 	}
 };
 
-
 class JDisplayEditableItem;
 
 class JDisplayEditor {
@@ -1072,7 +1072,6 @@ inline void JDisplayEditor::buttonPress(bool longpress) {
 	items[selectedItem]->update();
 }
 
-
 void JDisplayUpdateThread(void *p) { 
 	JDisplay *jd = (JDisplay *)p;
 	jd->forceUpdate();
@@ -1090,8 +1089,6 @@ void JDisplayUpdateThread(void *p) {
 	}
 #endif
 }
-
-
 
 template <class T>  
 class CircularBoundedQueue { 
@@ -1150,9 +1147,7 @@ public:
         }
         void pmrrv(const std::string& r) {
                 std::string s = std::string("$PMRRV") + r + twoenc(chksum(r)) + "\r\n";
-#ifdef ESP32
                 Serial2.write(s.c_str());
-#endif
 				//Serial.printf("G5: %s", s.c_str());
                 //Serial.write(s.c_str());
         }
@@ -1163,7 +1158,6 @@ public:
                 pmrrv(std::string("21") + twoenc(hd) + twoenc(vd) + twoenc(flags));
         }
 };
-
 
 class PinPulse { 
 public:
@@ -1184,7 +1178,6 @@ public:
 	}
 };
 
-
 std::string nmeaChecksum(const std::string &s) { 
 	char check = 0;
 	for (const char &c : s)  
@@ -1195,14 +1188,9 @@ std::string nmeaChecksum(const std::string &s) {
 		
 }
 
-
-
 //
 // DS18 one-wire temperature sensor library
 
-#ifndef UBUNTU
-#include <OneWireNg.h>
-#endif 
 
 /* DS therms commands */
 #define CMD_CONVERT_T           0x44
@@ -1230,11 +1218,9 @@ struct DsTempData {
 	float degC;
 };
 
-class OneWireNg;	
 inline std::vector<DsTempData> readTemps(OneWireNg *ow) { 
 
 	std::vector<DsTempData> rval;
-#ifndef UBUNTU
     OneWireNg::Id id;
     OneWireNg::ErrorCode ec;
     ow->searchReset();
@@ -1292,10 +1278,8 @@ inline std::vector<DsTempData> readTemps(OneWireNg *ow) {
 		
 		rval.push_back(dsData);
     } while (ec == OneWireNg::EC_MORE);
-#endif
     return rval;
 }
-
 
 
 #ifdef ESP32
@@ -1405,7 +1389,6 @@ public:
 		connectFunc = oc;
 	}
 	void run() { 
-#if 1//#ifndef UBUNTU
 		if (firstRun) {
 			wifi.addAP("ChloeNet", "niftyprairie7");
 			//wifi.addAP("TUK-FIRE", "FD priv n3t 20 q4");
@@ -1514,7 +1497,6 @@ public:
 			
 			
 		}
-#endif
 	}
 	bool connected() { return WiFi.status() == WL_CONNECTED;  }  
 
@@ -1546,8 +1528,7 @@ class ShortBootDebugMode {
 		return sbCount;
 	} 
 };
-#endif
-
+#endif // ESP32
 
 template<class T>
 class ExtrapolationTable {

@@ -1,8 +1,30 @@
 /* Simple library and simulation environment to compile and run an Arduino sketch as a 
  * standard C command line program. 
  * 
- * Most functionality is unimplemented, and just stubbed out but minimal simluated 
+ * Most functionality is unimplemented, and just stubbed out.  Minimal simluated 
  * Serial/UDP/Interrupts/buttons are sketched in. 
+ * 
+ * Currently replaces the following block of Arduino include files:
+ * 
+#include <Update.h>                     
+#include <WebServer.h>
+#include <HardwareSerial.h>
+#include <CAN.h>
+#include <SPI.h>
+#include <SPIFFS.h>
+#include <FS.h>
+#include <mySD.h>
+#include <ArduinoOTA.h>
+#include <WiFiUdp.h>
+#include <Wire.h>
+#include <WiFiMulti.h>
+#include <OneWireNg.h>
+#include <MPU9250_asukiaaa.h>
+#include <esp_task_wdt.h>
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+#
+ *
  */
 
 #include <cstdint>
@@ -18,13 +40,13 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
+#include <functional>
+
+using namespace std;
 
 static uint64_t _micros = 0;
 uint64_t micros() { return ++_micros & 0xffffffff; }
 uint64_t millis() { return ++_micros / 1000; }
-
-//#include "RunningLeastSquares.h"
-//#include "jimlib.h"
 
 // Stub out FreeRTOS stuff 
 typedef int SemaphoreHandle_t;
@@ -36,22 +58,8 @@ int uxSemaphoreGetCount(int) { return 0; }
 #define tskIDLE_PRIORITY 0
 #define pdMS_TO_TICKS(x) (x) 	
 void xTaskCreate(void (*)(void *), const char *, int, void *, int, void *) {}
-
 #define WRITE_PERI_REG(a, b) if(0) {}
 #define RTC_CNTL_BROWN_OUT_REG 0
-
-std::string strfmt(const char *, ...); 
-using namespace std;
-void pinMode(int, int) {}
-static int ESP32sim_currentPwm = 0;
-extern float ESP32sim_getPitchCmd();
-extern void ESP32sim_setLogFile(const char *);
-extern float ESP32sim_getRollErr();
-void ESP32sim_convertLogCtoD(ifstream &i, ofstream &o);
-void printFinalReport();
-
-extern void ESP32sim_setDebug(const char *);
-extern double totalRollErr, totalHdgError;
 
 typedef int esp_err_t; 
 void esp_task_wdt_init(int, int) {}
@@ -59,36 +67,36 @@ void esp_task_wdt_reset() {}
 esp_err_t esp_task_wdt_add(void *) { return 0; }
 esp_err_t esp_task_wdt_delete(const void *) { return 0; }
 
-
 namespace fs { 
-	class File {
-	public:
-		operator bool() { return false; } 
-		int read(uint8_t *, int) { return 0; } 
-		int close() { return 0; } 
-		int printf(const char *, ...) { return 0; } 
-	};
+class File {
+	public: 
+	bool operator!() { return false; } 
+	operator bool() { return false; } 
+	File openNextFile(void) { return *this; }
+	void close() {}
+        int print(const char *) { return 0; }
+	int printf(const char *, ...) { return 0; } 
+	int write(const char *, int) { return 0; } 
+	int flush() { return 0; }	
+	int read(uint8_t *, int) { return 0; } 
 };
+};
+using fs::File;
 
 struct FakeSPIFFS {
 	void begin() {}
 	void format() {}
-	fs::File open(const char *, const char *) { return fs::File(); } 
+	File open(const char *, const char *) { return File(); } 
 } SPIFFS;
 
-
-#include <functional>
-#define HTTP_GET 0 
-#define HTTP_POST 0
-#define U_FLASH 0  
-struct {
+struct FakeArduinoOTA {
 	void begin() {}
 	void handle() {}
 	int getCommand() { return 0; } 
-	void onEnd(std::function<void(void)>) {}
-	void onStart(std::function<void(void)>) {}
-	void onError(std::function<void(int)>) {}
-	void onProgress(std::function<void(int, int)>) {}
+	void onEnd(function<void(void)>) {}
+	void onStart(function<void(void)>) {}
+	void onError(function<void(int)>) {}
+	void onProgress(function<void(int, int)>) {}
 } ArduinoOTA;
 
 typedef int ota_error_t; 
@@ -98,21 +106,32 @@ typedef int ota_error_t;
 #define OTA_RECEIVE_ERROR 0 
 #define OTA_END_ERROR 0 
 
-struct {
+struct FakeESP {
 	int getFreeHeap() { return 0; }
 	void restart() {}
 } ESP;
 
+struct OneWireNg {
+	typedef int ErrorCode; 
+	typedef int Id[8];
+	static const int EC_MORE = 0, EC_DONE = 0;
+	void writeByte(int) {}
+	void addressSingle(Id) {}
+	void touchBytes(const unsigned char *, int) {}
+	void searchReset();
+	static int crc8(const unsigned char *, int) { return 0; }
+	int search(Id) { return 0; }
+};
+
 class ButtonManager {
 	struct PressInfo { int pin; float start; float duration; };
-	std::vector<PressInfo> presses;
+	vector<PressInfo> presses;
 public:
 	void add(int pin, float start, float duration) {
 		PressInfo pi; 
 		pi.pin = pin; pi.start = start; pi.duration = duration;
 		presses.push_back(pi);
 	}
-	
 	void addPress(int pin, float time, int clicks, bool longPress)  {
 		for(int n = 0; n < clicks; n++) {
 			float duration = longPress ? 2.5 : .2; 
@@ -120,7 +139,6 @@ public:
 			time += duration + .2;
 		}
 	}
-	
 	int check(int pin, float time) {
 		float now = millis() / 1000.0; // TODO this is kinda slow 
 		for (vector<PressInfo>::iterator it = presses.begin(); it != presses.end(); it++) { 
@@ -132,12 +150,13 @@ public:
 } bm;
 
 int digitalRead(int p) {
-	return bm.check(p, millis()/1000.0);
+	return bm.check(p, micros()/1000000.0);
 }
+
+static int ESP32sim_currentPwm = 0;
 void ledcWrite(int chan, int val) { 
 	ESP32sim_currentPwm = val;
 } 
-
 
 // Takes an input of a text file with line-delimited usec intervals between 
 // interrupts, delivers an interrupt to the sketch-provided ISR
@@ -170,15 +189,16 @@ public:
 	}
 } intMan;
 
-int digitalPinToInterrupt(int) { return 0; }
+void pinMode(int, int) {}
 void digitalWrite(int, int) {};
+int digitalPinToInterrupt(int) { return 0; }
 void attachInterrupt(int, void (*i)(), int) { intMan.intFunc = i; } 
 void ledcSetup(int, int, int) {}
 void ledcAttachPin(int, int) {}
 void delayMicroseconds(int m) { _micros += m; intMan.run(); }
 void delay(int m) { delayMicroseconds(m*1000); }
 void yield() { intMan.run(); }
-void analogSetCycles(int) {}
+//void analogSetCycles(int) {}
 void adcAttachPin(int) {}
 int analogRead(int) { return 0; } 
 
@@ -202,16 +222,16 @@ int analogRead(int) { return 0; }
 
 class String {
 	public:
-	std::string st;
+	string st;
 	String(const char *s) : st(s) {}
-	String(std::string s) : st(s) {}
+	String(string s) : st(s) {}
 	String(const char *b, int l) { 
-		st = std::string();
+		st = string();
 		for (int n = 0; n < l; n++) {
 			st.push_back(b[n]);
 		}
 	} 
-	String(int s) : st(std::to_string(s)) {}
+	String(int s) : st(to_string(s)) {}
 	String() {}
 	int length() const { return st.length(); } 
 	bool operator!=(const String& x) { return st != x.st; } 
@@ -277,22 +297,10 @@ class FakeWiFi {
 	void disconnect(bool) {}
 } WiFi;
 
-class msdFile {
-	public: 
-	bool operator!() { return false; } 
-	operator bool() { return false; } 
-	msdFile openNextFile(void) { return *this; }
-	void close() {}
-        int print(const char *) { return 0; }
-	int printf(const char *, ...) { return 0; } 
-	int write(const char *, int) { return 0; } 
-	int flush() { return 0; }	
-};
-
 class FakeSD {
 	public:
 	bool begin(int, int, int, int) { return true; }
-	msdFile open(const char *) { return msdFile(); } 
+	fs::File open(const char *) { return fs::File(); } 
 } SD;
 
 class WiFiMulti {
@@ -300,9 +308,6 @@ public:
 	void addAP(const char *, const char *) {}
 	void run() {}
 };
-
-void ESP32sim_JDisplay_forceUpdate();
-
 
 class WiFiUDP {
 	int port, txPort;
@@ -319,8 +324,8 @@ public:
 	}
 	int endPacket() { return 1; }
 
-	typedef std::vector<unsigned char> InputData;
-	typedef std::map<int, InputData> InputMap;
+	typedef vector<unsigned char> InputData;
+	typedef map<int, InputData> InputMap;
 	static InputMap inputMap;
 	int  parsePacket() { 
 		if (inputMap.find(port) != inputMap.end()) { 
@@ -348,7 +353,7 @@ public:
 	IPAddress remoteIP() { return IPAddress(); } 
 };
 
-// TODO: extend this to use std::vector<unsigned char> to handle binary data	
+// TODO: extend this to use vector<unsigned char> to handle binary data	
 WiFiUDP::InputMap WiFiUDP::inputMap;
 
 void ESP32sim_udpInput(int p, const WiFiUDP::InputData &s) { 
@@ -359,7 +364,7 @@ void ESP32sim_udpInput(int p, const WiFiUDP::InputData &s) {
 		m[p].insert(m[p].end(), s.begin(), s.end());
 }
 
-void ESP32sim_udpInput(int p, const std::string &s) {
+void ESP32sim_udpInput(int p, const string &s) {
 	ESP32sim_udpInput(p, WiFiUDP::InputData(s.begin(), s.end()));
 } 
 
@@ -438,13 +443,17 @@ public:
 	const char *buf;
 };
 
+#define HTTP_GET 0 
+#define HTTP_POST 0
+#define U_FLASH 0  
+
 class WebServer {
 	HTTPUpload u;
 	public:
 	WebServer(int) {}
 	void begin() {}
-	void on(const char *, int, std::function<void(void)>, std::function<void(void)>) {}
-	void on(const char *, int, std::function<void(void)>) {}
+	void on(const char *, int, function<void(void)>, function<void(void)>) {}
+	void on(const char *, int, function<void(void)>) {}
 	void sendHeader(const char *, const char *) {}
 	void send(int, const char *, const char *) {}
 	HTTPUpload &upload() { return u; }
@@ -471,12 +480,16 @@ public:
 
 void setup(void);
 void loop(void);
-static void JDisplayToConsole(bool b);
 
-void ESP32sim_parseArg(char **&a, char **end);
-void ESP32sim_setup();
-void ESP32sim_loop();
-void ESP32sim_done();
+// TODO: move JDisplay dependencies out of this header, keep this pretty generic 
+static void JDisplayToConsole(bool b);
+static void ESP32sim_JDisplay_forceUpdate();
+
+extern void ESP32sim_parseArg(char **&a, char **end);
+extern void ESP32sim_setup();
+extern void ESP32sim_loop();
+extern void ESP32sim_done();
+extern void ESP32sim_setDebug(const char *);
 
 int main(int argc, char **argv) {
 	float seconds = 0;
@@ -497,7 +510,6 @@ int main(int argc, char **argv) {
 	setup();
 
 	uint64_t lastMillis = 0;
-	double totalErr = 0;
 	while(seconds <= 0 || _micros / 1000000.0 < seconds) {
 		uint64_t now = millis();
 		ESP32sim_loop();
