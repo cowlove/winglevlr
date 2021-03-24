@@ -8,27 +8,25 @@
 #include <iterator>
 #include <fcntl.h>
 #ifndef UBUNTU
-#include <Update.h>			
-#include "WebServer.h"
 #include "DNSServer.h"
-#include "ESPmDNS.h"
-#include <esp_task_wdt.h>
 #include <HardwareSerial.h>
 #include <SPI.h>
 #define FS_NO_GLOBALS
 #include <FS.h>
-#include <mySD.h>
 #include "ArduinoOTA.h"
 #include "WiFiUdp.h"
 #include "Wire.h"
-#include "WiFiMulti.h"
 #include <OneWireNg.h>
-#endif
-
-#if !defined UBUNTU && defined ESP32 
-#include <SPIFFS.h>
+#ifdef ESP32
 #include <esp_task_wdt.h>
-#endif 
+#include <WiFiMulti.h>
+#include <ESPmDNS.h>
+#include <SPIFFS.h>
+#include <Update.h>			
+#include <WebServer.h>
+#include <mySD.h> // Add "EXCLUDE_DIRS=esp32-micro-sdcard" to Makefile if this breaks ESP8266 builds
+#endif //ESP32
+#endif // !UBUNTU
 
 #include <stdarg.h>
 
@@ -77,9 +75,12 @@ void printPins() {
                 Serial.printf("%02d:%d ", n, digitalRead(n));
         }
         Serial.print("\n");
+#ifdef ESP32
 		esp_task_wdt_reset();
+#endif
 }
 
+#ifdef ESP32
 class FakeMutex {
 	public:
 	void lock() {}
@@ -119,12 +120,10 @@ class ScopedMutex {
 	Mutex *mutex; 
   public:
 	ScopedMutex(Mutex &m) : mutex(&m) { mutex->lock(); } 
-#if !defined UBUNTU && defined ESP32 
 	ScopedMutex(FakeMutex &m) : mutex(NULL) {} 
-#endif
 	~ScopedMutex() { if (mutex != NULL) mutex->unlock(); } 
 };
-
+#endif
 
 
 class LineBuffer {
@@ -1167,9 +1166,9 @@ public:
         }
         void open() {
         }
-        void pmrrv(const std::string& r) {
-                std::string s = std::string("$PMRRV") + r + twoenc(chksum(r)) + "\r\n";
-                Serial2.write(s.c_str());
+        std::string pmrrv(const std::string& r) {
+                return std::string("$PMRRV") + r + twoenc(chksum(r)) + "\r\n";
+                //Serial2.write(s.c_str());
 				//Serial.printf("G5: %s", s.c_str());
                 //Serial.write(s.c_str());
         }
