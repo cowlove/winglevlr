@@ -745,7 +745,8 @@ class ChangeTimer {
 	ChangeTimer() : lastChangeMillis(0) {}
 	float unchanged(float v) { 
 		if (v == lastVal) { 
-			return (millis() - lastChangeMillis) / 1000.0;
+			float rval = (millis() - lastChangeMillis) / 1000.0;
+			return rval;
 		} else { 
 			lastVal = v;
 			lastChangeMillis = millis();
