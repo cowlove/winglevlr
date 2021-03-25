@@ -1314,7 +1314,7 @@ public:
 			if (hz100.tick(micros()/1000.0) && (trackSimFile || trackSimFile.eof())) {
 				tSim.run(hz100.interval / 1000.0);
 			}
-			if (hz(1.0/6000)) {
+			if (false && hz(1.0/6000)) {
 				ahrs.reset();
 				rollPID.reset();
 				hdgPID.reset();
