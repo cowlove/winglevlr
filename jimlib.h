@@ -1524,21 +1524,22 @@ public:
 };
 
 class ShortBootDebugMode {
-	//SPIFFSVariable<int> shortBootCount = SPIFFSVariable<int>("/shortBootCount", 1);
-	int shortBootCount = 0;
+	SPIFFSVariable<int> shortBootCount = SPIFFSVariable<int>("/shortBootCount", 1);
 	bool initialized = false;
 	bool cleared = false;
 	int sbCount; 
+	int threshold;
   public:
-	void begin() { 
-		//SPIFFS.begin();
+	ShortBootDebugMode(int t) : threshold(t) {}
+	void begin() {
+		SPIFFS.begin();
 		shortBootCount = shortBootCount + 1;
 		sbCount = shortBootCount;
 		
 		Serial.printf("Short boot count %d\n", sbCount);
 		initialized = true;
 	}
-	int check() {
+	bool check() {
 		if (initialized == false) { 
 			begin();
 		}
@@ -1546,7 +1547,7 @@ class ShortBootDebugMode {
 			cleared = true;
 			shortBootCount = 0 ;
 		}
-		return sbCount;
+		return sbCount >= threshold;
 	} 
 };
 #endif // ESP32
