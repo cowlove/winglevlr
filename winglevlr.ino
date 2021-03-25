@@ -1081,12 +1081,13 @@ public:
 
 
 
-bool ESP32sim_replayLogItem(ifstream &);
+//bool ESP32sim_replayLogItem(ifstream &);
 float ESP32sim_pitchCmd = 940.0;
-void ESP32sim_set_gpsTrackGDL90(float v);
+//void ESP32sim_set_gpsTrackGDL90(float v);
 void ESP32sim_done();
 
-class FlightSim { 
+
+class ESP32sim_winglevlr : public ESP32sim_Module {
 public:
 	ifstream trackSimFile;
 	TrackSimFileParser tSim = TrackSimFileParser(trackSimFile);
@@ -1134,11 +1135,11 @@ public:
 			track -= tan(bank * M_PI / 180) * 9.8 / 40 * 25 * bper;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
+			set_gpsTrack(track);
 		}
 
-		hdg = track - 35.555; // simluate mag var and WCA 
+		hdg = track - 35.555; // simluate mag var and arbitrary WCA 
 		if (hdg < 0) hdg += 360;	
-		ESP32sim_set_gpsTrackGDL90(track);
 
 		while(gxDelay.size() > 400) {
 			gxDelay.pop();
@@ -1157,10 +1158,132 @@ public:
 		
 		lastMillis = now;
 	}
-	
-	bool firstLoop = true;
-	void ESP32sim_run(MPU9250_DMP *imu) { 
-		static float lastTime = 0;
+
+	bool ESP32sim_replayLogItem(ifstream &i) {
+		LogItem l; 
+		static uint64_t logfileMicrosOffset = 0;
+		
+		if (i.read((char *)&l, sizeof(l))) {
+			if (logfileMicrosOffset == 0) 
+				logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
+			_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
+			imu->ax = l.ai.ax;
+			imu->ay = l.ai.ay;
+			imu->az = l.ai.az;
+			imu->gx = l.ai.gx;
+			imu->gy = l.ai.gy;
+			imu->gz = l.ai.gz;
+			imu->mx = l.ai.mx;
+			imu->my = l.ai.my;
+			imu->mz = l.ai.mz;
+		
+			// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
+			if ((l.flags & LogFlags::g5Ps) || l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt) { 
+				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt)); 
+			}
+			if ((l.flags & LogFlags::g5Nav) || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track) { 
+				ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", l.ai.g5Hdg, l.ai.g5Track)); 
+			}
+			if ((l.flags & LogFlags::g5Ins) || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch) { 
+				ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
+			}
+			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
+				char buf[128];
+				sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", l.ai.gpsTrackRMC + magVar);
+				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
+			}
+			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0) { 
+				unsigned char buf[64];
+				GDL90Parser::State s;
+				s.track = l.ai.gpsTrackGDL90 + magVar;
+				int len = gdl90.packMsg10(buf, s);
+				ESP32sim_udpInput(4000, string((char *)buf, len));
+			}
+				
+			// special logfile name "-", just replay existing log back out to stdout 
+			if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
+				l.ai.sec = _micros / 1000000.0; 
+				cout << l.toString().c_str() << " -1 LOG" << endl;
+			}		
+			return true;
+		} 
+		return false;
+	}
+
+	void set_gpsTrack(float v) { 
+		GDL90Parser::State s;
+		s.lat = 0;
+		s.lon = 0;
+		s.alt = 1000 / FEET_PER_METER;
+		s.track = v + magVar;
+		s.vvel = 0;
+		s.hvel = tSim.sim.speed;
+		s.palt = (s.alt + 1000) / 25;
+
+		WiFiUDP::InputData buf;
+		buf.resize(128);
+		buf.resize(gdl90.packMsg11(buf.data(), s));
+		ESP32sim_udpInput(4000, buf);
+		buf.resize(128);
+		buf.resize(gdl90.packMsg10(buf.data(), s));
+		ESP32sim_udpInput(4000, buf);
+
+		gpsTrackGDL90 = v; // TODO - pass this through ESP32sim_udpInput()
+		ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", v, v)); 
+	}
+
+	void parseArg(char **&a, char **la) override {
+		if (strcmp(*a, "--replay") == 0) replayFile = *(++a);
+		else if (strcmp(*a, "--replaySkip") == 0) logSkip = atoi(*(++a));
+		else if (strcmp(*a, "--log") == 0) { 
+			bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
+			logFileName = (*(++a));
+		}else if (strcmp(*a, "--tracksim") == 0) 
+				trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
+		else if (strcmp(*a, "--logConvert") == 0) {
+			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
+			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
+			ESP32sim_convertLogCtoD(i, o);
+			exit(0);
+		} else if (strcmp(*a, "--debug") == 0) {
+			vector<string> l = split(string(*(++a)), ',');
+			float v;
+			for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
+				if (sscanf(it->c_str(), "zeros.mx=%f", &v) == 1) { ahrs.magOffX = v; } 
+				else if (sscanf(it->c_str(), "zeros.my=%f", &v) == 1) { ahrs.magOffY = v; } 
+				else if (sscanf(it->c_str(), "zeros.mz=%f", &v) == 1) { ahrs.magOffZ = v; } 
+				else if (sscanf(it->c_str(), "zeros.gx=%f", &v) == 1) { ahrs.gyrOffX = v; } 
+				else if (sscanf(it->c_str(), "zeros.gy=%f", &v) == 1) { ahrs.gyrOffY = v; } 
+				else if (sscanf(it->c_str(), "zeros.gz=%f", &v) == 1) { ahrs.gyrOffZ = v; } 
+				else if (sscanf(it->c_str(), "cr1=%f", &v) == 1) { ahrs.compRatio1 = v; } 
+				else if (sscanf(it->c_str(), "dc1=%f", &v) == 1) { ahrs.driftCorrCoeff1 = v; } 
+				else if (sscanf(it->c_str(), "cr2=%f", &v) == 1) { ahrs.hdgCompRatio = v; } 
+				else if (sscanf(it->c_str(), "mbt.cr=%f", &v) == 1) { ahrs.magBankTrimCr = v; } 
+				else if (sscanf(it->c_str(), "mbt.maxerr=%f", &v) == 1) { ahrs.magBankTrimMaxBankErr = v; } 
+				else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 
+				else if (strlen(it->c_str()) > 0) { 
+					printf("Unknown debug parameter '%s'\n", it->c_str()); 
+					exit(-1);
+				}
+			}
+		}
+	}	
+	void setup() override {
+		if (replayFile == NULL) { 
+			bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
+			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
+			bm.addPress(pins.topButton, 10, 1, false); // top short press - hdg hold 
+			ahrsInput.dtk = desiredTrk = 90;
+			tSim.sim.onNavigate = [](float s) { 
+				ahrsInput.dtk = desiredTrk = trueToMag(s);
+				return magToTrue(ahrsInput.g5Hdg);
+			};
+		}
+	}
+
+	bool firstLoop = true;	
+	float lastTime = 0;
+	void loop() override {
 		float now = _micros / 1000000.0;
 		
 		if (replayFile == NULL) { 
@@ -1193,123 +1316,10 @@ public:
 		//if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
 		firstLoop = false;
 		lastTime = now;
-	}	
-} fsim;
-
-void ESP32sim_setDebug(const char *s) { 
-	vector<string> l = split(string(s), ',');
-	float v;
-	for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
-		if (sscanf(it->c_str(), "zeros.mx=%f", &v) == 1) { ahrs.magOffX = v; } 
-		else if (sscanf(it->c_str(), "zeros.my=%f", &v) == 1) { ahrs.magOffY = v; } 
-		else if (sscanf(it->c_str(), "zeros.mz=%f", &v) == 1) { ahrs.magOffZ = v; } 
-		else if (sscanf(it->c_str(), "zeros.gx=%f", &v) == 1) { ahrs.gyrOffX = v; } 
-		else if (sscanf(it->c_str(), "zeros.gy=%f", &v) == 1) { ahrs.gyrOffY = v; } 
-		else if (sscanf(it->c_str(), "zeros.gz=%f", &v) == 1) { ahrs.gyrOffZ = v; } 
-		else if (sscanf(it->c_str(), "cr1=%f", &v) == 1) { ahrs.compRatio1 = v; } 
-		else if (sscanf(it->c_str(), "dc1=%f", &v) == 1) { ahrs.driftCorrCoeff1 = v; } 
-		else if (sscanf(it->c_str(), "cr2=%f", &v) == 1) { ahrs.hdgCompRatio = v; } 
-		else if (sscanf(it->c_str(), "mbt.cr=%f", &v) == 1) { ahrs.magBankTrimCr = v; } 
-		else if (sscanf(it->c_str(), "mbt.maxerr=%f", &v) == 1) { ahrs.magBankTrimMaxBankErr = v; } 
-		else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 
-		else if (strlen(it->c_str()) > 0) { 
-			printf("Unknown debug parameter '%s'\n", it->c_str()); 
-			exit(-1);
-		}
-	}
-} 
-
-bool ESP32sim_replayLogItem(ifstream &i) {
-	LogItem l; 
-	static uint64_t logfileMicrosOffset = 0;
-	
-	if (i.read((char *)&l, sizeof(l))) {
-		if (logfileMicrosOffset == 0) 
-			logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
-		_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
-		imu->ax = l.ai.ax;
-		imu->ay = l.ai.ay;
-		imu->az = l.ai.az;
-		imu->gx = l.ai.gx;
-		imu->gy = l.ai.gy;
-		imu->gz = l.ai.gz;
-		imu->mx = l.ai.mx;
-		imu->my = l.ai.my;
-		imu->mz = l.ai.mz;
-	
-		// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
-		if ((l.flags & LogFlags::g5Ps) || l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt) { 
-			ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt)); 
-		}
-		if ((l.flags & LogFlags::g5Nav) || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track) { 
-			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", l.ai.g5Hdg, l.ai.g5Track)); 
-		}
-		if ((l.flags & LogFlags::g5Ins) || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch) { 
-			ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
-		}
-		if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
-			char buf[128];
-			sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", l.ai.gpsTrackRMC + magVar);
-			ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
-		}
-		if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0) { 
-			unsigned char buf[64];
-			GDL90Parser::State s;
-			s.track = l.ai.gpsTrackGDL90 + magVar;
-			int len = gdl90.packMsg10(buf, s);
-			ESP32sim_udpInput(4000, string((char *)buf, len));
-		}
-			
-		// special logfile name "-", just replay existing log back out to stdout 
-		if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
-			l.ai.sec = _micros / 1000000.0; 
-			cout << l.toString().c_str() << " -1 LOG" << endl;
-		}		
-		return true;
-	} 
-	return false;
-}
-
-void ESP32sim_set_gpsTrackGDL90(float v) { 
-	gpsTrackGDL90 = v; // TODO - pass this through ESP32sim_udpInput()
-	ahrsInput.g5Hdg = v;
-}
-
-class ESP32sim_winglevlr : public ESP32sim_Module {
-
-	void parseArg(char **&a, char **la) override {
-		if (strcmp(*a, "--replay") == 0) fsim.replayFile = *(++a);
-		else if (strcmp(*a, "--replaySkip") == 0) fsim.logSkip = atoi(*(++a));
-		else if (strcmp(*a, "--log") == 0) { 
-			bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
-			logFileName = (*(++a));
-		}else if (strcmp(*a, "--tracksim") == 0) 
-				fsim.trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
-		else if (strcmp(*a, "--logConvert") == 0) {
-			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
-			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
-			ESP32sim_convertLogCtoD(i, o);
-			exit(0);
-		}
-		else if (strcmp(*a, "--debug") == 0) ESP32sim_setDebug(*(++a));
-	}	
-	void setup() override {
-		if (fsim.replayFile == NULL) { 
-			bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
-			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
-			bm.addPress(pins.topButton, 10, 1, false); // top short press - hdg hold 
-			ahrsInput.dtk = desiredTrk = 90;
-			fsim.tSim.sim.onNavigate = [](float s) { 
-				ahrsInput.dtk = desiredTrk = trueToMag(s);
-				return magToTrue(ahrsInput.g5Hdg);
-			};
-		}
-	}
-	void loop() override {
-		fsim.ESP32sim_run(imu);
 	}
 	void done() override { 
-		printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", totalRollErr / fsim.logEntries, totalHdgError / fsim.logEntries,  fsim.logEntries, millis() / 1000.0);
+		printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", 
+		totalRollErr / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
 	}
 } espsim;
 
