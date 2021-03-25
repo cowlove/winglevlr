@@ -101,14 +101,6 @@ public:
 	}
 };
 
-float constrain360(float a) { 
-	if (abs(a) < 10000) { 
-		while(a <= 0) a += 360;
-		while(a > 360) a -= 360;
-	}
-	return a;
-}
-
 float angularDiff(float d) { 
 	if (abs(d) > 100000) 
 		return d;
@@ -180,8 +172,8 @@ public:
 	}
 	MultiCompFilter mComp;
 	
-	float magOffX = 27.5;
-	float magOffY = 24.4;
+	float magOffX = 26.08;
+	float magOffY = 17.68;
 	float magOffZ = -30;
 
 	
@@ -200,7 +192,7 @@ public:
 	float compRatio1 = 0.00072;  // roll comp filter ratio 
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
-	float magDipConstant = 2.464; // unexplained correction factor for bank angle in dip calcs
+	float magDipConstant = 2.496; // unexplained correction factor for bank angle in dip calcs
 	float magBankTrimCr = 0.00005;
 	float magBankTrimMaxBankErr = 12;
 	

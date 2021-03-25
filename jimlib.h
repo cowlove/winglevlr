@@ -713,9 +713,9 @@ public:
 #else
 public:
 	String currentFile;
-	int fd;
-	void add(const T *v, int timo = 0) { 
-		int s = write(fd, (void *)v, sizeof(T));
+	int fd = -1;
+	void add(const T *v, int timo = 0) {
+		if (fd != -1)  int s = write(fd, (void *)v, sizeof(T));
 		//printf("%s LOG\n", v->toString().c_str()); 
 	}
 	void add(const T &v, int timo = 0) { 
@@ -725,7 +725,8 @@ public:
 		currentFile = fname;
 		char buf[64];
 		snprintf(buf, sizeof(buf), fname, 1);
-		fd = open(buf, O_WRONLY | O_CREAT, 0666);
+		if (buf != string("-") && buf != string("+"))
+			fd = open(buf, O_WRONLY | O_CREAT, 0666);
 	}
 	~SDCardBufferedLog() { close(fd); }
 	int queueLen() { return 0; }
@@ -1689,12 +1690,20 @@ float angularDiff(float a, float b) {
 	return d;
 }
 
-float magToTrue(float ang) { 
-	return ang + 15.5;		;
+inline float constrain360(float a) { 
+	if (abs(a) < 10000) { 
+		while(a <= 0) a += 360;
+		while(a > 360) a -= 360;
+	}
+	return a;
 }
 
-float trueToMag(float ang) { 
-	return ang - 15.5;		;
+inline float magToTrue(float ang) { 
+	return constrain360(ang + 15.5);		;
+}
+
+inline float trueToMag(float ang) { 
+	return constrain360(ang - 15.5);		;
 }
 
 struct LatLonAlt { 
@@ -1728,6 +1737,8 @@ Approach *findBestApproach(LatLon p) {
 	return best;
 }
 
-
+float random01() { 
+	return rand() / (RAND_MAX + 1.0);
+}
 
 #endif //#ifndef INC_JIMLIB_H

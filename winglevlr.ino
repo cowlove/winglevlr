@@ -442,7 +442,6 @@ static int testTurnAlternate = 0;
 static float testTurnLastTurnTime = 0;
 static RollingAverage<float,5> crossTrackError;
 static float xteCorrection = 0;
-static float magVar = +15.5; 
 static float navDTK = -1;
 static bool logActive = false;
 static float roll = 0, pitch = 0;
@@ -651,7 +650,7 @@ void loop() {
 				gdl90.add(buf[i]);
 				GDL90Parser::State s = gdl90.getState();
 				if (s.valid && s.updated) {
-					gpsTrackGDL90 = constrain360(s.track - magVar);
+					gpsTrackGDL90 = trueToMag(s.track);
 					ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
 					logItem.flags |= LogFlags::HdgGDL; 
 					if (hdgSelect == 2) {
@@ -772,10 +771,10 @@ void loop() {
 			gps.encode(buf[i]);
 			if (buf[i] == '\r' || buf[i] == '\n') { 
 				if (vtgCourse.isUpdated()) {  // VTG typically from G5 NMEA serial output
-					gpsTrackVTG = constrain360(gps.parseDecimal(vtgCourse.value()) * 0.01 - magVar);
+					gpsTrackVTG = trueToMag(gps.parseDecimal(vtgCourse.value()) * 0.01);
 				}
 				if (gps.course.isUpdated()) { // RMC typically from ifly NMEA output
-					gpsTrackRMC = constrain360(gps.course.deg() - magVar);
+					gpsTrackRMC = trueToMag(gps.course.deg());
 					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07); 	
 					logItem.flags |= LogFlags::HdgRMC;
 				}
@@ -785,7 +784,7 @@ void loop() {
 					gpsFixes++;
 				}
 				if (desiredHeading.isUpdated()) { 
-					navDTK = constrain360(0.01 * gps.parseDecimal(desiredHeading.value()) - magVar);
+					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
 					if (navDTK < 0)
 						navDTK += 360;
 					if (canMsgCount.isValid() == false) {
@@ -1193,13 +1192,13 @@ public:
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
 				char buf[128];
 				sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", 
-					constrain360(l.ai.gpsTrackRMC + magVar));
+					magToTrue(l.ai.gpsTrackRMC));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0) { 
 				unsigned char buf[64];
 				GDL90Parser::State s;
-				s.track = constrain360(l.ai.gpsTrackGDL90 + magVar);
+				s.track = magToTrue(l.ai.gpsTrackGDL90);
 				int len = gdl90.packMsg10(buf, s);
 				ESP32sim_udpInput(4000, string((char *)buf, len));
 			}
@@ -1214,17 +1213,21 @@ public:
 		return false;
 	}
 
-	void set_gpsTrack(float v/*true*/) { 
+	void set_gpsTrack(float t) { 
 		hdgSelect = 0;
-		if (v != -1) 
-			v = constrain360(v + 0.1 * (rand()  / (RAND_MAX + 1.0)));
+		float fuzz = 0.00;
+		float t1 = -1, t2 = -1;
+		if (t != -1) {
+			t1 = random01() < fuzz ? -1 : constrain360(t + 0.1 * random01());
+			t2 = random01() < fuzz ? -1 : constrain360(t + 0.1 * random01());
+		}
 		if (1) { 
 			// Broken 
 			GDL90Parser::State s;
 			s.lat = 0;
 			s.lon = 0;
 			s.alt = 1000 / FEET_PER_METER;
-			s.track = constrain360(v + magVar);
+			s.track = t1;
 			s.vvel = 0;
 			s.hvel = tSim.sim.speed;
 			s.palt = (s.alt + 1000) / 25;
@@ -1235,12 +1238,12 @@ public:
 			ESP32sim_udpInput(4000, buf);
 			buf.resize(128);
 			buf.resize(gdl90.packMsg10(buf.data(), s));
-			ESP32sim_udpInput(4000, buf);
-			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", v, v)); 
+			ESP32sim_udpInput(4000, buf);;
+			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", t2, t2)); 
 		} else {
 			// TODO needs both set?  Breaks with only GDL90 
-			gpsTrackGDL90 = v;
-			ahrsInput.g5Hdg = v;//v;
+			gpsTrackGDL90 = t1;
+			ahrsInput.g5Hdg = t2;;
 
 			// TODO: mComp filter breaks at millis() rollover 
 			// make winglevlr_ubuntu && time ./winglevlr_ubuntu --serial --tracksim ./tracksim_KBFI_14R.txt --seconds 10000  | grep -a "TSIM" > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; set y2tic; set ytic nomirror; p f u 5 w l, f u 6 w l, f u 7 w l ax x1y2; pause 111'
