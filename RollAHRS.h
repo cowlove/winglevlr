@@ -136,9 +136,10 @@ class MultiCompFilter {
 	float defaultCr = 0.03;
 	float age = 5.0;
 public:
-	float value, prevMainValue, bestCr, bestAux, bestAuxPri, expires, priority; 
+	float value, prevMainValue, bestCr, bestAux, bestAuxPri, expires, priority;
+	void reset() { first = true; } 
 	float calculate(float now, float v) {
-		if (first) {
+		if (first || abs(now - expires) > 20) {
 			prevMainValue = value = v;
 			bestAuxPri = -1;
 			first = false;
@@ -423,7 +424,20 @@ public:
 		return gyroZeroCount.average();
 	}
 	void reset() {
+		mComp.reset();
 		pitchRaw = pitchComp = 0;
+		gyroDriftFit.reset();
+		magHdgFit.reset();
+		magStabFit.reset();
+		avgRoll.reset();
+		avgMagHdg.reset();
+		avgGZ.reset();
+		avgGX.reset();
+		gyroZeroCount.reset();
+		magZFit.reset();
+		magXFit.reset();
+		magYFit.reset();
+		magHdgAvg.reset();
 	}
 };
 

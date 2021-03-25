@@ -735,7 +735,10 @@ void loop() {
 					else if (sscanf(it->c_str(), "IAS=%f", &v) == 1) { ahrsInput.g5Ias = v; logItem.flags |= LogFlags::g5Ps;} 
 					else if (sscanf(it->c_str(), "TAS=%f", &v) == 1) { ahrsInput.g5Tas = v; logItem.flags |= LogFlags::g5Ps;} 
 					else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) { ahrsInput.g5Palt = v; logItem.flags |= LogFlags::g5Ps;} 
-					else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) { ahrsInput.g5Hdg = v; logItem.flags |= LogFlags::g5Nav;} 
+					else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) { 
+						ahrsInput.g5Hdg = v; logItem.flags |= LogFlags::g5Nav;
+						ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
+					} 
 					else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) { ahrsInput.g5Track = v; logItem.flags |= LogFlags::g5Nav; } 
 					else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) { apMode = v; } 
 					else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) { knobSel = v; } 
@@ -818,9 +821,9 @@ void loop() {
 		}
 		if (hdgSelect == 1) { // hybrid G5/GDL90 data 
 			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale
-				if (ahrsInput.gpsTrackGDL90 != -1 || ahrsInput.gpsTrackRMC != -1) { 
+				//if (ahrsInput.gpsTrackGDL90 != -1 || ahrsInput.gpsTrackRMC != -1) { 
 					ahrsInput.selTrack = ahrsInput.g5Hdg;
-				}
+				//}
 				lastAhrsGoodG5 = ahrsInput;
 			} else if (ahrsInput.gpsTrackGDL90 != -1 && ahrsInput.gpsTrackRMC != -1) { 
 				ahrsInput.selTrack = lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90) / 2 + 
@@ -1006,7 +1009,7 @@ class TrackSimulator {
 		curPos = LatLonAlt(newPos, newAlt);
 		if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90)
 			waypointPassed = true;
-		printf("TSIM %f %f %f %d %d\n", curPos.loc.lat, curPos.loc.lon, distToWaypoint, wayPointCount, waypointPassed);
+		printf("TSIM %f %f %f %f %f %f\n", curPos.loc.lat, curPos.loc.lon, distToWaypoint, steerHdg, track, logItem.roll);
 	}	
 	function<float(float)> onNavigate = [](float steer){ return steer; };
 	void setWaypoint(const LatLonAlt &p) {
@@ -1211,25 +1214,36 @@ public:
 	}
 
 	void set_gpsTrack(float v) { 
-		GDL90Parser::State s;
-		s.lat = 0;
-		s.lon = 0;
-		s.alt = 1000 / FEET_PER_METER;
-		s.track = v + magVar;
-		s.vvel = 0;
-		s.hvel = tSim.sim.speed;
-		s.palt = (s.alt + 1000) / 25;
+		hdgSelect = 1;
+		if (1) { 
+			// Broken 
+			GDL90Parser::State s;
+			s.lat = 0;
+			s.lon = 0;
+			s.alt = 1000 / FEET_PER_METER;
+			s.track = v + magVar;
+			s.vvel = 0;
+			s.hvel = tSim.sim.speed;
+			s.palt = (s.alt + 1000) / 25;
 
-		WiFiUDP::InputData buf;
-		buf.resize(128);
-		buf.resize(gdl90.packMsg11(buf.data(), s));
-		ESP32sim_udpInput(4000, buf);
-		buf.resize(128);
-		buf.resize(gdl90.packMsg10(buf.data(), s));
-		ESP32sim_udpInput(4000, buf);
+			WiFiUDP::InputData buf;
+			buf.resize(128);
+			buf.resize(gdl90.packMsg11(buf.data(), s));
+			ESP32sim_udpInput(4000, buf);
+			buf.resize(128);
+			buf.resize(gdl90.packMsg10(buf.data(), s));
+			ESP32sim_udpInput(4000, buf);
+			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", v, v)); 
+		} else {
+			// TODO needs both set?  Breaks with only GDL90 
+			gpsTrackGDL90 = v + magVar; // TODO - pass this through ESP32sim_udpInput()
+			ahrsInput.g5Hdg = v;
 
-		gpsTrackGDL90 = v; // TODO - pass this through ESP32sim_udpInput()
-		ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", v, v)); 
+			// TODO: mComp filter breaks at millis() rollover 
+			// make winglevlr_ubuntu && time ./winglevlr_ubuntu --serial --tracksim ./tracksim_KBFI_14R.txt --seconds 10000  | grep -a "TSIM" > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; set y2tic; set ytic nomirror; p f u 5 w l, f u 6 w l, f u 7 w l ax x1y2; pause 111'
+			ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
+			ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);					
+		}
 	}
 
 	void parseArg(char **&a, char **la) override {
@@ -1282,9 +1296,10 @@ public:
 	}
 
 	bool firstLoop = true;	
-	float lastTime = 0;
+	float now, lastTime = 0;
+	bool hz(float hz) { return floor(now * hz) != floor(lastTime * hz); }
 	void loop() override {
-		float now = _micros / 1000000.0;
+		now = _micros / 1000000.0;
 		
 		if (replayFile == NULL) { 
 			if (floor(now / .1) != floor(lastTime / .1)) {
@@ -1299,6 +1314,16 @@ public:
 			if (hz100.tick(micros()/1000.0) && (trackSimFile || trackSimFile.eof())) {
 				tSim.run(hz100.interval / 1000.0);
 			}
+			if (hz(1.0/6000)) {
+				ahrs.reset();
+				rollPID.reset();
+				hdgPID.reset();
+				/*tSim.sim.onNavigate = [](float) { 
+					ahrsInput.dtk = desiredTrk = 100; 
+					return magToTrue(ahrsInput.g5Hdg); 
+				};*/
+			}
+
 		} else {
 			if (firstLoop == true) { 
 				ifile = ifstream(replayFile, ios_base::in | ios::binary);
