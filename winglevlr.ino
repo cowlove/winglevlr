@@ -1216,6 +1216,8 @@ public:
 
 	void set_gpsTrack(float v/*true*/) { 
 		hdgSelect = 0;
+		if (v != -1) 
+			v = constrain360(v + 0.1 * (rand()  / (RAND_MAX + 1.0)));
 		if (1) { 
 			// Broken 
 			GDL90Parser::State s;
