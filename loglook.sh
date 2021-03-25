@@ -87,7 +87,7 @@ while (( $# > 0 )); do
 	fi
 	if [ "$1" == "-file" ]; then 
 		F2="$2";
-		make $F2 
+		#make $F2 
 		shift; 
 	fi  
 	if [ "$1" == "-git" ]; then
