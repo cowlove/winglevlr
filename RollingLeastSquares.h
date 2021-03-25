@@ -198,7 +198,8 @@ public:
 	}  
 	T average() { return stage2.averageY(); } 
 	T slope() { return stage2.slope(); } 
-	bool full() { return stage2.count == stage2.size; } 
+	bool full() { return stage2.count == stage2.size; }
+	void reset() { stage1.reset(); stage2.reset(); idx = 0; }  
 };
 
 template <class T, int SIZE>
