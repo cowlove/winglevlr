@@ -962,6 +962,125 @@ void loop() {
 ///////////////////////////////////////////////////////////////////////////////
 // Code below this point is used in compiling/running ESP32sim simulation
 
+class TrackSimulator {
+  public: 
+	LatLonAlt curPos;
+	int wayPointCount = 0;
+	LatLonAlt activeWaypoint;
+	bool waypointPassed;
+	float speed; // knots 
+	float vvel;  // fpm
+	float steerHdg, track;
+	float lastHd, lastVd;
+	float corrH = 0, corrV = 0;
+	float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
+	void setCDI(float hd, float vd, float decisionHeight) {
+		float gain = min(1.0, curPos.alt / 200.0);
+		corrH = +0.2 * gain * ((abs(hd) < 2.0) ? hd + (hd - lastHd) * 400 : 0);
+		if (abs(vd) < 2.0) 
+			corrV += (gain * -0.01 * (vd + (vd - lastVd) * 30));
+		lastHd = hd;
+		lastVd = vd;
+	}
+
+	void run(float sec) { 
+		float distToWaypoint = 0;
+		if (!curPos.valid)
+			return;
+		if (activeWaypoint.valid && !waypointPassed) {
+			steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
+			distToWaypoint = distance(curPos.loc, activeWaypoint.loc);
+			if (distToWaypoint < 100) 
+				waypointPassed = true;
+		}
+		float distTravelled = speed * .51444 * sec;
+		float newAlt = curPos.alt;
+
+		//if (distToWaypoint > 0 ) 
+		//	newAlt += (activeWaypoint.alt - curPos.alt) * (distTravelled / distToWaypoint) + vWiggle;
+		//newAlt += corrV;//distToWaypoint / 1000;
+		//steerHdg += corrH;//distToWaypoint / 1000;
+		vvel = (newAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
+		track = onNavigate(steerHdg);
+		LatLon newPos = locationBearingDistance(curPos.loc, track, distTravelled);
+		curPos = LatLonAlt(newPos, newAlt);
+		if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90)
+			waypointPassed = true;
+		printf("TSIM %f %f %f %d %d\n", curPos.loc.lat, curPos.loc.lon, distToWaypoint, wayPointCount, waypointPassed);
+	}	
+	function<float(float)> onNavigate = [](float steer){ return steer; };
+	void setWaypoint(const LatLonAlt &p) {
+		activeWaypoint = p;
+		waypointPassed = false;
+		wayPointCount++;
+		if (wayPointCount == 1) { // first waypoint, initial position
+			curPos = activeWaypoint;
+			waypointPassed = true;
+		}
+	}
+};
+
+// HACK - shit to make this compile when transplanted from autotrim 
+float vd, hd;
+struct { 
+	int mode;
+} isrData;
+float g5KnobValues[6];
+
+class TrackSimFileParser { 
+	std::istream &in;
+public:
+	TrackSimulator sim;
+	float endAlt = -1;
+	int autoPilotOn = 0, repeat = 0, decisionHeight = -1;
+	TrackSimFileParser(std::istream &i) : in(i) {}
+	void run(float sec) { 
+		if (sim.activeWaypoint.valid == false || sim.waypointPassed)  
+			readNextWaypoint();
+		if (autoPilotOn) { 
+			sim.setCDI(hd, vd, decisionHeight / FEET_PER_METER);
+		} 
+		sim.run(sec);
+		if (sim.curPos.valid && sim.curPos.alt < endAlt) 
+			ESP32sim_exit();
+	}
+	void readNextWaypoint() { 
+		double lat, lon, alt, track;
+		int knobSel;
+		float knobVal;
+		std::string s;
+		sim.activeWaypoint.valid = false;
+		if (in.eof() && repeat) { 
+			in.clear();
+			in.seekg(0);
+		} 
+		while(sim.activeWaypoint.valid == false && std::getline(in, s)) {
+			cout << "READ LINE: " << s<< endl;
+
+			if (s.find("#") != string::npos)
+				continue;
+			sscanf(s.c_str(), "SPEED=%f", &sim.speed);
+			sscanf(s.c_str(), "ENDALT=%f", &endAlt);
+			sscanf(s.c_str(), "AP=%d", &autoPilotOn);
+			sscanf(s.c_str(), "DH=%d", &decisionHeight);
+			sscanf(s.c_str(), "HDG=%f", &sim.steerHdg);
+			sscanf(s.c_str(), "MODE=%d", &isrData.mode);
+			sscanf(s.c_str(), "REPEAT=%d", &repeat);
+			if (sscanf(s.c_str(), "KNOB=%d,%f", &knobSel, &knobVal) == 2 && knobSel > 0 && knobSel < sizeof(g5KnobValues)/sizeof(g5KnobValues[0]))
+				g5KnobValues[knobSel] = knobVal; 
+			if (sscanf(s.c_str(), "%lf, %lf %lf %lf", &lat, &lon, &alt, &track) == 4) {  
+				sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
+				sim.steerHdg = track;
+			} else if (sscanf(s.c_str(), "%lf, %lf %lf", &lat, &lon, &alt) == 3) 
+				sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
+			else if (sscanf(s.c_str(), "%lf, %lf", &lat, &lon) == 2) 
+				sim.setWaypoint(LatLonAlt(lat, lon, sim.activeWaypoint.alt));
+		}	
+	}
+};
+
+
+
 bool ESP32sim_replayLogItem(ifstream &);
 float ESP32sim_pitchCmd = 940.0;
 void ESP32sim_set_gpsTrackGDL90(float v);
@@ -969,6 +1088,10 @@ void ESP32sim_done();
 
 class FlightSim { 
 public:
+	ifstream trackSimFile;
+	TrackSimFileParser tSim = TrackSimFileParser(trackSimFile);
+	IntervalTimer hz100 = IntervalTimer(100/*msec*/);
+
 	ifstream ifile;
 	const char *replayFile = NULL;
 	int logSkip = 0;
@@ -1050,6 +1173,9 @@ public:
 				ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5hdg));
 			}
 			flightSim(imu);
+			if (hz100.tick(micros()/1000.0) && (trackSimFile || trackSimFile.eof())) {
+				tSim.run(hz100.interval / 1000.0);
+			}
 		} else {
 			if (firstLoop == true) { 
 				ifile = ifstream(replayFile, ios_base::in | ios::binary);
@@ -1150,13 +1276,15 @@ void ESP32sim_set_gpsTrackGDL90(float v) {
 }
 
 class ESP32sim_winglevlr : public ESP32sim_Module {
+
 	void parseArg(char **&a, char **la) override {
 		if (strcmp(*a, "--replay") == 0) fsim.replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0) fsim.logSkip = atoi(*(++a));
 		else if (strcmp(*a, "--log") == 0) { 
 			bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFileName = (*(++a));
-		}	
+		}else if (strcmp(*a, "--tracksim") == 0) 
+				fsim.trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
 		else if (strcmp(*a, "--logConvert") == 0) {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
@@ -1166,10 +1294,16 @@ class ESP32sim_winglevlr : public ESP32sim_Module {
 		else if (strcmp(*a, "--debug") == 0) ESP32sim_setDebug(*(++a));
 	}	
 	void setup() override {
-		bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
-		bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
-		bm.addPress(pins.topButton, 500, 1, false); // top short press - hdg hold 
-		ahrsInput.dtk = desiredTrk = 90;
+		if (fsim.replayFile == NULL) { 
+			bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
+			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
+			bm.addPress(pins.topButton, 10, 1, false); // top short press - hdg hold 
+			ahrsInput.dtk = desiredTrk = 90;
+			fsim.tSim.sim.onNavigate = [](float s) { 
+				ahrsInput.dtk = desiredTrk = trueToMag(s);
+				return magToTrue(ahrsInput.g5Hdg);
+			};
+		}
 	}
 	void loop() override {
 		fsim.ESP32sim_run(imu);
