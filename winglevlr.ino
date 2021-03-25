@@ -330,9 +330,8 @@ void setup() {
 	udpG90.begin(4000);
 	udpNMEA.begin(7892);
 	
-	lastAhrsGoodG5.g5Hdg = 0;
-	lastAhrsGoodG5.gpsTrackGDL90 = 17;
-	lastAhrsGoodG5.gpsTrackRMC = 17;
+	lastAhrsGoodG5.g5Hdg  = lastAhrsGoodG5.gpsTrackGDL90 = lastAhrsGoodG5.gpsTrackRMC = -1;
+	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = -1;
 	
 	// Set up PID gains 
 	rollPID.setGains(7.52, 0.05, 0.11);
@@ -558,7 +557,7 @@ void loop() {
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
 				if (butFilt.wasCount == 1) {
-					desiredTrk = angularDiff(desiredTrk - 10);
+					desiredTrk = constrain360(desiredTrk - 10);
 					apMode = 1;
 				} else { 
 					hdgSelect = (hdgSelect + 1) % 4;
@@ -585,7 +584,7 @@ void loop() {
 				testTurnAlternate = 0;
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	
-				desiredTrk = angularDiff(desiredTrk + 10);
+				desiredTrk = constrain360(desiredTrk + 10);
 				apMode = 1;
 			}
 		}
@@ -816,22 +815,23 @@ void loop() {
 
 		if (hdgSelect == 0) { // mode 0, use GDL90 until first can message, then switch to G5
 			ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
-			if (canMsgCount.isValid() == true) // switch to G5 on first CAN msg
+			if (ahrsInput.g5Hdg != -1) //canMsgCount.isValid() == true) // switch to G5 on first CAN msg
 				hdgSelect = 1;  
 		}
 		if (hdgSelect == 1) { // hybrid G5/GDL90 data 
-			if (g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale
+			if (ahrsInput.g5Hdg != -1 && g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { // use g5 data if it's not stale
 				//if (ahrsInput.gpsTrackGDL90 != -1 || ahrsInput.gpsTrackRMC != -1) { 
 					ahrsInput.selTrack = ahrsInput.g5Hdg;
 				//}
 				lastAhrsGoodG5 = ahrsInput;
-			} else if (ahrsInput.gpsTrackGDL90 != -1 && ahrsInput.gpsTrackRMC != -1) { 
-				ahrsInput.selTrack = lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90) / 2 + 
-				 angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC) / 2;
-			} else if (ahrsInput.gpsTrackGDL90 != -1) { // otherwise use change in GDL90 data 
-				ahrsInput.selTrack = lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90); 
-			} else if (ahrsInput.gpsTrackRMC != -1) { // otherwise use change in VTG data 
-				ahrsInput.selTrack = lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC); 
+			} else if (lastAhrsGoodG5.selTrack != -1 && ahrsInput.gpsTrackGDL90 != -1 && ahrsInput.gpsTrackRMC != -1
+				&& lastAhrsGoodG5.gpsTrackGDL90 != -1 && lastAhrsGoodG5.gpsTrackRMC != - 1) { 
+				ahrsInput.selTrack = constrain360(lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90) / 2 + 
+				 angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC) / 2);
+			} else if (lastAhrsGoodG5.selTrack != -1 && ahrsInput.gpsTrackGDL90 != -1 && lastAhrsGoodG5.gpsTrackGDL90 != -1) { // otherwise use change in GDL90 data 
+				ahrsInput.selTrack = constrain360(lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90));
+			} else if (lastAhrsGoodG5.selTrack != -1 && ahrsInput.gpsTrackRMC != -1 &&  lastAhrsGoodG5.gpsTrackRMC != -1) { // otherwise use change in VTG data 
+				ahrsInput.selTrack = constrain360(lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC)); 
 			} else { // otherwise, no available heading/track data 
 				ahrsInput.selTrack = -1;
 			}
@@ -993,7 +993,7 @@ class TrackSimulator {
 		if (activeWaypoint.valid && !waypointPassed) {
 			steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
 			distToWaypoint = distance(curPos.loc, activeWaypoint.loc);
-			if (distToWaypoint < 100) 
+			if (distToWaypoint < 200) 
 				waypointPassed = true;
 		}
 		float distTravelled = speed * .51444 * sec;
@@ -1192,13 +1192,14 @@ public:
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
 				char buf[128];
-				sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", l.ai.gpsTrackRMC + magVar);
+				sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", 
+					constrain360(l.ai.gpsTrackRMC + magVar));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0) { 
 				unsigned char buf[64];
 				GDL90Parser::State s;
-				s.track = l.ai.gpsTrackGDL90 + magVar;
+				s.track = constrain360(l.ai.gpsTrackGDL90 + magVar);
 				int len = gdl90.packMsg10(buf, s);
 				ESP32sim_udpInput(4000, string((char *)buf, len));
 			}
@@ -1213,15 +1214,15 @@ public:
 		return false;
 	}
 
-	void set_gpsTrack(float v) { 
-		hdgSelect = 1;
+	void set_gpsTrack(float v/*true*/) { 
+		hdgSelect = 0;
 		if (1) { 
 			// Broken 
 			GDL90Parser::State s;
 			s.lat = 0;
 			s.lon = 0;
 			s.alt = 1000 / FEET_PER_METER;
-			s.track = v + magVar;
+			s.track = constrain360(v + magVar);
 			s.vvel = 0;
 			s.hvel = tSim.sim.speed;
 			s.palt = (s.alt + 1000) / 25;
@@ -1236,8 +1237,8 @@ public:
 			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", v, v)); 
 		} else {
 			// TODO needs both set?  Breaks with only GDL90 
-			gpsTrackGDL90 = v + magVar; // TODO - pass this through ESP32sim_udpInput()
-			ahrsInput.g5Hdg = v;
+			gpsTrackGDL90 = v;
+			ahrsInput.g5Hdg = v;//v;
 
 			// TODO: mComp filter breaks at millis() rollover 
 			// make winglevlr_ubuntu && time ./winglevlr_ubuntu --serial --tracksim ./tracksim_KBFI_14R.txt --seconds 10000  | grep -a "TSIM" > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; set y2tic; set ytic nomirror; p f u 5 w l, f u 6 w l, f u 7 w l ax x1y2; pause 111'
@@ -1288,9 +1289,9 @@ public:
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
 			bm.addPress(pins.topButton, 10, 1, false); // top short press - hdg hold 
 			ahrsInput.dtk = desiredTrk = 90;
-			tSim.sim.onNavigate = [](float s) { 
+			tSim.sim.onNavigate = [&](float s) { 
 				ahrsInput.dtk = desiredTrk = trueToMag(s);
-				return magToTrue(ahrsInput.g5Hdg);
+				return magToTrue(track);
 			};
 		}
 	}
@@ -1308,16 +1309,17 @@ public:
 				float g5pitch = pitch * M_PI / 180;
 				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", 90, 100, 1000));
 				ESP32sim_udpInput(7891, strfmt("P=%f R=%f\n", g5pitch, g5roll));
-				ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5hdg));
+				// now handled by onNavigate();
+				//ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5hdg));
 			}
 			flightSim(imu);
 			if (hz100.tick(micros()/1000.0) && (trackSimFile || trackSimFile.eof())) {
 				tSim.run(hz100.interval / 1000.0);
 			}
 			if (false && hz(1.0/6000)) {
-				ahrs.reset();
-				rollPID.reset();
-				hdgPID.reset();
+				//ahrs.reset();
+				//rollPID.reset();
+				//hdgPID.reset();
 				/*tSim.sim.onNavigate = [](float) { 
 					ahrsInput.dtk = desiredTrk = 100; 
 					return magToTrue(ahrsInput.g5Hdg); 
