@@ -19,6 +19,9 @@
 #include "PidControl.h"
 #include "RollAHRS.h"
 #include "G90Parser.h"
+#include "WaypointNav.h"
+using WaypointNav::trueToMag;
+using WaypointNav::magToTrue;
 
 WiFiMulti wifi;
 
@@ -974,7 +977,8 @@ void ESP32sim_done();
 class ESP32sim_winglevlr : public ESP32sim_Module {
 public:
 	ifstream trackSimFile;
-	TrackSimFileParser tSim = TrackSimFileParser(trackSimFile);
+	//using WaypointNav::TrackSimFileParser;
+	WaypointNav::TrackSimFileParser tSim = WaypointNav::TrackSimFileParser(trackSimFile);
 	IntervalTimer hz100 = IntervalTimer(100/*msec*/);
 
 	ifstream ifile;
