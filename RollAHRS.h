@@ -68,6 +68,13 @@ struct AhrsInputB {
 
 typedef AhrsInputB AhrsInput; 
 
+inline float constrain360(float a) { 
+	if (abs(a) < 10000) { 
+		while(a <= 0) a += 360;
+		while(a > 360) a -= 360;
+	}
+	return a;
+}
 
 class Windup360 {
 public:
