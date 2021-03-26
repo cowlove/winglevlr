@@ -171,7 +171,7 @@ namespace WaypointNav {
 
 
     using namespace std;
-    class TrackSimulator {
+    class WaypointTracker {
     public: 
         LatLonAlt curPos;
         int wayPointCount = 0;
@@ -210,13 +210,13 @@ namespace WaypointNav {
             newAlt += corrV;//distToWaypoint / 1000;
             steerHdg += corrH;//distToWaypoint / 1000;
             vvel = (newAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
-            track = onNavigate(steerHdg);
+            track = onSteer(steerHdg);
             LatLon newPos = locationBearingDistance(curPos.loc, track, distTravelled);
             curPos = LatLonAlt(newPos, newAlt);
             if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90)
                 waypointPassed = true;
         }	
-        std::function<float(float)> onNavigate = [](float steer){ return steer; };
+        std::function<float(float)> onSteer = [](float steer){ return steer; };
         void setWaypoint(const LatLonAlt &p) {
             activeWaypoint = p;
             waypointPassed = false;
@@ -233,20 +233,20 @@ namespace WaypointNav {
 
 
 
-    class TrackSimFileParser { 
+    class WaypointSequencer { 
         istream &in;
     public:
         std::map<std::string,float> inputs; 
-        TrackSimulator sim;
+        WaypointTracker wptTracker;
         float endAlt = -1;
         int autoPilotOn = 0, repeat = 0, decisionHeight = -1;
-        TrackSimFileParser(std::istream &i) : in(i) {}
+        WaypointSequencer(std::istream &i) : in(i) {}
         void run(float timestep) { 
-            if (sim.activeWaypoint.valid == false || sim.waypointPassed)  
+            if (wptTracker.activeWaypoint.valid == false || wptTracker.waypointPassed)  
                 readNextWaypoint(timestep);
-            sim.run(timestep);
+            wptTracker.run(timestep);
     #ifdef UBUNTU
-            if (sim.curPos.valid && sim.curPos.alt < endAlt) 
+            if (wptTracker.curPos.valid && wptTracker.curPos.alt < endAlt) 
                 ESP32sim_exit();
     #endif
         }
@@ -258,33 +258,33 @@ namespace WaypointNav {
             if (waitTime > 0 && (waitTime -= timestep) > 0) 
                 return;
 
-            sim.activeWaypoint.valid = false;
+            wptTracker.activeWaypoint.valid = false;
             if (in.eof() && repeat) { 
                 in.clear();
                 in.seekg(0);
             } 
-            while(sim.activeWaypoint.valid == false && std::getline(in, s)) {
+            while(wptTracker.activeWaypoint.valid == false && std::getline(in, s)) {
                 cout << "READ LINE: " << s << endl;
                 char buf[128];
                 float f; 
                 if (s.find("#") != std::string::npos)
                     continue;
-                sscanf(s.c_str(), "SPEED %f", &sim.speed);
+                sscanf(s.c_str(), "SPEED %f", &wptTracker.speed);
                 sscanf(s.c_str(), "ENDALT %f", &endAlt);
                 sscanf(s.c_str(), "AP %d", &autoPilotOn);
-                sscanf(s.c_str(), "HDG %f", &sim.steerHdg);
+                sscanf(s.c_str(), "HDG %f", &wptTracker.steerHdg);
                 sscanf(s.c_str(), "WAIT %f", &waitTime);
                 
                 // TODO: parse string labels instead of int INPUT.MODE=0
                 if (sscanf(s.c_str(), "INPUT.%s %f", buf, &f) == 2) { inputs[buf] = f; }
                 sscanf(s.c_str(), "REPEAT %d", &repeat);
                 if (sscanf(s.c_str(), "%lf, %lf %lf %lf", &lat, &lon, &alt, &track) == 4) {  
-                    sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
-                    sim.steerHdg = track;
+                    wptTracker.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
+                    wptTracker.steerHdg = track;
                 } else if (sscanf(s.c_str(), "%lf, %lf %lf", &lat, &lon, &alt) == 3) 
-                    sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
+                    wptTracker.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
                 else if (sscanf(s.c_str(), "%lf, %lf", &lat, &lon) == 2) 
-                    sim.setWaypoint(LatLonAlt(lat, lon, sim.activeWaypoint.alt));
+                    wptTracker.setWaypoint(LatLonAlt(lat, lon, wptTracker.activeWaypoint.alt));
             }	
         }
     };
