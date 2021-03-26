@@ -978,7 +978,7 @@ class ESP32sim_winglevlr : public ESP32sim_Module {
 public:
 	ifstream trackSimFile;
 	//using WaypointNav::TrackSimFileParser;
-	WaypointNav::TrackSimFileParser tSim = WaypointNav::TrackSimFileParser(trackSimFile);
+	WaypointNav::WaypointSequencer tSim = WaypointNav::WaypointSequencer(trackSimFile);
 	IntervalTimer hz100 = IntervalTimer(100/*msec*/);
 
 	ifstream ifile;
@@ -1011,7 +1011,7 @@ public:
 		imu->gy = 0.0 + rollCmd.average() * 10.0;
 		bank += imu->gy * (3500.0 / 1000000.0);
 		bank = max(-20.0, min(20.0, (double)bank));
-		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
+		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm, track, 0.0, bank, imu->gy);
 		}		
@@ -1115,7 +1115,7 @@ public:
 			s.alt = 1000 / FEET_PER_METER;
 			s.track = t1;
 			s.vvel = 0;
-			s.hvel = tSim.sim.speed;
+			s.hvel = tSim.wptTracker.speed;
 			s.palt = (s.alt + 1000) / 25;
 
 			WiFiUDP::InputData buf;
@@ -1179,8 +1179,8 @@ public:
 			bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
 			bm.addPress(pins.topButton, 10, 1, false); // top short press - hdg hold 
-			ahrsInput.dtk = desiredTrk = 90;
-			tSim.sim.onNavigate = [&](float s) { 
+			ahrsInput.dtk = desiredTrk = 180;
+			tSim.wptTracker.onSteer = [&](float s) { 
 				ahrsInput.dtk = desiredTrk = trueToMag(s);
 				return magToTrue(track);
 			};
@@ -1211,7 +1211,7 @@ public:
 				//ahrs.reset();
 				//rollPID.reset();
 				//hdgPID.reset();
-				/*tSim.sim.onNavigate = [](float) { 
+				/*tSim.wptTracker.onNavigate = [](float) { 
 					ahrsInput.dtk = desiredTrk = 100; 
 					return magToTrue(ahrsInput.g5Hdg); 
 				};*/
