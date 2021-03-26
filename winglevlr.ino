@@ -253,7 +253,7 @@ bool imuRead() {
 LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
 bool logChanging = false;
-const char *logFileName = "AHRSD%03d.DAT";
+const char *logFileName = "WL%03d.DAT";
 
 void sdLog()  {
 	//Serial.println(x.toString());
@@ -899,6 +899,10 @@ void loop() {
 		logItem.pwmOutput = pwmOutput;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
+		logItem.magHdg = ahrs.magHdg;
+		logItem.bankAngle = ahrs.bankAngle;
+		logItem.magBank = ahrs.magBank;
+		
 		logItem.ai = ahrsInput;
 		//logItem.ai.q3 = ahrs.magCorr; 
 
@@ -911,7 +915,7 @@ void loop() {
 
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
-			cout << logItem.toString().c_str() << " " <<  ahrs.magHdg << " " << ahrs.bankAngle << " " << ahrs.magBank/*33*/  << " LOG U" << endl;
+			cout << logItem.toString().c_str() << " LOG U" << endl;
 		}
 #endif
 		logItem.flags = 0;
@@ -1260,7 +1264,7 @@ public:
 		else if (strcmp(*a, "--logConvert") == 0) {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
-			ESP32sim_convertLogCtoD(i, o);
+			ESP32sim_convertLogOldToNew(i, o);
 			exit(0);
 		} else if (strcmp(*a, "--debug") == 0) {
 			vector<string> l = split(string(*(++a)), ',');
