@@ -1859,7 +1859,7 @@ public:
 			sscanf(s.c_str(), "AP=%d", &autoPilotOn);
 			sscanf(s.c_str(), "HDG=%f", &sim.steerHdg);
 			// TODO: parse string labels instead of int INPUT.MODE=0
-			if (sscanf(s.c_str(), "INPUT.%d=%f", &d, &f) == 2) { inputs[to_string(d)] = f; }
+			if (sscanf(s.c_str(), "INPUT.%d=%f", &d, &f) == 2) { inputs[String(d).c_str()] = f; }
 			sscanf(s.c_str(), "REPEAT=%d", &repeat);
 			if (sscanf(s.c_str(), "%lf, %lf %lf %lf", &lat, &lon, &alt, &track) == 4) {  
 				sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
