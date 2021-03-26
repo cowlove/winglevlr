@@ -1729,10 +1729,10 @@ Approach *findBestApproach(LatLon p) {
 			best = &approaches[n]; 
 	}
 	if (best != NULL) { 
-		Serial.printf("Chose '%s', bearing %.1f, distTravelled %.1f\n", best->name, 
+		printf("Chose '%s', bearing %.1f, distTravelled %.1f\n", best->name, 
 			bearing(p, LatLon(best->lat, best->lon)), distance(p, LatLon(best->lat, best->lon)));
 	} else { 
-		Serial.printf("No best approach?\n");
+		printf("No best approach?\n");
 	}
 	return best;
 }
@@ -1829,19 +1829,23 @@ public:
 	float endAlt = -1;
 	int autoPilotOn = 0, repeat = 0, decisionHeight = -1;
 	TrackSimFileParser(std::istream &i) : in(i) {}
-	void run(float sec) { 
+	void run(float timestep) { 
 		if (sim.activeWaypoint.valid == false || sim.waypointPassed)  
-			readNextWaypoint();
-		sim.run(sec);
+			readNextWaypoint(timestep);
+		sim.run(timestep);
 #ifdef UBUNTU
 		if (sim.curPos.valid && sim.curPos.alt < endAlt) 
 			ESP32sim_exit();
 #endif
 	}
-	void readNextWaypoint() { 
+	float waitTime = 0;
+	void readNextWaypoint(float timestep) { 
 		double lat, lon, alt, track;
 		using namespace std;
 		std::string s;
+		if (waitTime > 0 && (waitTime -= timestep) > 0) 
+			return;
+
 		sim.activeWaypoint.valid = false;
 		if (in.eof() && repeat) { 
 			in.clear();
@@ -1851,16 +1855,17 @@ public:
 			cout << "READ LINE: " << s << endl;
 			char buf[128];
 			float f; 
-			int d;
 			if (s.find("#") != std::string::npos)
 				continue;
-			sscanf(s.c_str(), "SPEED=%f", &sim.speed);
-			sscanf(s.c_str(), "ENDALT=%f", &endAlt);
-			sscanf(s.c_str(), "AP=%d", &autoPilotOn);
-			sscanf(s.c_str(), "HDG=%f", &sim.steerHdg);
+			sscanf(s.c_str(), "SPEED %f", &sim.speed);
+			sscanf(s.c_str(), "ENDALT %f", &endAlt);
+			sscanf(s.c_str(), "AP %d", &autoPilotOn);
+			sscanf(s.c_str(), "HDG %f", &sim.steerHdg);
+			sscanf(s.c_str(), "WAIT %f", &waitTime);
+			
 			// TODO: parse string labels instead of int INPUT.MODE=0
-			if (sscanf(s.c_str(), "INPUT.%d=%f", &d, &f) == 2) { inputs[String(d).c_str()] = f; }
-			sscanf(s.c_str(), "REPEAT=%d", &repeat);
+			if (sscanf(s.c_str(), "INPUT.%s %f", buf, &f) == 2) { inputs[buf] = f; }
+			sscanf(s.c_str(), "REPEAT %d", &repeat);
 			if (sscanf(s.c_str(), "%lf, %lf %lf %lf", &lat, &lon, &alt, &track) == 4) {  
 				sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
 				sim.steerHdg = track;
