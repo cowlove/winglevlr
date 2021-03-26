@@ -31,8 +31,8 @@ using namespace std;
 
 typedef char byte;
 static uint64_t _micros = 0;
-//uint64_t micros() { return ++_micros; }
-uint64_t micros() { return ++_micros & 0xffffffff; }
+static uint64_t _microsMax = 0xffffffff;
+uint64_t micros() { return _microsMax > 0 ? ++_micros & _microsMax : ++_micros; }
 uint64_t millis() { return ++_micros / 1000; }
 
 // Stub out FreeRTOS stuff 

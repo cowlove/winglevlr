@@ -19,6 +19,9 @@
 #include "PidControl.h"
 #include "RollAHRS.h"
 #include "G90Parser.h"
+#include "WaypointNav.h"
+using WaypointNav::trueToMag;
+using WaypointNav::magToTrue;
 
 WiFiMulti wifi;
 
@@ -442,7 +445,6 @@ static int testTurnAlternate = 0;
 static float testTurnLastTurnTime = 0;
 static RollingAverage<float,5> crossTrackError;
 static float xteCorrection = 0;
-static float magVar = +15.5; 
 static float navDTK = -1;
 static bool logActive = false;
 static float roll = 0, pitch = 0;
@@ -651,7 +653,7 @@ void loop() {
 				gdl90.add(buf[i]);
 				GDL90Parser::State s = gdl90.getState();
 				if (s.valid && s.updated) {
-					gpsTrackGDL90 = constrain360(s.track - magVar);
+					gpsTrackGDL90 = trueToMag(s.track);
 					ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
 					logItem.flags |= LogFlags::HdgGDL; 
 					if (hdgSelect == 2) {
@@ -772,10 +774,10 @@ void loop() {
 			gps.encode(buf[i]);
 			if (buf[i] == '\r' || buf[i] == '\n') { 
 				if (vtgCourse.isUpdated()) {  // VTG typically from G5 NMEA serial output
-					gpsTrackVTG = constrain360(gps.parseDecimal(vtgCourse.value()) * 0.01 - magVar);
+					gpsTrackVTG = trueToMag(gps.parseDecimal(vtgCourse.value()) * 0.01);
 				}
 				if (gps.course.isUpdated()) { // RMC typically from ifly NMEA output
-					gpsTrackRMC = constrain360(gps.course.deg() - magVar);
+					gpsTrackRMC = trueToMag(gps.course.deg());
 					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07); 	
 					logItem.flags |= LogFlags::HdgRMC;
 				}
@@ -785,7 +787,7 @@ void loop() {
 					gpsFixes++;
 				}
 				if (desiredHeading.isUpdated()) { 
-					navDTK = constrain360(0.01 * gps.parseDecimal(desiredHeading.value()) - magVar);
+					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
 					if (navDTK < 0)
 						navDTK += 360;
 					if (canMsgCount.isValid() == false) {
@@ -969,124 +971,6 @@ void loop() {
 ///////////////////////////////////////////////////////////////////////////////
 // Code below this point is used in compiling/running ESP32sim simulation
 
-class TrackSimulator {
-  public: 
-	LatLonAlt curPos;
-	int wayPointCount = 0;
-	LatLonAlt activeWaypoint;
-	bool waypointPassed;
-	float speed; // knots 
-	float vvel;  // fpm
-	float steerHdg, track;
-	float lastHd, lastVd;
-	float corrH = 0, corrV = 0;
-	float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
-	void setCDI(float hd, float vd, float decisionHeight) {
-		float gain = min(1.0, curPos.alt / 200.0);
-		corrH = +0.2 * gain * ((abs(hd) < 2.0) ? hd + (hd - lastHd) * 400 : 0);
-		if (abs(vd) < 2.0) 
-			corrV += (gain * -0.01 * (vd + (vd - lastVd) * 30));
-		lastHd = hd;
-		lastVd = vd;
-	}
-
-	void run(float sec) { 
-		float distToWaypoint = 0;
-		if (!curPos.valid)
-			return;
-		if (activeWaypoint.valid && !waypointPassed) {
-			steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
-			distToWaypoint = distance(curPos.loc, activeWaypoint.loc);
-			if (distToWaypoint < 200) 
-				waypointPassed = true;
-		}
-		float distTravelled = speed * .51444 * sec;
-		float newAlt = curPos.alt;
-
-		//if (distToWaypoint > 0 ) 
-		//	newAlt += (activeWaypoint.alt - curPos.alt) * (distTravelled / distToWaypoint) + vWiggle;
-		//newAlt += corrV;//distToWaypoint / 1000;
-		//steerHdg += corrH;//distToWaypoint / 1000;
-		vvel = (newAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
-		track = onNavigate(steerHdg);
-		LatLon newPos = locationBearingDistance(curPos.loc, track, distTravelled);
-		curPos = LatLonAlt(newPos, newAlt);
-		if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90)
-			waypointPassed = true;
-		printf("TSIM %f %f %f %f %f %f\n", curPos.loc.lat, curPos.loc.lon, distToWaypoint, steerHdg, track, logItem.roll);
-	}	
-	function<float(float)> onNavigate = [](float steer){ return steer; };
-	void setWaypoint(const LatLonAlt &p) {
-		activeWaypoint = p;
-		waypointPassed = false;
-		wayPointCount++;
-		if (wayPointCount == 1) { // first waypoint, initial position
-			curPos = activeWaypoint;
-			waypointPassed = true;
-		}
-	}
-};
-
-// HACK - shit to make this compile when transplanted from autotrim 
-float vd, hd;
-struct { 
-	int mode;
-} isrData;
-float g5KnobValues[6];
-
-class TrackSimFileParser { 
-	std::istream &in;
-public:
-	TrackSimulator sim;
-	float endAlt = -1;
-	int autoPilotOn = 0, repeat = 0, decisionHeight = -1;
-	TrackSimFileParser(std::istream &i) : in(i) {}
-	void run(float sec) { 
-		if (sim.activeWaypoint.valid == false || sim.waypointPassed)  
-			readNextWaypoint();
-		if (autoPilotOn) { 
-			sim.setCDI(hd, vd, decisionHeight / FEET_PER_METER);
-		} 
-		sim.run(sec);
-		if (sim.curPos.valid && sim.curPos.alt < endAlt) 
-			ESP32sim_exit();
-	}
-	void readNextWaypoint() { 
-		double lat, lon, alt, track;
-		int knobSel;
-		float knobVal;
-		std::string s;
-		sim.activeWaypoint.valid = false;
-		if (in.eof() && repeat) { 
-			in.clear();
-			in.seekg(0);
-		} 
-		while(sim.activeWaypoint.valid == false && std::getline(in, s)) {
-			cout << "READ LINE: " << s<< endl;
-
-			if (s.find("#") != string::npos)
-				continue;
-			sscanf(s.c_str(), "SPEED=%f", &sim.speed);
-			sscanf(s.c_str(), "ENDALT=%f", &endAlt);
-			sscanf(s.c_str(), "AP=%d", &autoPilotOn);
-			sscanf(s.c_str(), "DH=%d", &decisionHeight);
-			sscanf(s.c_str(), "HDG=%f", &sim.steerHdg);
-			sscanf(s.c_str(), "MODE=%d", &isrData.mode);
-			sscanf(s.c_str(), "REPEAT=%d", &repeat);
-			if (sscanf(s.c_str(), "KNOB=%d,%f", &knobSel, &knobVal) == 2 && knobSel > 0 && knobSel < sizeof(g5KnobValues)/sizeof(g5KnobValues[0]))
-				g5KnobValues[knobSel] = knobVal; 
-			if (sscanf(s.c_str(), "%lf, %lf %lf %lf", &lat, &lon, &alt, &track) == 4) {  
-				sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
-				sim.steerHdg = track;
-			} else if (sscanf(s.c_str(), "%lf, %lf %lf", &lat, &lon, &alt) == 3) 
-				sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
-			else if (sscanf(s.c_str(), "%lf, %lf", &lat, &lon) == 2) 
-				sim.setWaypoint(LatLonAlt(lat, lon, sim.activeWaypoint.alt));
-		}	
-	}
-};
-
-
 
 //bool ESP32sim_replayLogItem(ifstream &);
 float ESP32sim_pitchCmd = 940.0;
@@ -1097,7 +981,8 @@ void ESP32sim_done();
 class ESP32sim_winglevlr : public ESP32sim_Module {
 public:
 	ifstream trackSimFile;
-	TrackSimFileParser tSim = TrackSimFileParser(trackSimFile);
+	//using WaypointNav::TrackSimFileParser;
+	WaypointNav::WaypointSequencer tSim = WaypointNav::WaypointSequencer(trackSimFile);
 	IntervalTimer hz100 = IntervalTimer(100/*msec*/);
 
 	ifstream ifile;
@@ -1130,7 +1015,7 @@ public:
 		imu->gy = 0.0 + rollCmd.average() * 10.0;
 		bank += imu->gy * (3500.0 / 1000000.0);
 		bank = max(-20.0, min(20.0, (double)bank));
-		if (floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
+		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm, track, 0.0, bank, imu->gy);
 		}		
@@ -1197,13 +1082,13 @@ public:
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
 				char buf[128];
 				sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", 
-					constrain360(l.ai.gpsTrackRMC + magVar));
+					magToTrue(l.ai.gpsTrackRMC));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0) { 
 				unsigned char buf[64];
 				GDL90Parser::State s;
-				s.track = constrain360(l.ai.gpsTrackGDL90 + magVar);
+				s.track = magToTrue(l.ai.gpsTrackGDL90);
 				int len = gdl90.packMsg10(buf, s);
 				ESP32sim_udpInput(4000, string((char *)buf, len));
 			}
@@ -1218,19 +1103,23 @@ public:
 		return false;
 	}
 
-	void set_gpsTrack(float v/*true*/) { 
+	float gpsTrackFuzz = 0.00;
+	void set_gpsTrack(float t) { 
 		hdgSelect = 0;
-		if (v != -1) 
-			v = constrain360(v + 0.1 * (rand()  / (RAND_MAX + 1.0)));
+		float t1 = -1, t2 = -1;
+		if (t != -1) {
+			t1 = random01() < gpsTrackFuzz ? -1 : constrain360(t + 0.1 * random01());
+			t2 = random01() < gpsTrackFuzz ? -1 : constrain360(t + 0.1 * random01());
+		}
 		if (1) { 
 			// Broken 
 			GDL90Parser::State s;
 			s.lat = 0;
 			s.lon = 0;
 			s.alt = 1000 / FEET_PER_METER;
-			s.track = constrain360(v + magVar);
+			s.track = t1;
 			s.vvel = 0;
-			s.hvel = tSim.sim.speed;
+			s.hvel = tSim.wptTracker.speed;
 			s.palt = (s.alt + 1000) / 25;
 
 			WiFiUDP::InputData buf;
@@ -1239,12 +1128,12 @@ public:
 			ESP32sim_udpInput(4000, buf);
 			buf.resize(128);
 			buf.resize(gdl90.packMsg10(buf.data(), s));
-			ESP32sim_udpInput(4000, buf);
-			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", v, v)); 
+			ESP32sim_udpInput(4000, buf);;
+			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", t2, t2)); 
 		} else {
 			// TODO needs both set?  Breaks with only GDL90 
-			gpsTrackGDL90 = v;
-			ahrsInput.g5Hdg = v;//v;
+			gpsTrackGDL90 = t1;
+			ahrsInput.g5Hdg = t2;;
 
 			// TODO: mComp filter breaks at millis() rollover 
 			// make winglevlr_ubuntu && time ./winglevlr_ubuntu --serial --tracksim ./tracksim_KBFI_14R.txt --seconds 10000  | grep -a "TSIM" > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; set y2tic; set ytic nomirror; p f u 5 w l, f u 6 w l, f u 7 w l ax x1y2; pause 111'
@@ -1294,8 +1183,8 @@ public:
 			bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
 			bm.addPress(pins.topButton, 10, 1, false); // top short press - hdg hold 
-			ahrsInput.dtk = desiredTrk = 90;
-			tSim.sim.onNavigate = [&](float s) { 
+			ahrsInput.dtk = desiredTrk = 180;
+			tSim.wptTracker.onSteer = [&](float s) { 
 				ahrsInput.dtk = desiredTrk = trueToMag(s);
 				return magToTrue(track);
 			};
@@ -1326,7 +1215,7 @@ public:
 				//ahrs.reset();
 				//rollPID.reset();
 				//hdgPID.reset();
-				/*tSim.sim.onNavigate = [](float) { 
+				/*tSim.wptTracker.onNavigate = [](float) { 
 					ahrsInput.dtk = desiredTrk = 100; 
 					return magToTrue(ahrsInput.g5Hdg); 
 				};*/
