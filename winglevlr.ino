@@ -25,7 +25,8 @@ using WaypointNav::magToTrue;
 
 WiFiMulti wifi;
 
-SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
+//SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
+int logFileNumber = 0;
 
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
@@ -177,9 +178,9 @@ namespace Display {
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> maghdg(&jd,c2x,y,  " MAG:", "%05.1f ");
 	//JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s-"); JDisplayItem<int>   drop(&jd,c2x+30,y,    "", "%03d ");
-    //JDisplayItem<float> pidc(&jd,10,y+=20,"PIDC:", "%05.1f ");JDisplayItem<int>   serv(&jd,c2x,y,    "SERV:", "%04d ");
+    JDisplayItem<float> logw(&jd,10,y+=10,"LOGW:", "%05.0f ");
 	
-	JDisplayItem<float> pidpl(&jd,00,y+=20,"PL:", "%03.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    " TT1:", "%04.1f ");
+	JDisplayItem<float> pidpl(&jd,00,y+=10,"PL:", "%03.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    " TT1:", "%04.1f ");
 	JDisplayItem<float> pidph(&jd,00,y+=10,"PH:", "%03.2f "); JDisplayItem<float> ttlt(&jd,c2x,y,    " TT2:", "%04.1f ");;
 	JDisplayItem<float>  pidi(&jd,00,y+=10," I:", "%03.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> maxi(&jd,c2x,y,    "MAXI:", "%04.1f ");
@@ -952,6 +953,7 @@ void loop() {
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
 		Display::drop = logFile != NULL ? logFile->dropped : -1;
+		Display::logw = logFile != NULL ? logFile->written : -1;
 		//Display::pitch = pitch;
 		//Display::xtec = xteCorrection; 
 		Display::log = (logFile != NULL) ? logFile->currentFile.c_str() : "none";

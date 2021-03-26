@@ -677,11 +677,12 @@ public:
 					uint64_t now = millis();
 					if (f) {
 						ScopedMutex lock(mutexSPI);
+						size_t s;
 						if (textMode)  
-							f.println(v.toString());
+							s = f.println(v.toString());
 						else 
-							f.write((uint8_t *)&v, sizeof(v));
-						written++;
+							s = f.write((uint8_t *)&v, sizeof(v));
+						if (s > 0) written++;
 					}
 					lastWrite = now;
 					//Serial.printf("WROTE\n");
