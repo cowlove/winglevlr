@@ -519,14 +519,42 @@ struct LogItemD {
 };
 
 
-typedef LogItemD LogItem;	
+struct LogItemE {
+	short pwmOutput, flags;  
+	float desRoll, roll, magHdg, bankAngle, magBank;
+	AhrsInputB ai;
+	String toString() const {
+		char buf[200];
+		snprintf(buf, sizeof(buf), " %d %d %f %f %f %f %f", (int)pwmOutput, (int)flags,
+			desRoll, roll, magHdg,  bankAngle, magBank);
+		return ai.toString() +  String(buf);
+	} 
+	LogItemE fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+	LogItemE &operator =(const LogItemD &c) {
+		ai = c.ai;
+		pwmOutput = c.pwmOutput;
+		flags = c.flags;
+		desRoll = c.desRoll;
+		roll = c.roll;
+		magHdg = -1000;
+		bankAngle = -1000;
+		magBank = -1000;
+		return *this;
+	}
+};
+
+typedef LogItemE LogItem;	
 
 
 #ifdef UBUNTU
-void ESP32sim_convertLogCtoD(ifstream &i, ofstream &o) {
-	LogItemC l; 
+void ESP32sim_convertLogOldToNew(ifstream &i, ofstream &o) {
+	LogItemD l; 
 	while (i.read((char *)&l, sizeof(l))) {
-		LogItemD l2;
+		LogItemE l2;
+		bzero(&l2, sizeof(l2));
 		l2 = l;
 		o.write((char *)&l2, sizeof(l2));
 	}
