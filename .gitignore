@@ -10,3 +10,4 @@ test.out
 *.1
 tests.OLD
 *.out
+out.plog

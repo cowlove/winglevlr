@@ -1741,4 +1741,139 @@ float random01() {
 	return rand() / (RAND_MAX + 1.0);
 }
 
+#ifdef ESP32
+
+#include <cstdint>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <cstring>
+#include <string>
+#include <stdio.h>
+#include <math.h>
+#include <stdarg.h>
+#include <iostream>
+#include <fstream>
+#include <map>
+#include <algorithm>
+#include <functional>
+
+using namespace std;
+class TrackSimulator {
+  public: 
+	LatLonAlt curPos;
+	int wayPointCount = 0;
+	LatLonAlt activeWaypoint;
+	bool waypointPassed;
+	float speed; // knots 
+	float vvel;  // fpm
+	float steerHdg, track;
+	float lastHd, lastVd;
+	float corrH = 0, corrV = 0;
+	float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
+	void setCDI(float hd, float vd, float decisionHeight) {
+		float gain = min(1.0, curPos.alt / 200.0);
+		corrH = +0.2 * gain * ((abs(hd) < 2.0) ? hd + (hd - lastHd) * 400 : 0);
+		if (abs(vd) < 2.0) 
+			corrV += (gain * -0.01 * (vd + (vd - lastVd) * 30));
+		lastHd = hd;
+		lastVd = vd;
+	}
+
+	void run(float sec) { 
+		float distToWaypoint = 0;
+		if (!curPos.valid)
+			return;
+		if (activeWaypoint.valid && !waypointPassed) {
+			steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
+			distToWaypoint = distance(curPos.loc, activeWaypoint.loc);
+			if (distToWaypoint < 200) 
+				waypointPassed = true;
+		}
+		float distTravelled = speed * .51444 * sec;
+		float newAlt = curPos.alt;
+
+		if (distToWaypoint > 0 ) 
+			newAlt += (activeWaypoint.alt - curPos.alt) * (distTravelled / distToWaypoint) + vWiggle;
+		newAlt += corrV;//distToWaypoint / 1000;
+		steerHdg += corrH;//distToWaypoint / 1000;
+		vvel = (newAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
+		track = onNavigate(steerHdg);
+		LatLon newPos = locationBearingDistance(curPos.loc, track, distTravelled);
+		curPos = LatLonAlt(newPos, newAlt);
+		if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90)
+			waypointPassed = true;
+	}	
+	std::function<float(float)> onNavigate = [](float steer){ return steer; };
+	void setWaypoint(const LatLonAlt &p) {
+		activeWaypoint = p;
+		waypointPassed = false;
+		wayPointCount++;
+		if (wayPointCount == 1) { // first waypoint, initial position
+			curPos = activeWaypoint;
+			waypointPassed = true;
+		}
+	}
+};
+
+// HACK - shit to make this compile when transplanted from autotrim 
+//float vd, hd;
+
+
+
+class TrackSimFileParser { 
+	istream &in;
+public:
+	std::map<std::string,float> inputs; 
+	TrackSimulator sim;
+	float endAlt = -1;
+	int autoPilotOn = 0, repeat = 0, decisionHeight = -1;
+	TrackSimFileParser(std::istream &i) : in(i) {}
+	void run(float sec) { 
+		if (sim.activeWaypoint.valid == false || sim.waypointPassed)  
+			readNextWaypoint();
+		sim.run(sec);
+#ifdef UBUNTU
+		if (sim.curPos.valid && sim.curPos.alt < endAlt) 
+			ESP32sim_exit();
+#endif
+	}
+	void readNextWaypoint() { 
+		double lat, lon, alt, track;
+		using namespace std;
+		std::string s;
+		sim.activeWaypoint.valid = false;
+		if (in.eof() && repeat) { 
+			in.clear();
+			in.seekg(0);
+		} 
+		while(sim.activeWaypoint.valid == false && std::getline(in, s)) {
+			cout << "READ LINE: " << s << endl;
+			char buf[128];
+			float f; 
+			int d;
+			if (s.find("#") != std::string::npos)
+				continue;
+			sscanf(s.c_str(), "SPEED=%f", &sim.speed);
+			sscanf(s.c_str(), "ENDALT=%f", &endAlt);
+			sscanf(s.c_str(), "AP=%d", &autoPilotOn);
+			sscanf(s.c_str(), "HDG=%f", &sim.steerHdg);
+			// TODO: parse string labels instead of int INPUT.MODE=0
+			if (sscanf(s.c_str(), "INPUT.%d=%f", &d, &f) == 2) { inputs[to_string(d)] = f; }
+			sscanf(s.c_str(), "REPEAT=%d", &repeat);
+			if (sscanf(s.c_str(), "%lf, %lf %lf %lf", &lat, &lon, &alt, &track) == 4) {  
+				sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
+				sim.steerHdg = track;
+			} else if (sscanf(s.c_str(), "%lf, %lf %lf", &lat, &lon, &alt) == 3) 
+				sim.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
+			else if (sscanf(s.c_str(), "%lf, %lf", &lat, &lon) == 2) 
+				sim.setWaypoint(LatLonAlt(lat, lon, sim.activeWaypoint.alt));
+		}	
+	}
+};
+
+
+
+
+#endif
 #endif //#ifndef INC_JIMLIB_H
