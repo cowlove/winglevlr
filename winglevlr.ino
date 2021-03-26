@@ -256,7 +256,7 @@ bool imuRead() {
 LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
 bool logChanging = false;
-const char *logFileName = "WL%03d.DAT";
+const char *logFileName = "AHRSD%03d.DAT";
 
 void sdLog()  {
 	//Serial.println(x.toString());
@@ -1154,6 +1154,8 @@ public:
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
 			ESP32sim_convertLogOldToNew(i, o);
+			o.flush();
+			o.close();
 			exit(0);
 		} else if (strcmp(*a, "--debug") == 0) {
 			vector<string> l = split(string(*(++a)), ',');
