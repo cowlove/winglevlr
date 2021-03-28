@@ -426,7 +426,7 @@ public:
 
 		pG = sin((compYH - gyrAng) * M_PI/180) * abs(compYH)/compYH * gyrMag;
 		pG = -i.gx;
-		pitch = (pitch + pG * cos(compYH * M_PI/180) * 1.00 /*gyroGain*/ * dt) * (1-compRatioP) + (accelPitch * compRatioP);
+		pitch = (pitch + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioP) + (accelPitch * compRatioP);
 		return compYH;
 	}	
 	
