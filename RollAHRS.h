@@ -223,7 +223,7 @@ public:
 	float magBank, magBankTrim = 0.0;
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, /*bankCorrection,*/ bankAngle;
 	float gyroTurnBank, pG;
-	float pitchComp = 0, pitchRaw = 0, pitchDrift = 0, pitchCompDriftCorrected = 0;
+	float pitch = 0;
 	float magStability = -1;
 	float hdg;
 	bool hdgInitialized = false;
@@ -236,7 +236,7 @@ public:
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
 	RollingAverage<float,20> avgMagHdg;
-	RollingAverage<float,50> avgGZ, avgGX;
+	RollingAverage<float,200> avgGZ, avgGX;
 	RollingAverage<float,200> gyroZeroCount;
 	
 	TwoStageRLS 
@@ -416,7 +416,17 @@ public:
 		prev = l;
 		
 		compYH;
-				
+
+
+		float compRatioP = 0.001;
+		float accelPitch = atan2(i.ay, i.az);
+	
+		float gyrMag = sqrt(i.gx * i.gx + i.gz * i.gz);
+		float gyrAng = atan(avgGX.average() / avgGZ.average()) * 180 / M_PI;
+
+		pG = sin((compYH - gyrAng) * M_PI/180) * abs(compYH)/compYH * gyrMag;
+		pG = -i.gx;
+		pitch = (pitch + pG * cos(compYH * M_PI/180) * 1.00 /*gyroGain*/ * dt) * (1-compRatioP) + (accelPitch * compRatioP);
 		return compYH;
 	}	
 	
@@ -425,7 +435,6 @@ public:
 	}
 	void reset() {
 		mComp.reset();
-		pitchRaw = pitchComp = 0;
 		gyroDriftFit.reset();
 		magHdgFit.reset();
 		magStabFit.reset();
@@ -441,84 +450,7 @@ public:
 	}
 };
 
-struct LogItem0 {
-	AhrsInput ai;
-	String toString() { return ai.toString(); } 
-	LogItem0 fromString(const char *s) { 
-		ai.fromString(s);
-		return *this;
-	}
-};
-
-struct LogItemA {
-	short pwmOutput, servoTrim;
-	float pidP, pidI, pidD;
-	float gainP, gainI, gainD, finalGain;
-	AhrsInput ai;
-	String toString() { return ai.toString(); } 
-	LogItemA fromString(const char *s) { 
-		ai.fromString(s);
-		return *this;
-	}
-};
-
-struct LogItemB {
-	short pwmOutput, flags;
-	float pidP, pidI, pidD;
-	float gainP, gainI, gainD, finalGain;
-	float desRoll, pitchCmd;
-	AhrsInput ai;
-	String toString() { return ai.toString(); } 
-	LogItemB fromString(const char *s) { 
-		ai.fromString(s);
-		return *this;
-	}
-};
-
-struct LogItemC {
-	short pwmOutput, flags;  // 30 31
-	float pidP, pidI, pidD;  // 32  
-	float gainP, gainI, gainD, finalGain; // 35 
-	float desRoll, pitchCmd, roll; // 39 
-	AhrsInputA ai;
-	String toString() {
-		char buf[200];
-		snprintf(buf, sizeof(buf), " %d %d %f %f", (int)pwmOutput, (int)flags,
-			desRoll, roll);
-		return ai.toString() +  String(buf);
-	} 
-	LogItemC fromString(const char *s) { 
-		ai.fromString(s);
-		return *this;
-	}
-};
-
-struct LogItemD {
-	short pwmOutput, flags;  
-	float desRoll, roll; 
-	AhrsInputB ai;
-	String toString() const {
-		char buf[200];
-		snprintf(buf, sizeof(buf), " %d %d %f %f", (int)pwmOutput, (int)flags,
-			desRoll, roll);
-		return ai.toString() +  String(buf);
-	} 
-	LogItemD fromString(const char *s) { 
-		ai.fromString(s);
-		return *this;
-	}
-	LogItemD &operator =(const LogItemC &c) {
-		ai = c.ai;
-		pwmOutput = c.pwmOutput;
-		flags = c.flags;
-		desRoll = c.desRoll;
-		roll = c.roll;
-		return *this;
-	}
-};
-
-
-struct LogItemE {
+struct LogItemOld {
 	short pwmOutput, flags;  
 	float desRoll, roll, magHdg, bankAngle, magBank;
 	AhrsInputB ai;
@@ -528,11 +460,11 @@ struct LogItemE {
 			desRoll, roll, magHdg,  bankAngle, magBank);
 		return ai.toString() +  String(buf);
 	} 
-	LogItemE fromString(const char *s) { 
+	LogItemOld fromString(const char *s) { 
 		ai.fromString(s);
 		return *this;
 	}
-	LogItemE &operator =(const LogItemD &c) {
+	LogItemOld &operator =(const LogItemOld &c) {
 		ai = c.ai;
 		pwmOutput = c.pwmOutput;
 		flags = c.flags;
@@ -545,14 +477,42 @@ struct LogItemE {
 	}
 };
 
-typedef LogItemE LogItem;	
+struct LogItemNew {
+	short pwmOutput, flags;  
+	float desRoll, roll, magHdg, bankAngle, magBank, pitch;
+	AhrsInputB ai;
+	String toString() const {
+		char buf[200];
+		snprintf(buf, sizeof(buf), " %d %d %f %f %f %f %f %f", (int)pwmOutput, (int)flags,
+			desRoll, roll, magHdg,  bankAngle, magBank, pitch);
+		return ai.toString() + String(buf);
+	} 
+	LogItemNew fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+	LogItemNew &operator =(const LogItemOld &c) {
+		ai = c.ai;
+		pwmOutput = c.pwmOutput;
+		flags = c.flags;
+		desRoll = c.desRoll;
+		roll = c.roll;
+		magHdg = c.magHdg;
+		bankAngle = c.bankAngle;
+		magBank = c.magBank;
+		pitch = -1000;
+		return *this;
+	}
+};
+
+typedef LogItemNew LogItem;	
 
 
 #ifdef UBUNTU
 void ESP32sim_convertLogOldToNew(ifstream &i, ofstream &o) {
-	LogItemD l; 
+	LogItemOld l; 
 	while (i.read((char *)&l, sizeof(l))) {
-		LogItemE l2;
+		LogItemNew l2;
 		bzero(&l2, sizeof(l2));
 		l2 = l;
 		o.write((char *)&l2, sizeof(l2));

@@ -80,7 +80,8 @@ while (( $# > 0 )); do
 	if [ "$1" == "-roll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($30) w l  tit "Logged Roll", '; fi
 	if [ "$1" == "-maghdg" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($31) w l ax x1y2 tit "magHdg", '; fi
 	if [ "$1" == "-ba" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($32) w l ax x1y1 tit "bank angle", '; fi
-	if [ "$1" == "-d33" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($33) w l ax x1y1 tit "Field 33", '; fi
+	if [ "$1" == "-magBank" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($33) w l ax x1y1 tit "magBank", '; fi
+	if [ "$1" == "-pitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($34) w l ax x1y1 tit "logged pitch", '; fi
 	if [ "$1" == "-stats" ]; then 
 		STATS='stats '$RANGE' "'$F2'" u ($1-F2_min_x):($'$2')'; 
 		shift
