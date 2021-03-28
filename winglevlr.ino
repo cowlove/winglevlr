@@ -814,7 +814,7 @@ void loop() {
 		ahrsInput.dtk = desiredTrk;
 
 		roll = ahrs.add(ahrsInput);
-		pitch = ahrs.pitchCompDriftCorrected;
+		pitch = ahrs.pitch;
 
 		if (hdgSelect == 0) { // mode 0, use GDL90 until first can message, then switch to G5
 			ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
@@ -844,7 +844,7 @@ void loop() {
 		
 		if (false && floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pset = 0;
-			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - pset, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
+			float pCmd = pitchPID.add(ahrs.pitch - pset, ahrs.pitch, ahrsInput.sec);
 			float trimCmd = ed.tzer.value - pCmd;
 			if (pitchTrimOverride != -1) {
 				trimCmd = pitchTrimOverride;

@@ -223,7 +223,7 @@ public:
 	float magBank, magBankTrim = 0.0;
 	float gpsBankAngle, magBankAngle, dipBankAngle, dipBankAngle2, magHdg, rawMagHdg, /*bankCorrection,*/ bankAngle;
 	float gyroTurnBank, pG;
-	float pitchComp = 0, pitchRaw = 0, pitchDrift = 0, pitchCompDriftCorrected = 0, pitch = 0;
+	float pitch = 0;
 	float magStability = -1;
 	float hdg;
 	bool hdgInitialized = false;
@@ -427,9 +427,6 @@ public:
 		pG = sin((compYH - gyrAng) * M_PI/180) * abs(compYH)/compYH * gyrMag;
 		pG = -i.gx;
 		pitch = (pitch + pG * cos(compYH * M_PI/180) * 1.00 /*gyroGain*/ * dt) * (1-compRatioP) + (accelPitch * compRatioP);
-		
-		
-
 		return compYH;
 	}	
 	
@@ -438,7 +435,6 @@ public:
 	}
 	void reset() {
 		mComp.reset();
-		pitchRaw = pitchComp = 0;
 		gyroDriftFit.reset();
 		magHdgFit.reset();
 		magStabFit.reset();
