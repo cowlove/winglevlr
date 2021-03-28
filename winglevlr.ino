@@ -953,7 +953,7 @@ void loop() {
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
 		Display::drop = logFile != NULL ? logFile->dropped : -1;
-		Display::logw = logFile != NULL ? logFile->written : -1;
+		Display::logw = logFile != NULL ? logFile->written / 200 : -1;
 		//Display::pitch = pitch;
 		//Display::xtec = xteCorrection; 
 		Display::log = (logFile != NULL) ? logFile->currentFile.c_str() : "none";

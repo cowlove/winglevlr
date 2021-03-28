@@ -134,7 +134,7 @@ public:
 		int r = 0; 
 		if (c != '\r' && c != '\n');
 			line[len++] = c;
-		if (len >= sizeof(line) || c == '\n') {
+		if (len >= sizeof(line) - 1 || c == '\n') {
 			r = len;
 				line[len] = '\0';
 			len = 0;
@@ -908,8 +908,13 @@ public:
 			d->printAt(x * d->textSize, y * d->textSize, label.c_str(), labelInverse ? color.lb : color.lf , labelInverse ? color.lf : color.lb, 
 			labelFontSize != 0 ? labelFontSize : d->textSize);
 		if (force || val != lastVal) {
-			int xpixel = labelSpace + x * d->textSize + 6 * strlen(label.c_str()) * (labelFontSize != 0 ? labelFontSize : d->textSize);
-			d->printAt(xpixel, y * d->textSize, val.c_str(), valueInverse ? color.vb : color.vf, valueInverse ? color.vf : color.vb, d->textSize);
+			int uc = 0; // count the unchanged characters
+			while(!force && uc < val.length() && uc < val.length() && val[uc] == lastVal[uc] )
+				uc++;
+			int xpixel = labelSpace 
+				+ (x + uc * 6) * d->textSize 
+				+ 6 * strlen(label.c_str()) * (labelFontSize != 0 ? labelFontSize : d->textSize);
+			d->printAt(xpixel, y * d->textSize, val.c_str() + uc, valueInverse ? color.vb : color.vf, valueInverse ? color.vf : color.vb, d->textSize);
 			lastVal = val;
 			return true;
 		}
