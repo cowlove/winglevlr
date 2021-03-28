@@ -814,7 +814,7 @@ void loop() {
 		ahrsInput.dtk = desiredTrk;
 
 		roll = ahrs.add(ahrsInput);
-		pitch = ahrs.pitchCompDriftCorrected;
+		pitch = ahrs.pitch;
 
 		if (hdgSelect == 0) { // mode 0, use GDL90 until first can message, then switch to G5
 			ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
@@ -844,7 +844,7 @@ void loop() {
 		
 		if (false && floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pset = 0;
-			float pCmd = pitchPID.add(ahrs.pitchCompDriftCorrected - pset, ahrs.pitchCompDriftCorrected, ahrsInput.sec);
+			float pCmd = pitchPID.add(ahrs.pitch - pset, ahrs.pitch, ahrsInput.sec);
 			float trimCmd = ed.tzer.value - pCmd;
 			if (pitchTrimOverride != -1) {
 				trimCmd = pitchTrimOverride;
@@ -905,7 +905,7 @@ void loop() {
 		logItem.magHdg = ahrs.magHdg;
 		logItem.bankAngle = ahrs.bankAngle;
 		logItem.magBank = ahrs.magBank;
-		
+		logItem.pitch = ahrs.pitch; 
 		logItem.ai = ahrsInput;
 		//logItem.ai.q3 = ahrs.magCorr; 
 
@@ -1071,6 +1071,8 @@ public:
 			imu->my = l.ai.my;
 			imu->mz = l.ai.mz;
 		
+			l.ai.g5Pitch = min(max(-30.0, (double)l.ai.g5Pitch), 30.0);
+			l.ai.g5Roll = min(max(-30.0, (double)l.ai.g5Roll), 30.0);
 			// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
 			if ((l.flags & LogFlags::g5Ps) || l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt) { 
 				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt)); 
