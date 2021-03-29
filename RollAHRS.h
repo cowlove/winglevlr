@@ -425,7 +425,7 @@ public:
 		float gyrAng = atan(avgGX.average() / avgGZ.average()) * 180 / M_PI;
 
 		pG = sin((compYH - gyrAng) * M_PI/180) * abs(compYH)/compYH * gyrMag;
-		pG = -i.gx;
+		pG = i.gx;
 		pitch = (pitch + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioP) + (accelPitch * compRatioP);
 		return compYH;
 	}	
@@ -478,13 +478,13 @@ struct LogItemOld {
 };
 
 struct LogItemNew {
-	short pwmOutput, flags;  
-	float desRoll, roll, magHdg, bankAngle, magBank, pitch;
+	short pwmOutputRoll, pwmOutputPitch, flags;  
+	float desRoll, roll, magHdg, bankAngle, magBank, pitch, spare1, spare2;
 	AhrsInputB ai;
 	String toString() const {
 		char buf[200];
-		snprintf(buf, sizeof(buf), " %d %d %f %f %f %f %f %f", (int)pwmOutput, (int)flags,
-			desRoll, roll, magHdg,  bankAngle, magBank, pitch);
+		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f %f", (int)pwmOutputRoll, (int)pwmOutputPitch, (int)flags,
+			desRoll, roll, magHdg,  bankAngle, magBank, pitch, spare1, spare2);
 		return ai.toString() + String(buf);
 	} 
 	LogItemNew fromString(const char *s) { 
@@ -493,14 +493,14 @@ struct LogItemNew {
 	}
 	LogItemNew &operator =(const LogItemOld &c) {
 		ai = c.ai;
-		pwmOutput = c.pwmOutput;
+		pwmOutputRoll = c.pwmOutput;
 		flags = c.flags;
 		desRoll = c.desRoll;
 		roll = c.roll;
 		magHdg = c.magHdg;
 		bankAngle = c.bankAngle;
 		magBank = c.magBank;
-		pitch = -1000;
+		pwmOutputPitch = pitch = spare1 = spare2 = -1000;
 		return *this;
 	}
 };

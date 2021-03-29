@@ -16,7 +16,7 @@ test.out:	winglevlr_ubuntu
 	./winglevlr_ubuntu  --serial --seconds 1000  | uniq | tee $@
 
 backtrace:
-	tr ' ' '\n' | /home/jim/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/bin/xtensa-esp32-elf-addr2line -f -i -e /tmp/mkESP/winglevlr_esp32/*.elf
+	tr ' ' '\n' | /home/jim/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/*/bin/xtensa-esp32-elf-addr2line -f -i -e /tmp/mkESP/winglevlr_esp32/*.elf
 	
 
 	
@@ -56,3 +56,9 @@ setap1:
 
 clean_tmp:
 	rm -rf /tmp/loglook.sh/
+
+joystick:	joystick.c	
+	gcc $< -lm -o $@
+
+jscat: 	joystick fixtty	
+	stdbuf -o0 ./joystick | tee ${UPLOAD_PORT}

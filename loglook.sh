@@ -73,15 +73,15 @@ while (( $# > 0 )); do
 	if [ "$1" == "-g5tas" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($24) ax x1y2 w l  tit "G5 TAS", '; fi
 	if [ "$1" == "-g5palt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($25) ax x1y2 w l  tit "G5 PALT", '; fi
 	if [ "$1" == "-g5ts" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($26) ax x1y2 w l  tit "G5 Timestamp", '; fi
-	if [ "$1" == "-relay" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):(((int($28) & 3) == 0) ? 1/0 : (int($28) & 3))  tit "Logged Relay Pulses", ' ; fi
-	if [ "$1" == "-flag" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($28)  tit "flags", ' ; fi
-	if [ "$1" == "-servo" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($27) w l ax x1y2 tit "Logged Servo output", '; fi	
-	if [ "$1" == "-desroll" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($29) ax x1y1 w l tit "Des Roll", '; fi
-	if [ "$1" == "-roll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($30) w l  tit "Logged Roll", '; fi
-	if [ "$1" == "-maghdg" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($31) w l ax x1y2 tit "magHdg", '; fi
-	if [ "$1" == "-ba" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($32) w l ax x1y1 tit "bank angle", '; fi
-	if [ "$1" == "-magBank" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($33) w l ax x1y1 tit "magBank", '; fi
-	if [ "$1" == "-pitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($34) w l ax x1y1 tit "logged pitch", '; fi
+	if [ "$1" == "-servo0" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($27) ax x1y2 w l tit "Servo 0", '; fi
+	if [ "$1" == "-servo1" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($28) ax x1y2 w l tit "Servo 1", '; fi
+	if [ "$1" == "-flag" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($29) w l ax x1y2 tit "flags", '; fi	
+	if [ "$1" == "-desroll" ]; then PS=$PS\ \"$F2\"	' u ($1-F2_min_x):($30)  tit "Desiried Roll", ' ; fi
+	if [ "$1" == "-roll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($31) w l  tit "Logged Roll", '; fi
+	if [ "$1" == "-maghdg" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($32) w l ax x1y2 tit "magHdg", '; fi
+	if [ "$1" == "-ba" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($33) w l ax x1y1 tit "bank angle", '; fi
+	if [ "$1" == "-magBank" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($34) w l ax x1y1 tit "magBank", '; fi
+	if [ "$1" == "-pitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35) w l ax x1y1 tit "logged pitch", '; fi
 	if [ "$1" == "-stats" ]; then 
 		STATS='stats '$RANGE' "'$F2'" u ($1-F2_min_x):($'$2')'; 
 		shift

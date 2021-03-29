@@ -146,9 +146,9 @@ int digitalRead(int p) {
 	return bm.check(p, micros()/1000000.0);
 }
 
-static int ESP32sim_currentPwm = 0;
-void ledcWrite(int chan, int val) { 
-	ESP32sim_currentPwm = val;
+static int ESP32sim_currentPwm[16];
+void ledcWrite(int chan, int val) {
+		ESP32sim_currentPwm[chan] = val;
 } 
 
 // Takes an input of a text file with line-delimited usec intervals between 
