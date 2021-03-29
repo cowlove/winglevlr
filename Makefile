@@ -3,6 +3,9 @@
 #BOARD=nodemcu-32s
 VERBOSE=1
 
+GIT_VERSION := "$(shell git describe --abbrev=4 --dirty --always --tags)"
+BUILD_EXTRA_FLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
+
 plot:	winglevlr_ubuntu
 	./winglevlr_ubuntu --jdisplay --serial --seconds 700 | grep DTK | tr ':' ' ' > out.dat \
 		&& echo "f='./out.dat'; p f u 2 w l ti 'DTK', f u 4 w l ti 'TRK'; pause 100"| gnuplot
