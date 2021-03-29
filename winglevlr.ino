@@ -40,7 +40,6 @@ GDL90Parser::State state;
 RollAHRS ahrs;
 PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(200); /*20Hz*/
 PidControl *knobPID = &hdgPID;
-static int servoTrim = 1325;
 
 WiFiUDP udpSL30;
 WiFiUDP udpNMEA;
@@ -54,7 +53,8 @@ struct {
 	int midButton = 34;
 	int botButton = 35;
 	int knobButton = 32;
-	int pwm = 33;
+	int pwm_roll = 33;
+	int pwm_pitch = 18;
 } pins;
 */
 
@@ -64,8 +64,9 @@ struct {
 	int midButton = 37;
 	int botButton = 36;
 	int knobButton = 32;
-	int pwm = 33;
-	int servo_enable = 18;
+	int pwm_pitch = 33;
+	int pwm_roll = 18;
+	//int servo_enable = 18;
 	int sda = 21; 
 	int scl = 22; 
 	int led = 19;
@@ -93,7 +94,7 @@ void halInit() {
 		pins.scl = 22;
 		pins.midButton = 34;
 		pins.botButton = 35;
-		pins.servo_enable = 36;
+		//pins.servo_enable = 36;
 		pins.led = 21; // dont know 
 		// TODO: IMU is inverted on these boards 
 	}
@@ -263,6 +264,7 @@ void sdLog()  {
 	//Serial.println(x.toString());
 	if (logFile != NULL)
 		logFile->add(&logItem, 0/*timeout*/);
+	Serial.println(logItem.toString());
 	logItem.flags = 0;
 }
 
@@ -302,8 +304,8 @@ void setup() {
 	//digitalWrite(LED_PIN, 1);
 	pinMode(pins.tft_backlight, OUTPUT); // TFT backlight
 	digitalWrite(pins.tft_backlight, 1);
-	pinMode(pins.servo_enable, OUTPUT);
-	digitalWrite(pins.servo_enable, 1);
+	//pinMode(pins.servo_enable, OUTPUT);
+	//digitalWrite(pins.servo_enable, 1);
 
 	Display::jd.begin();
 	Display::jd.clear();
@@ -377,9 +379,12 @@ void setup() {
 	//ed.mnrl.value = 70;
 	//ed.pmin.value = 0.5; // PID total error that triggers relay minimum actuation
 	//ed.pmax.value = 2.5; // PID total error that triggers relay maximum actuation 
-	pinMode(pins.pwm, OUTPUT);
+	pinMode(pins.pwm_pitch, OUTPUT);
+	pinMode(pins.pwm_roll, OUTPUT);
 	ledcSetup(1, 50, 16); // channel 1, 50 Hz, 16-bit width
-	ledcAttachPin(pins.pwm, 1);   // GPIO 33 assigned to channel 1
+	ledcSetup(0, 50, 16); // channel 1, 50 Hz, 16-bit width
+	ledcAttachPin(pins.pwm_pitch, 0);   // GPIO 33 assigned to channel 1
+	ledcAttachPin(pins.pwm_roll, 1);   // GPIO 33 assigned to channel 1
 
 	ArduinoOTA.begin();
 }
@@ -440,7 +445,6 @@ void setKnobPid(int f) {
 	ed.dead.setValue(knobPID->hiGainTrans.p);
 }	
 	
-static int servoOverride = 0, pitchTrimOverride = -1;
 static bool testTurnActive = false;
 static int testTurnAlternate = 0;
 static float testTurnLastTurnTime = 0;
@@ -450,7 +454,7 @@ static float navDTK = -1;
 static bool logActive = false;
 static float roll = 0, pitch = 0;
 static String logFilename("none");
-static int pwmOutput = 0, servoOutput = 0;
+static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int,40,40> loopTime;
 static EggTimer serialReportTimer(200), hdgPIDTimer(50), loopTimer(5), buttonCheckTimer(10);
 static int armServo = 0;
@@ -464,7 +468,6 @@ static int manualRelayMs = 60;
 static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 static uint64_t lastLoop = micros();
 static bool selEditing = false;
-static bool servoCenterOverride = false;
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
@@ -569,7 +572,7 @@ void loop() {
 				if (!logChanging) {
 					logChanging = true;
 					if (logFile == NULL) {	
-							logFile = new SDCardBufferedLog<LogItem>(logFileName, 800/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
+							logFile = new SDCardBufferedLog<LogItem>(logFileName, 500/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
 							logFilename = logFile->currentFile;
 							logChanging = false;
 					} else {
@@ -609,12 +612,10 @@ void loop() {
 			if (butFilt4.wasCount == 3) {		
 				ed.tttt.setValue(.1); 
 				ed.ttlt.setValue(.1);
-				armServo = testTurnActive = servoCenterOverride = true;
+				armServo = testTurnActive = true;
 				 
 			}
 		}
-		if (servoCenterOverride && digitalRead(buttonKnob.pin) == 1) 
-			servoCenterOverride = false;
 	}
 	
 	if (testTurnActive) {
@@ -682,7 +683,7 @@ void loop() {
 				line[index] = '\0';
 				Serial.printf("RECEIVED COMMAND: %s", line);
 				index = 0;
-				float f;
+				float f, f2;
 				int relay, ms;
 				if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
 				else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
@@ -695,10 +696,9 @@ void loop() {
 				//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 				//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
-				else if (sscanf(line, "ptman=%f", &f) == 1) { pitchTrimOverride = f; }
 				else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
 				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
-				else if (sscanf(line, "servo=%f", &f) == 1) { servoOverride = f; }
+				else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
 				else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
 				else {
 					Serial.printf("UNKNOWN COMMAND: %s", line);
@@ -845,19 +845,9 @@ void loop() {
 		if (false && floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
 			float pset = 0;
 			float pCmd = pitchPID.add(ahrs.pitch - pset, ahrs.pitch, ahrsInput.sec);
-			float trimCmd = ed.tzer.value - pCmd;
-			if (pitchTrimOverride != -1) {
-				trimCmd = pitchTrimOverride;
-			}
-			if (armServo == false) { 
-				trimCmd = -1;
-			}
-			pitchTrimSet(trimCmd); 
-			//logItem.pitchCmd = trimCmd;
 		}
 
-		pwmOutput = 0;
-		if (true || ahrs.valid() || digitalRead(buttonKnob.pin) == 0 || servoOverride > 0) { // hold down button to override and make servo work  
+		if (true || ahrs.valid() || digitalRead(buttonKnob.pin) == 0) { // hold down button to override and make servo work  
 			if (hdgPIDTimer.tick()) {
 				if (ahrsInput.dtk != -1) { 
 					if (apMode == 4) {
@@ -889,17 +879,15 @@ void loop() {
 			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 
 			if (armServo) {  
-				servoOutput = servoTrim + rollPID.corr;
-				if (servoOverride > 0)
-					servoOutput = servoOverride;
-				if (servoCenterOverride)
-					servoOutput = servoTrim + 0;
-				servoOutput = max(550, min(2100, servoOutput));
-				pwmOutput = servoOutput * 4915 / 1500;
-			}			
-		}	
-		ledcWrite(1, pwmOutput); // scale PWM output to 1500-7300 
-		logItem.pwmOutput = pwmOutput;
+				servoOutput[0] = max(450, min(2550, (int)(rollPID.corr + servoTrim[0])));
+				servoOutput[1] = max(450, min(2550, (int)(pitchPID.corr + servoTrim[1])));
+			}	
+		}
+		ledcWrite(0, servoOutput[0] * 4915 / 1500); // scale PWM output to 1500-7300 
+		ledcWrite(1, servoOutput[1] * 4915 / 1500); // scale PWM output to 1500-7300 
+
+		logItem.pwmOutputRoll = servoOutput[0];
+		logItem.pwmOutputPitch = servoOutput[1];
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
 		logItem.magHdg = ahrs.magHdg;
@@ -907,7 +895,6 @@ void loop() {
 		logItem.magBank = ahrs.magBank;
 		logItem.pitch = ahrs.pitch; 
 		logItem.ai = ahrsInput;
-		//logItem.ai.q3 = ahrs.magCorr; 
 
 		totalRollErr += abs(roll + ahrsInput.g5Roll);
 		totalHdgError += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
@@ -925,7 +912,7 @@ void loop() {
 		lastAhrsInput = ahrsInput;
 	}
 
-	digitalWrite(pins.servo_enable, !armServo);
+	//digitalWrite(pins.servo_enable, !armServo);
 	
 	if (ed.pidsel.changed()) {
 		setKnobPid(ed.pidsel.value);
@@ -1013,13 +1000,13 @@ public:
 				
 		// Simulate simple airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm; 
-		rollCmd.add((ESP32sim_currentPwm - servoTrim) / servoTrim);
+		rollCmd.add((ESP32sim_currentPwm[0] - servoTrim) / servoTrim);
 		imu->gy = 0.0 + rollCmd.average() * 10.0;
 		bank += imu->gy * (3500.0 / 1000000.0);
 		bank = max(-20.0, min(20.0, (double)bank));
 		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
-			ESP32sim_currentPwm, track, 0.0, bank, imu->gy);
+			ESP32sim_currentPwm[0], track, 0.0, bank, imu->gy);
 		}		
 		imu->gz = +1.5 + tan(bank * M_PI/180) / 100 * 1091;
 		
@@ -1097,6 +1084,9 @@ public:
 				ESP32sim_udpInput(4000, string((char *)buf, len));
 			}
 				
+			servoOutput[0] = l.pwmOutputRoll;
+			servoOutput[1] = l.pwmOutputPitch;
+
 			// special logfile name "-", just replay existing log back out to stdout 
 			if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
 				l.ai.sec = _micros / 1000000.0; 

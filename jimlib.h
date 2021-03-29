@@ -131,12 +131,12 @@ public:
 	char line[1024];
 	char len;
 	int add(char c) {
-		int r = 0; 
-		if (c != '\r' && c != '\n');
-			line[len++] = c;
+		int r = 0;
+		if (c != '\r' && c != '\n')
+			line[len++] = c; 
 		if (len >= sizeof(line) - 1 || c == '\n') {
 			r = len;
-				line[len] = '\0';
+			line[len] = 0;
 			len = 0;
 		}
 		return r;
@@ -1590,6 +1590,7 @@ public:
 static const float FEET_PER_METER = 3.3208;
 
 float random01() { 	return rand() / (RAND_MAX + 1.0); }
+#define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 
 //#endif
 #endif //#ifndef INC_JIMLIB_H
