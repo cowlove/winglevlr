@@ -1592,5 +1592,10 @@ static const float FEET_PER_METER = 3.3208;
 float random01() { 	return rand() / (RAND_MAX + 1.0); }
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 
+#ifdef GIT_VERSION
+char _GIT_VERSION[] = "GIT_VERSION " GIT_VERSION;
+
+#endif
+
 //#endif
 #endif //#ifndef INC_JIMLIB_H
