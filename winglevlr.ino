@@ -264,7 +264,7 @@ void sdLog()  {
 	//Serial.println(x.toString());
 	if (logFile != NULL)
 		logFile->add(&logItem, 0/*timeout*/);
-	Serial.println(logItem.toString());
+	//Serial.println(logItem.toString());
 	logItem.flags = 0;
 }
 
