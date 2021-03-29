@@ -60,5 +60,5 @@ clean_tmp:
 joystick:	joystick.c	
 	gcc $< -lm -o $@
 
-jscat: 	joystick fixtty	
+jsrun: 	joystick fixtty	
 	stdbuf -o0 ./joystick | tee ${UPLOAD_PORT}
