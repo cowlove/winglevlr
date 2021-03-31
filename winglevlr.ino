@@ -462,7 +462,10 @@ static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, a
 static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
-double totalRollErr = 0.0, totalHdgError = 0.0;
+struct {
+	double hdg, roll, pitch; 
+	void clear() { hdg = roll = pitch = 0; }
+} totalError;
 //static int ledOn = 0;
 static int manualRelayMs = 60;
 static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
@@ -499,7 +502,6 @@ void loop() {
 		return;
 #endif
 
-	
 	uint64_t now = micros();
 	double nowSec = millis() / 1000.0;
 	
@@ -896,12 +898,13 @@ void loop() {
 		logItem.pitch = ahrs.pitch; 
 		logItem.ai = ahrsInput;
 
-		totalRollErr += abs(roll + ahrsInput.g5Roll);
-		totalHdgError += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
+		totalError.roll += abs(roll + ahrsInput.g5Roll);
+		totalError.hdg += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
+		totalError.pitch += abs(pitch - ahrsInput.g5Pitch);
 	
 #ifdef UBUNTU
 		if (millis() < 1000) // don't count error during the first second while stuff initializes 
-			totalRollErr = totalHdgError = 0;
+			totalError.clear();
 
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
@@ -1167,6 +1170,8 @@ public:
 				else if (sscanf(it->c_str(), "mbt.cr=%f", &v) == 1) { ahrs.magBankTrimCr = v; } 
 				else if (sscanf(it->c_str(), "mbt.maxerr=%f", &v) == 1) { ahrs.magBankTrimMaxBankErr = v; } 
 				else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 
+				else if (sscanf(it->c_str(), "ahrs.crpitch=%f", &v) == 1) { ahrs.compRatioPitch = v; } 
+				else if (sscanf(it->c_str(), "ahrs.pitchoffset=%f", &v) == 1) { ahrs.pitchOffset = v; } 
 				else if (strlen(it->c_str()) > 0) { 
 					printf("Unknown debug parameter '%s'\n", it->c_str()); 
 					exit(-1);
@@ -1236,8 +1241,8 @@ public:
 		lastTime = now;
 	}
 	void done() override { 
-		printf("# %f %f avg roll/hdg errors, %d log entries, %.1f real time seconds\n", 
-		totalRollErr / logEntries, totalHdgError / logEntries,  logEntries, millis() / 1000.0);
+		printf("# %f %f %f avg roll/pitch/hdg errors, %d log entries, %.1f real time seconds\n", 
+		totalError.roll / logEntries, totalError.pitch / logEntries,  totalError.hdg / logEntries, logEntries, millis() / 1000.0);
 	}
 } espsim;
 
