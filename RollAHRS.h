@@ -71,6 +71,18 @@ struct AhrsInputB {
 
 typedef AhrsInputB AhrsInput; 
 
+
+
+struct AuxMpuData {
+	float ax, ay, az, gx, gy, gz, mx, my, mz; 
+	String toString() { 
+		return String(strfmt("MPU %f %f %f %f %f %f %f %f %f", ax, ay, az, gx, gy, gz, mx, my, mz).c_str());
+	}
+	bool fromString(const char *s) { 
+		return sscanf(s, "MPU %f %f %f %f %f %f %f %f %f", &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz) == 9;
+	}
+} auxMPU;
+
 inline float constrain360(float a) { 
 	if (abs(a) < 10000) { 
 		while(a <= 0) a += 360;
@@ -465,33 +477,6 @@ public:
 };
 
 struct LogItemOld {
-	short pwmOutput, flags;  
-	float desRoll, roll, magHdg, bankAngle, magBank;
-	AhrsInputB ai;
-	String toString() const {
-		char buf[200];
-		snprintf(buf, sizeof(buf), " %d %d %f %f %f %f %f", (int)pwmOutput, (int)flags,
-			desRoll, roll, magHdg,  bankAngle, magBank);
-		return ai.toString() +  String(buf);
-	} 
-	LogItemOld fromString(const char *s) { 
-		ai.fromString(s);
-		return *this;
-	}
-	LogItemOld &operator =(const LogItemOld &c) {
-		ai = c.ai;
-		pwmOutput = c.pwmOutput;
-		flags = c.flags;
-		desRoll = c.desRoll;
-		roll = c.roll;
-		magHdg = -1000;
-		bankAngle = -1000;
-		magBank = -1000;
-		return *this;
-	}
-};
-
-struct LogItemNew {
 	short pwmOutputRoll, pwmOutputPitch, flags;  
 	float desRoll, roll, magHdg, bankAngle, magBank, pitch, spare1, spare2;
 	AhrsInputB ai;
@@ -499,6 +484,26 @@ struct LogItemNew {
 		char buf[200];
 		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f %f", (int)pwmOutputRoll, (int)pwmOutputPitch, (int)flags,
 			desRoll, roll, magHdg,  bankAngle, magBank, pitch, spare1, spare2);
+		return ai.toString() +  String(buf);
+	} 
+	LogItemOld fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+};
+
+struct LogItemNew {
+	short pwmOutputRoll, pwmOutputPitch, flags;  
+	float desRoll, roll, magHdg, bankAngle, magBank, pitch, spare1, spare2;
+	struct AuxMpuData auxMpu;
+	AhrsInputB ai;
+	String toString() const {
+		char buf[200];
+		const AuxMpuData &a = auxMpu;
+		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f %f "
+		"%f %f %f %f %f %f %f %f %f ",
+		(int)pwmOutputRoll, (int)pwmOutputPitch, (int)flags, desRoll, roll, magHdg,  bankAngle, magBank, pitch, spare1, spare2,
+		a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz);
 		return ai.toString() + String(buf);
 	} 
 	LogItemNew fromString(const char *s) { 
@@ -507,7 +512,7 @@ struct LogItemNew {
 	}
 	LogItemNew &operator =(const LogItemOld &c) {
 		ai = c.ai;
-		pwmOutputRoll = c.pwmOutput;
+		pwmOutputRoll = c.pwmOutputRoll;
 		flags = c.flags;
 		desRoll = c.desRoll;
 		roll = c.roll;

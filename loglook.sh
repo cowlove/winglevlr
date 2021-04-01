@@ -82,6 +82,17 @@ while (( $# > 0 )); do
 	if [ "$1" == "-ba" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($33) w l ax x1y1 tit "bank angle", '; fi
 	if [ "$1" == "-magBank" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($34) w l ax x1y1 tit "magBank", '; fi
 	if [ "$1" == "-pitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35) w l ax x1y1 tit "logged pitch", '; fi
+	if [ "$1" == "-spare1" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($36) w l ax x1y1 tit "logged pitch", '; fi
+	if [ "$1" == "-spare2" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($37) w l ax x1y1 tit "logged pitch", '; fi
+	if [ "$1" == "-aax" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($38) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-aay" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($39) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-aaz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($40) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-agx" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($41) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-agy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($42) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-agz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($43) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-amx" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($44) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-amy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($45) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-amz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($46) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-stats" ]; then 
 		STATS='stats '$RANGE' "'$F2'" u ($1-F2_min_x):($'$2')'; 
 		shift
