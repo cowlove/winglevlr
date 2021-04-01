@@ -77,6 +77,7 @@ struct {
 
 MPU9250_asukiaaa *imu = NULL;
 
+float pitchTrim = 0, rollTrim = 0;
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
@@ -372,7 +373,7 @@ void setup() {
 	xtePID.finalGain = 10.0;
 	
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
-	pitchPID.finalGain = 0.2;
+	pitchPID.finalGain = 1;
 	pitchPID.maxerr.i = .5;
 
     // make PID select knob display text from array instead of 0-3	
@@ -703,7 +704,7 @@ void loop() {
 		static LineBuffer lb;
 		int n = Serial.readBytes(buf, min(Serial.available(), (int)sizeof(buf)));
 		lb.add((char *)buf, n, [](const char *line) { 
-			Serial.printf("RECEIVED COMMAND: %s", line);
+			//Serial.printf("RECEIVED COMMAND: %s", line);
 			float f, f2;
 			int relay, ms;
 			if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
@@ -720,6 +721,7 @@ void loop() {
 			else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
 			else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 			else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
+			else if (sscanf(line, "trim %f %f", &f, &f2) == 2) { rollTrim = f; pitchTrim = f2; }
 			else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
 			else {
 				Serial.printf("UNKNOWN COMMAND: %s", line);
@@ -774,7 +776,7 @@ void loop() {
 				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
 					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
 					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
-					Serial.printf("CAN: %s\n", line);
+					//Serial.printf("CAN: %s\n", line);
 					ahrsInput.g5Pitch = pit * 180 / M_PI;
 					ahrsInput.g5Roll = roll * 180 / M_PI;
 					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
@@ -787,7 +789,7 @@ void loop() {
 					ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
 					logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
 					setObsKnob(knobSel, knobVal);
-					Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
+					//Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
 					canMsgCount = canMsgCount + 1;
 				}
 			}
@@ -862,47 +864,74 @@ void loop() {
 		else if (hdgSelect == 2) ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
 		else if (hdgSelect == 3) ahrsInput.selTrack = ahrs.magHdg;
 		
-		if (false && floor(ahrsInput.sec / 0.05) != floor(lastAhrsInput.sec / 0.05)) { // 20HZ
-			float pset = 0;
-			float pCmd = pitchPID.add(ahrs.pitch - pset, ahrs.pitch, ahrsInput.sec);
+		if (hdgPIDTimer.tick()) {
+			if (ahrsInput.dtk != -1) { 
+				if (apMode == 4) {
+					xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+					xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+					desiredTrk = navDTK + xteCorrection;
+					ahrsInput.dtk = desiredTrk;
+				} else { 
+					xteCorrection = 0;
+				}
+				double hdgErr = 0;
+				if (ahrs.valid() != false && ahrsInput.selTrack != -1) { 
+					hdgErr = angularDiff(ahrsInput.selTrack - ahrsInput.dtk);
+					currentHdg = ahrsInput.selTrack;
+				} else { 
+					// lost course guidance, just keep wings level by leaving currentHdg unchanged and no error 
+					hdgErr = 0;
+				}
+				if (abs(hdgErr) > 10.0) {
+					hdgPID.resetI();
+				}
+				desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
+				desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
+			} else if (!testTurnActive) {
+				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
+			}				
+		 
+
 		}
 
-		if (true || ahrs.valid() || digitalRead(buttonKnob.pin) == 0) { // hold down button to override and make servo work  
-			if (hdgPIDTimer.tick()) {
-				if (ahrsInput.dtk != -1) { 
-					if (apMode == 4) {
-						xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
-						xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
-						desiredTrk = navDTK + xteCorrection;
-						ahrsInput.dtk = desiredTrk;
-					} else { 
-						xteCorrection = 0;
-					}
-					double hdgErr = 0;
-					if (ahrs.valid() != false && ahrsInput.selTrack != -1) { 
-						hdgErr = angularDiff(ahrsInput.selTrack - ahrsInput.dtk);
-						currentHdg = ahrsInput.selTrack;
-					} else { 
-						// lost course guidance, just keep wings level by leaving currentHdg unchanged and no error 
-						hdgErr = 0;
-					}
-					if (abs(hdgErr) > 10.0) {
-						hdgPID.resetI();
-					}
-					desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
-					desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
-				} else if (!testTurnActive) {
-					desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
-				}				
-			} 
+		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
+		pitchPID.add(ahrs.pitch, ahrs.pitch, ahrsInput.sec);
 
-			rollPID.add(roll - desRoll, roll, ahrsInput.sec);
+		if (armServo) {  
+			float leftStringX = 8;
+			float leftStringY = 8;
+		
+			float rightStringX = 8;
+			float rightStringY = 8;
 
-			if (armServo) {  
-				servoOutput[0] = max(450, min(2550, (int)(rollPID.corr + servoTrim[0])));
-				servoOutput[1] = max(450, min(2550, (int)(pitchPID.corr + servoTrim[1])));
-			}	
-		}
+			float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
+			float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
+
+			float servoThrow = 2.0;
+			float xScale = +1.0;
+			float yScale = -1.0;
+		
+			// TODO: pids were tuned and output results in units of 500-2500 servo PWM values. 
+			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
+			float x = rollPID.corr / 2000 * servoThrow + rollTrim;
+			float y = pitchPID.corr / 2000 * servoThrow + pitchTrim;
+			//printf("%6f %6f\n", x, y);
+
+			float x1 = leftStringX + xScale * x;
+			float y1 = leftStringY + yScale * y;
+			float leftNewLen = sqrt(x1 * x1 + y1 * y1);
+
+			x1 = rightStringX - xScale * x;
+			y1 = rightStringY + yScale * y;
+			float rightNewLen = sqrt(x1 * x1 + y1 * y1);
+		
+			float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
+			float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
+
+			servoOutput[0] = max(450, min(2550, (int)s0));
+			servoOutput[1] = max(450, min(2550, (int)s1));
+		}	
+
 		ledcWrite(0, servoOutput[0] * 4915 / 1500); // scale PWM output to 1500-7300 
 		ledcWrite(1, servoOutput[1] * 4915 / 1500); // scale PWM output to 1500-7300 
 

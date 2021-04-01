@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
                         case 3: xtrim -= trimstep; break;
                         case 0: xtrim += trimstep; break;
                     }
+                    printf("trim %f %f\n", xtrim, ytrim);
                 case JS_EVENT_AXIS:
                     axis = get_axis_state(&event, axes);
                     break;
