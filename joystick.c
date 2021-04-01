@@ -112,6 +112,11 @@ int main(int argc, char *argv[])
     if (js == -1)
         perror("Could not open joystick");
 
+    
+    
+    float xtrim = 0, ytrim = 0;
+    float trimstep = .01;
+
     /* This loop will exit if the controller is unplugged. */
     while(1) { 
         
@@ -121,7 +126,12 @@ int main(int argc, char *argv[])
             {
                 case JS_EVENT_BUTTON:
                     printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
-                    break;
+                    switch (event.number) {
+                        case 2: ytrim -= trimstep; break;
+                        case 1: ytrim += trimstep; break;
+                        case 3: xtrim -= trimstep; break;
+                        case 0: xtrim += trimstep; break;
+                    }
                 case JS_EVENT_AXIS:
                     axis = get_axis_state(&event, axes);
                     break;
@@ -140,11 +150,11 @@ int main(int argc, char *argv[])
             float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
 
             float servoThrow = 2.0;
-            float xScale = -1.0;
+            float xScale = +1.0;
             float yScale = -1.0;
         
-            float x = axes[0].x / 32767.0 * servoThrow / sqrt(2); 
-            float y = axes[0].y / 32767.0 * servoThrow / sqrt(2);
+            float x = axes[0].y / 32767.0 * servoThrow / sqrt(2) + xtrim;
+            float y = axes[0].x / 32767.0 * servoThrow / sqrt(2) + ytrim;
             //printf("%6f %6f\n", x, y);
 
             float x1 = leftStringX + xScale * x;
@@ -157,7 +167,7 @@ int main(int argc, char *argv[])
         
 
             float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
-            float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
+              float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
 
             printf("s %4.0f %4.0f\n", s0, s1 );
             fflush(stdout);
