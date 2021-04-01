@@ -140,8 +140,8 @@ int main(int argc, char *argv[])
             float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
 
             float servoThrow = 2.0;
-            float xScale = +1.0;
-            float yScale = +1.0;
+            float xScale = -1.0;
+            float yScale = -1.0;
         
             float x = axes[0].x / 32767.0 * servoThrow / sqrt(2); 
             float y = axes[0].y / 32767.0 * servoThrow / sqrt(2);
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
             float rightNewLen = sqrt(x1 * x1 + y1 * y1);
         
 
-            float s0 =  -(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
+            float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
             float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
 
             printf("s %4.0f %4.0f\n", s0, s1 );

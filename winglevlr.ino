@@ -27,7 +27,7 @@ WiFiMulti wifi;
 
 //SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
 int logFileNumber = 0;
-
+int auxMpuPacketCount = 0;
 TinyGPSPlus gps;
 TinyGPSCustom desiredHeading(gps, "GPRMB", 11);
 TinyGPSCustom xte(gps, "GPRMB", 2);
@@ -69,12 +69,13 @@ struct {
 	//int servo_enable = 18;
 	int sda = 21; 
 	int scl = 22; 
-	int led = 19;
+//	int led = 19;
 	int tft_backlight = 27;
+	int serial2_tx = 27;
+	int serial2_rx = 19;
 } pins;
 
 MPU9250_asukiaaa *imu = NULL;
-
 
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
@@ -95,7 +96,7 @@ void halInit() {
 		pins.midButton = 34;
 		pins.botButton = 35;
 		//pins.servo_enable = 36;
-		pins.led = 21; // dont know 
+		//pins.led = 21; // dont know 
 		// TODO: IMU is inverted on these boards 
 	}
 	
@@ -113,17 +114,22 @@ void halInit() {
 		}
 	}
 
-	pinMode(pins.tft_backlight, OUTPUT); // TFT backlight
-	digitalWrite(pins.tft_backlight, 1);
+	if (0) {
+		pinMode(pins.tft_backlight, OUTPUT); // TFT backlight
+		digitalWrite(pins.tft_backlight, 1);
+	} else { 
+		Serial2.begin(57600, SERIAL_8N1, pins.serial2_rx, pins.serial2_tx);
+		Serial2.setTimeout(1);
+	}
 
 	while(0) { // basic hardware testing - halt here and debug pins 
 		static int alternate = 0;
 		delay(100); 
 		printPins();
 		pinMode(pins.tft_backlight, OUTPUT);
-		pinMode(pins.led, OUTPUT);
+		//pinMode(pins.led, OUTPUT);
 		alternate = !alternate;
-		digitalWrite(pins.led, alternate);
+		//digitalWrite(pins.led, alternate);
 		digitalWrite(pins.tft_backlight, !alternate);
 	} 
 	
@@ -220,9 +226,6 @@ public:
 	}
 } ed;
 
-
-
-
 void imuLog(); 
 
 
@@ -250,9 +253,21 @@ bool imuRead() {
 		x.my = imu->magY();
 		x.mz = imu->magZ();
 	}
+	if (lastUsec / 20000 != micros() / 20000) { 
+		AuxMpuData a;
+		a.ax = x.ax; a.ay = x.ay; a.az = x.az;
+		a.gx = x.gx; a.gy = x.gy; a.gz = x.gz;
+		a.mx = x.mx; a.my = x.my; a.mz = x.mz;
+		String ad = a.toString();
+		if (Serial2.availableForWrite() > 120) { 
+			Serial2.println(a.toString());
+		}
+		//Serial2.flush();
+	}	
 	lastUsec = micros();
 	// remaining items set (alt, hdg, speed) set by main loop
 	return true;
+
 }
 
 LogItem logItem;
@@ -515,19 +530,20 @@ void loop() {
 			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
-			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d\n", 
+			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu %d\n", 
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
 			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
-			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
-			0
+			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
+				logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, auxMpuPacketCount
 		);
 		if (logFile != NULL) {
 			logFile->maxWaiting =  0;
 		}
 		serialLogFlags = 0;
+		auxMpuPacketCount = 0;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -671,42 +687,44 @@ void loop() {
 		}
 	} while(recsize > 0);
 
-	if (Serial.available()) {
-		static char line[32];
+	if (Serial2.available()) {
 		static unsigned char buf[128]; // TODO make a line parser class with a lambda/closure
-		static int index;
-		int n = Serial.readBytes(buf, sizeof(buf));
-		for (int i = 0; i < n; i++) {
-			if (index >= sizeof(line))
-				index = 0;
-			if (buf[i] != '\r')
-				line[index++] = buf[i];
-			if (buf[i] == '\n' || buf[i] == '\r') {
-				line[index] = '\0';
-				Serial.printf("RECEIVED COMMAND: %s", line);
-				index = 0;
-				float f, f2;
-				int relay, ms;
-				if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
-				else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
-				else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
-				else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
-				else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
-				else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
-				else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
-				else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
-				//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
-				else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
-				//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
-				else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
-				else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
-				else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
-				else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
-				else {
-					Serial.printf("UNKNOWN COMMAND: %s", line);
-				}
+		static LineBuffer lb;
+		int n = Serial2.readBytes(buf, min((int)sizeof(buf), (int)Serial2.available()));
+		lb.add((char *)buf, n, [](const char *line) { 
+			auxMpuPacketCount++;
+			if (auxMPU.fromString(line)) {
 			}
-		}
+		});
+	}
+
+	if (Serial.available()) {
+		static unsigned char buf[128]; // TODO make a line parser class with a lambda/closure
+		static LineBuffer lb;
+		int n = Serial.readBytes(buf, min(Serial.available(), (int)sizeof(buf)));
+		lb.add((char *)buf, n, [](const char *line) { 
+			Serial.printf("RECEIVED COMMAND: %s", line);
+			float f, f2;
+			int relay, ms;
+			if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
+			else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
+			else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
+			else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
+			else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
+			else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
+			else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
+			else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
+			//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
+			else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
+			//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
+			else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
+			else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
+			else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
+			else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
+			else {
+				Serial.printf("UNKNOWN COMMAND: %s", line);
+			}
+		});
 	}
 
 	int avail = 0;
@@ -897,6 +915,7 @@ void loop() {
 		logItem.magBank = ahrs.magBank;
 		logItem.pitch = ahrs.pitch; 
 		logItem.ai = ahrsInput;
+		logItem.auxMpu = auxMPU;
 
 		totalError.roll += abs(roll + ahrsInput.g5Roll);
 		totalError.hdg += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
@@ -935,7 +954,7 @@ void loop() {
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		Display::dtk = desiredTrk; 
 		Display::trk = ahrsInput.selTrack; 
-		Display::navt = navDTK; 
+		Display::navt = auxMPU.gy; //navDTK; 
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
 		Display::gdl = (float)gpsTrackGDL90;
@@ -955,8 +974,8 @@ void loop() {
 	}
 	
 	// Use onboard LED to indicate active logging 
-	pinMode(pins.led, OUTPUT);
-	digitalWrite(pins.led, logFile == NULL);
+	//pinMode(pins.led, OUTPUT);
+	//digitalWrite(pins.led, logFile == NULL);
 }
 
 #ifdef UBUNTU
@@ -1060,7 +1079,8 @@ public:
 			imu->mx = l.ai.mx;
 			imu->my = l.ai.my;
 			imu->mz = l.ai.mz;
-		
+			auxMPU = l.auxMpu;
+
 			l.ai.g5Pitch = min(max(-30.0, (double)l.ai.g5Pitch), 30.0);
 			l.ai.g5Roll = min(max(-30.0, (double)l.ai.g5Roll), 30.0);
 			// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
@@ -1257,9 +1277,9 @@ public:
 /*
  * TTGO TS 1.4 PINOUTS
  * 
- * 	18			19 (LED)
+ * 	18 (PWM)	19 (LED)
  * 	33 (PWM)	RST
- * 	27 			32  (KNOB)
+ * 	27 backlight 32  (KNOB)
  * 	GND(GND)	26  (ROT)
  * 	0 (ROT)		GND 		
  * 	GND			3.3V

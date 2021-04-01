@@ -262,6 +262,7 @@ class FakeSerial {
 	}
 	void setTimeout(int) {}
 	void flush() {} 
+	int availableForWrite() { return 1; } 
 	int available() { return inputLine.length(); }
 	int readBytes(uint8_t *b, int l) {
 		int rval =  min(inputLine.length(), l);

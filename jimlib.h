@@ -141,6 +141,12 @@ public:
 		}
 		return r;
 	}
+	void add(const char *b, int n, std::function<void(const char *)> f) { 
+		for (int i = 0; i < n; i++) {
+			if (add(b[i])) 
+				f(line);
+		}
+	}
 };
 
 class IntervalTimer {
