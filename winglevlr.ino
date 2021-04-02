@@ -44,14 +44,15 @@ PidControl *knobPID = &hdgPID;
 WiFiUDP udpSL30;
 WiFiUDP udpNMEA;
 WiFiUDP udpG90;
+WiFiUDP udpCmd;
 //WiFiUDP udpMAV;
 
 #define LED_PIN 22
 /* Old hardware pins: I2C pins/variant seems to determine layout 
 struct {
-	int topButton = 39;
+	int topButton = 35;
 	int midButton = 34;
-	int botButton = 35;
+	int botButton = 39;
 	int knobButton = 32;
 	int pwm_roll = 33;
 	int pwm_pitch = 18;
@@ -60,9 +61,9 @@ struct {
 
 
 struct {
-	int topButton = 39;
+	int topButton = 36;
 	int midButton = 37;
-	int botButton = 36;
+	int botButton = 39;
 	int knobButton = 32;
 	int pwm_pitch = 33;
 	int pwm_roll = 18;
@@ -95,7 +96,7 @@ void halInit() {
 		pins.sda = 19;
 		pins.scl = 22;
 		pins.midButton = 34;
-		pins.botButton = 35;
+		pins.topButton = 35;
 		//pins.servo_enable = 36;
 		//pins.led = 21; // dont know 
 		// TODO: IMU is inverted on these boards 
@@ -165,6 +166,16 @@ void buttonISR() {
 	
 	butFilt3.check(buttonTop.duration());
 	butFilt4.check(buttonKnob.duration());
+}
+
+void serialOutput(const String &s) {
+	for (int n = 0; n < 30; n++) { 
+		udpCmd.beginPacket("255.255.255.255", 9000);
+		udpCmd.write((uint8_t *)s.c_str(), s.length());
+		udpCmd.endPacket();
+		delay(1);
+	}
+	Serial.write((uint8_t *)s.c_str(), s.length()); 
 }
 
 namespace LogFlags {
@@ -254,7 +265,8 @@ bool imuRead() {
 		x.my = imu->magY();
 		x.mz = imu->magZ();
 	}
-	if (lastUsec / 20000 != micros() / 20000) { 
+	// disable mpu logging 
+	if (false && lastUsec / 20000 != micros() / 20000) { 
 		AuxMpuData a;
 		a.ax = x.ax; a.ay = x.ay; a.az = x.az;
 		a.gx = x.gx; a.gy = x.gy; a.gz = x.gz;
@@ -263,10 +275,10 @@ bool imuRead() {
 		if (Serial2.availableForWrite() > 120) { 
 			Serial2.println(a.toString());
 		}
-		//Serial2.flush();
 	}	
 	lastUsec = micros();
 	// remaining items set (alt, hdg, speed) set by main loop
+	
 	return true;
 
 }
@@ -324,6 +336,7 @@ void setup() {
 	//digitalWrite(pins.servo_enable, 1);
 
 	Display::jd.begin();
+	Display::jd.setRotation(3);
 	Display::jd.clear();
 	
 	attachInterrupt(digitalPinToInterrupt(buttonMid.pin), buttonISR, CHANGE);
@@ -351,6 +364,7 @@ void setup() {
 	udpSL30.begin(7891);
 	udpG90.begin(4000);
 	udpNMEA.begin(7892);
+	udpCmd.begin(7895);
 	
 	lastAhrsGoodG5.g5Hdg  = lastAhrsGoodG5.gpsTrackGDL90 = lastAhrsGoodG5.gpsTrackRMC = -1;
 	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = -1;
@@ -366,14 +380,14 @@ void setup() {
 	hdgPID.hiGain.p = 0.50;
 	hdgPID.hiGainTrans.p = 3.0;
 	hdgPID.maxerr.i = 20;
-	hdgPID.finalGain = 2.2;
+	hdgPID.finalGain = 0.5;
 
 	xtePID.setGains(8.0, 0.00, 0.05);
 	xtePID.maxerr.i = 1.0;
 	xtePID.finalGain = 10.0;
 	
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
-	pitchPID.finalGain = 1;
+	pitchPID.finalGain = 5.0;
 	pitchPID.maxerr.i = .5;
 
     // make PID select knob display text from array instead of 0-3	
@@ -409,7 +423,7 @@ void setup() {
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
-float desRoll = 0;		
+float desRoll = 0, desPitch = 6, desAlt = 0;		
 static int serialLogFlags = 0;
 
 void udpSendString(const char *b) { 
@@ -490,6 +504,36 @@ static bool selEditing = false;
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
+
+void parseSerialCommandInput(const char *buf, int n) { 
+	static LineBuffer lb;
+	lb.add(buf, n, [](const char *line) { 
+		//Serial.printf("RECEIVED COMMAND: %s", line);
+		float f, f2;
+		int relay, ms;
+		if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
+		else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
+		else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
+		else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
+		else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
+		else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
+		else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
+		else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
+		//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
+		else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
+		//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
+		else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
+		else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
+		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
+		else if (sscanf(line, "trim %f %f", &f, &f2) == 2) { rollTrim = f; pitchTrim = f2; }
+		else if (sscanf(line, "dpitch %f", &f) == 1) { desPitch = f; }
+		else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
+		else {
+			Serial.printf("UNKNOWN COMMAND: %s", line);
+		}
+	});
+}
+
 
 void setObsKnob(float knobSel, float v) { 
 	if (knobSel == 1 || knobSel == 4) {
@@ -576,7 +620,8 @@ void loop() {
 				armServo = !armServo; 
 			}
 			if (butFilt3.wasCount == 3) {
-				ahrs.zeroSensors();
+				std::string s = ahrs.zeroSensors();
+				serialOutput(String(s.c_str()));
 			}
 		}
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
@@ -591,7 +636,7 @@ void loop() {
 				if (!logChanging) {
 					logChanging = true;
 					if (logFile == NULL) {	
-							logFile = new SDCardBufferedLog<LogItem>(logFileName, 500/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
+							logFile = new SDCardBufferedLog<LogItem>(logFileName, 400/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
 							logFilename = logFile->currentFile;
 							logChanging = false;
 					} else {
@@ -700,33 +745,14 @@ void loop() {
 	}
 
 	if (Serial.available()) {
-		static unsigned char buf[128]; // TODO make a line parser class with a lambda/closure
-		static LineBuffer lb;
-		int n = Serial.readBytes(buf, min(Serial.available(), (int)sizeof(buf)));
-		lb.add((char *)buf, n, [](const char *line) { 
-			//Serial.printf("RECEIVED COMMAND: %s", line);
-			float f, f2;
-			int relay, ms;
-			if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
-			else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
-			else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
-			else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
-			else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
-			else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
-			else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
-			else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
-			//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
-			else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
-			//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
-			else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
-			else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
-			else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
-			else if (sscanf(line, "trim %f %f", &f, &f2) == 2) { rollTrim = f; pitchTrim = f2; }
-			else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
-			else {
-				Serial.printf("UNKNOWN COMMAND: %s", line);
-			}
-		});
+		char buf[128];
+		int n = Serial.readBytes((uint8_t *)buf, sizeof(buf));
+		parseSerialCommandInput(buf, n);
+	}
+	if (udpCmd.parsePacket() > 0) {
+		char buf[128];
+		int n = udpCmd.read((uint8_t *)buf, sizeof(buf));
+		parseSerialCommandInput(buf, n);
 	}
 
 	int avail = 0;
@@ -827,6 +853,7 @@ void loop() {
 		}
 	}
 
+	//printMag();
 	if (imuRead()) { 
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
 
@@ -895,7 +922,7 @@ void loop() {
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		pitchPID.add(ahrs.pitch, ahrs.pitch, ahrsInput.sec);
+		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch, ahrsInput.sec);
 
 		if (armServo) {  
 			float leftStringX = 8;

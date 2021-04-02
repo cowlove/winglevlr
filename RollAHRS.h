@@ -187,6 +187,7 @@ public:
 
 class RollAHRS {
 public:
+	bool rotate180 = true;
 	float fit360(float h) { 
 		while(h <= 0) h += 360;
 		while(h > 360) h -= 360;
@@ -194,8 +195,8 @@ public:
 	}
 	MultiCompFilter mComp;
 	
-	float magOffX = 26.08;
-	float magOffY = 17.68;
+	float magOffX = 33;
+	float magOffY = 55;
 	float magOffZ = -30;
 
 	
@@ -203,9 +204,9 @@ public:
 	float magScaleY = 1.0;
 	float magScaleZ = 1.0;
 	
-	float gyrOffX = -0.3; 
-	float gyrOffY = +0.3; 
-	float gyrOffZ = +0.3;
+	float gyrOffX = -1.147; 
+	float gyrOffY = -0.189; 
+	float gyrOffZ = +0.989;
 		  
 	float accOffX = +0,
 		  accOffY = -0,
@@ -221,9 +222,9 @@ public:
 	float magBankTrimMaxBankErr = 12;
 	
 	RollAHRS() { 
-		gyrYOffsetFit.add(gyrOffY);
-		gyrZOffsetFit.add(gyrOffZ);
-		gyrXOffsetFit.add(gyrOffX);
+		//gyrYOffsetFit.add(gyrOffY);
+		//gyrZOffsetFit.add(gyrOffZ);
+		//gyrXOffsetFit.add(gyrOffX);
 	}
 		
 	int zeroSampleCount = 0; 
@@ -275,18 +276,18 @@ public:
 		return prev.selTrack != -1;
 	}
 	
-	void zeroSensors() { 
+	std::string zeroSensors() { 
 		gyrOffX = zeroAverages.gx.average(); 
 		gyrOffY = zeroAverages.gy.average();
 		gyrOffZ = zeroAverages.gz.average();
 		accOffX = zeroAverages.ax.average();
 		accOffY = zeroAverages.ay.average();
 		accOffZ = zeroAverages.az.average() + 1.0;
-		Serial.printf("ZERO SENSORS gyro %f %f %f accel %f %f %f\n", gyrOffX, gyrOffY, gyrOffZ, accOffX, accOffY, accOffZ); 
+		return strfmt("ZERO SENSORS gyro %f %f %f accel %f %f %f\n", gyrOffX, gyrOffY, gyrOffZ, accOffX, accOffY, accOffZ); 
 	}
 	
-	float add(const AhrsInput &i) {
-		AhrsInput l(i);
+	float add(const AhrsInput &i_NODONTUSE) {
+		AhrsInput l(i_NODONTUSE);
 		float dt = 0;
 		if (fakeTimeMs > 0)
 			l.sec = (count * fakeTimeMs) / 1000.0;	
@@ -311,7 +312,17 @@ public:
 		l.ay -= accOffY;
 		l.az -= accOffZ;
 #endif
-	
+
+		if (rotate180) { 
+			l.ax *= -1;
+			l.ay *= -1;
+			l.mx *= -1;
+			l.my *= -1;
+			l.gx *= -1;
+			l.gy *= -1;
+		}
+
+		// gyroOffsets are-post rotation.  All other constant offsets are pre-rotation
 		if (gyrZOffsetFit.full()) { 
 			l.gx -= gyrXOffsetFit.average();
 			l.gy -= gyrYOffsetFit.average();
@@ -321,6 +332,7 @@ public:
 			l.gz -= gyrOffZ;
 			l.gy -= gyrOffY;
 		}
+
 		avgGZ.add(l.gz);
 		avgGX.add(l.gx);
 		avgAZ.add(l.az);
@@ -435,13 +447,14 @@ public:
 		count++;
 		prev = l;
 		
-		float accelPitch = atan2(i.ay, i.az);
+		float accelPitch = atan2(l.ay, l.az);
 
 		//float accelRoll = RAD2DEG(atan2(avgAZ.average(), -avgAX.average()));
 		float accelRoll = RAD2DEG(atan2(avgAX.average(), avgAZ.average()));
 
 		accelRoll = min(max((double)accelRoll, -15.0), 15.0);
-		float pG = cos(DEG2RAD(compYH + accelRoll)) * i.gx - sin(DEG2RAD(compYH + accelRoll)) * i.gz;
+		float pG = cos(DEG2RAD(compYH + accelRoll)) * l.gx - sin(DEG2RAD(compYH + accelRoll)) * l.gz;
+		//pG = i.gx;
 		pitchRaw = (pitchRaw + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioPitch) + (accelPitch * compRatioPitch);
 
 		pitch = pitchRaw + pitchOffset;
