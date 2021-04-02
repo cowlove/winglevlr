@@ -1049,12 +1049,11 @@ float ESP32sim_pitchCmd = 940.0;
 //void ESP32sim_set_gpsTrackGDL90(float v);
 void ESP32sim_done();
 
-
 class ESP32sim_winglevlr : public ESP32sim_Module {
 public:
 	ifstream trackSimFile;
 	//using WaypointNav::TrackSimFileParser;
-	WaypointNav::WaypointSequencer tSim = WaypointNav::WaypointSequencer(trackSimFile);
+	WaypointsSequencerFile *tSim = NULL;
 	IntervalTimer hz100 = IntervalTimer(100/*msec*/);
 
 	ifstream ifile;
@@ -1209,7 +1208,7 @@ public:
 			s.alt = 1000 / FEET_PER_METER;
 			s.track = t1;
 			s.vvel = 0;
-			s.hvel = tSim.wptTracker.speed;
+			s.hvel = tSim != NULL ? tSim->wptTracker.speed : 0;
 			s.palt = (s.alt + 1000) / 25;
 
 			WiFiUDP::InputData buf;
@@ -1232,15 +1231,20 @@ public:
 		}
 	}
 
+	std::vector<char> trackSimFileContents;
+	//wrap_vector_as_istream tsf; 
+
 	void parseArg(char **&a, char **la) override {
 		if (strcmp(*a, "--replay") == 0) replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0) logSkip = atoi(*(++a));
 		else if (strcmp(*a, "--log") == 0) { 
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));
-		}else if (strcmp(*a, "--tracksim") == 0) 
-				trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
-		else if (strcmp(*a, "--logConvert") == 0) {
+		}else if (strcmp(*a, "--tracksim") == 0) {
+				tSim = new WaypointsSequencerFile(*(++a));
+				//tSim = trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
+				//trackSimFile = wrap_vector_as_istream(trackSimFileContents);
+		} else if (strcmp(*a, "--logConvert") == 0) {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
 			ESP32sim_convertLogOldToNew(i, o);
@@ -1279,10 +1283,12 @@ public:
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
 			bm.addPress(pins.topButton, 10, 1, false); // top short press - hdg hold 
 			ahrsInput.dtk = desiredTrk = 180;
-			tSim.wptTracker.onSteer = [&](float s) { 
-				ahrsInput.dtk = desiredTrk = trueToMag(s);
-				return magToTrue(track);
-			};
+			if (tSim != NULL) { 
+					tSim->wptTracker.onSteer = [&](float s) { 
+					ahrsInput.dtk = desiredTrk = trueToMag(s);
+					return magToTrue(track);
+				};
+			}
 		}
 	}
 
@@ -1303,8 +1309,8 @@ public:
 				//ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5hdg));
 			}
 			flightSim(imu);
-			if (hz100.tick(micros()/1000.0) && (trackSimFile || trackSimFile.eof())) {
-				tSim.run(hz100.interval / 1000.0);
+			if (hz100.tick(micros()/1000.0) && tSim != NULL) {
+				tSim->run(hz100.interval / 1000.0);
 			}
 			if (false && hz(1.0/6000)) {
 				//ahrs.reset();
