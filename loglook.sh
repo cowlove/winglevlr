@@ -91,6 +91,7 @@ while (( $# > 0 )); do
 	if [ "$1" == "-agy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($42) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-agz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($43) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-amx" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($44) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-amy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($45) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-amz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($46) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-stats" ]; then 
 		STATS='stats '$RANGE' "'$F2'" u ($1-F2_min_x):($'$2')'; 
@@ -125,7 +126,7 @@ while (( $# > 0 )); do
 		IN="./logs/AHRSD$NUM.dat"
 		echo "Replay $F2"
 		if [ "$PROG" -nt "$F2" ] || [ ! -f "$F2" ]; then
-			echo $PROG $MARGS --debug "$DARGS" --replay ./logs/AHRSD$NUM.DAT --log + \> \""$F2"\" 
+			echo $PROG $MARGS --debug \"$DARGS\" --replay ./logs/AHRSD$NUM.DAT --log + \> \""$F2"\" 
 			$PROG $MARGS --debug "$DARGS" --replay ./logs/AHRSD$NUM.DAT --log + | grep LOG > "$F2"
 		fi
 	fi  

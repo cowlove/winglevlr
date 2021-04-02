@@ -195,8 +195,8 @@ public:
 	}
 	MultiCompFilter mComp;
 	
-	float magOffX = 33;
-	float magOffY = 55;
+	float magOffX = 40;
+	float magOffY = 60;
 	float magOffZ = -30;
 
 	
@@ -213,8 +213,8 @@ public:
 		  accOffZ = -0;
 
 	float compRatio1 = 0.00072;  // roll comp filter ratio 
-	float compRatioPitch = 0.00103;
-	float pitchOffset = -2;
+	float compRatioPitch = 0.001236;
+	float pitchOffset = -9.92;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 	float magDipConstant = 2.496; // unexplained correction factor for bank angle in dip calcs
