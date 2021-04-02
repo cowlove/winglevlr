@@ -38,7 +38,7 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(200); /*20Hz*/
+PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(200)/*20hz*/, altPID(200); /*20Hz*/
 PidControl *knobPID = &hdgPID;
 
 WiFiUDP udpSL30;
@@ -377,8 +377,8 @@ void setup() {
 	rollPID.maxerr.i = 20;
 
 	hdgPID.setGains(0.25, 0.02, 0.02);
-	hdgPID.hiGain.p = 0.50;
-	hdgPID.hiGainTrans.p = 3.0;
+	hdgPID.hiGain.p = 2.50;
+	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 0.5;
 
@@ -390,8 +390,11 @@ void setup() {
 	pitchPID.finalGain = 5.0;
 	pitchPID.maxerr.i = .5;
 
+	altPID.setGains(1.0, 0.0, 0.1);
+	altPID.finalGain = .01;
+
     // make PID select knob display text from array instead of 0-3	
-	Display::pidsel.toString = [](float v){ return String((const char *[]){"HDG ", "ROLL", "XTE ", "PIT "}[(v >=0 && v <= 3) ? (int)v : 0]); };		
+	Display::pidsel.toString = [](float v){ return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 3) ? (int)v : 0]); };		
 	ed.begin();
 
 #ifndef UBUNTU
@@ -460,10 +463,11 @@ void pitchTrimRelay(int relay, int ms) {
 
 void setKnobPid(int f) { 
 	Serial.printf("Knob PID %d\n", f);
-	if      (f == 0) { knobPID = &hdgPID; }
+	if      (f == 0) { knobPID = &pitchPID; }
+	else if (f == 1) { knobPID = &altPID;}
 	else if (f == 1) { knobPID = &rollPID; }
 	else if (f == 2) { knobPID = &xtePID; }
-	else if (f == 3) { knobPID = &pitchPID; }
+	else if (f == 3) { knobPID = &hdgPID; }
 	
 	ed.pidpl.setValue(knobPID->gain.p);
 	ed.pidph.setValue(knobPID->hiGain.p);
@@ -486,10 +490,10 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int,40,40> loopTime;
-static EggTimer serialReportTimer(200), hdgPIDTimer(50), loopTimer(5), buttonCheckTimer(10);
+static EggTimer serialReportTimer(200), hz20(50), loopTimer(5), buttonCheckTimer(10);
 static int armServo = 0;
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
+static int hdgSelect = 3; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 struct {
@@ -536,6 +540,9 @@ void parseSerialCommandInput(const char *buf, int n) {
 
 
 void setObsKnob(float knobSel, float v) { 
+	if (knobSel == 2) {
+		desAlt = v * 3.2808;
+	}
 	if (knobSel == 1 || knobSel == 4) {
 		obs = v * 180.0 / M_PI;
 		if (obs <= 0) obs += 360;
@@ -722,12 +729,10 @@ void loop() {
 					gpsTrackGDL90 = trueToMag(s.track);
 					ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
 					logItem.flags |= LogFlags::HdgGDL; 
-					if (hdgSelect == 2) {
-						gpsFixes++;
-						ahrsInput.alt = s.alt;
-						ahrsInput.palt = s.palt;
-						ahrsInput.gspeed = s.hvel;
-					}
+					gpsFixes++;
+					ahrsInput.alt = s.alt;
+					ahrsInput.palt = s.palt;
+					ahrsInput.gspeed = s.hvel;
 				}
 			}
 		}
@@ -830,11 +835,11 @@ void loop() {
 					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07); 	
 					logItem.flags |= LogFlags::HdgRMC;
 				}
-				if (gps.location.isUpdated() && hdgSelect == 2) {
-					ahrsInput.alt = gps.altitude.meters() * 3.2808;
-					ahrsInput.gspeed = gps.speed.knots();
-					gpsFixes++;
-				}
+				//if (gps.location.isUpdated() && hdgSelect == 2) {
+				//	ahrsInput.alt = gps.altitude.meters() * 3.2808;
+				//	ahrsInput.gspeed = gps.speed.knots();
+				//	gpsFixes++;
+				//}
 				if (desiredHeading.isUpdated()) { 
 					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
 					if (navDTK < 0)
@@ -891,7 +896,7 @@ void loop() {
 		else if (hdgSelect == 2) ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
 		else if (hdgSelect == 3) ahrsInput.selTrack = ahrs.magHdg;
 		
-		if (hdgPIDTimer.tick()) {
+		if (hz20.tick()) {
 			if (ahrsInput.dtk != -1) { 
 				if (apMode == 4) {
 					xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
@@ -917,12 +922,12 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 
-
+		 	float alt; // TODO: consider alt sources/possibilites 
+			altPID.add(alt - desAlt, alt, ahrsInput.sec);
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch, ahrsInput.sec);
+		pitchPID.add(ahrs.pitch - desPitch + altPID.corr, ahrs.pitch, ahrsInput.sec);
 
 		if (armServo) {  
 			float leftStringX = 8;
