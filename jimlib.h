@@ -827,7 +827,9 @@ public:
 		tft.setTextSize(size); 
 		tft.print(s);
 	}
+	void setRotation(int n) { tft.setRotation(n); }
 #else
+	void setRotation(int) {}
 	static const int xsize = 40, ysize = 20;
 	char lines[ysize][xsize];
 	void begin() {
