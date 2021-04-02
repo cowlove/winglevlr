@@ -1123,6 +1123,7 @@ public:
 		lastMillis = now;
 	}
 
+	bool ESP32csim_useAuxMpu = false;
 	bool ESP32sim_replayLogItem(ifstream &i) {
 		LogItem l; 
 		static uint64_t logfileMicrosOffset = 0;
@@ -1141,6 +1142,17 @@ public:
 			imu->my = l.ai.my;
 			imu->mz = l.ai.mz;
 			auxMPU = l.auxMpu;
+
+			if (ESP32csim_useAuxMpu) { 
+				float cksum = abs(auxMPU.ax) + abs(auxMPU.ay) + abs(auxMPU.az) +
+					abs(auxMPU.gx) + abs(auxMPU.gy) + abs(auxMPU.gz) +
+					abs(auxMPU.mx) + abs(auxMPU.my) + abs(auxMPU.mz);
+				if (cksum < 1000) { 
+					imu->ax = auxMPU.ax; imu->ay = auxMPU.ay; imu->az = auxMPU.az;
+					imu->gx = auxMPU.ax; imu->gy = auxMPU.ay; imu->gz = auxMPU.az;
+					imu->mx = auxMPU.ax; imu->my = auxMPU.ay; imu->mz = auxMPU.az;
+				}
+			}
 
 			l.ai.g5Pitch = min(max(-30.0, (double)l.ai.g5Pitch), 30.0);
 			l.ai.g5Roll = min(max(-30.0, (double)l.ai.g5Roll), 30.0);
@@ -1224,8 +1236,8 @@ public:
 		if (strcmp(*a, "--replay") == 0) replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0) logSkip = atoi(*(++a));
 		else if (strcmp(*a, "--log") == 0) { 
-			bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
-			logFileName = (*(++a));
+			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
+			logFilename = (*(++a));
 		}else if (strcmp(*a, "--tracksim") == 0) 
 				trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
 		else if (strcmp(*a, "--logConvert") == 0) {
@@ -1253,6 +1265,7 @@ public:
 				else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 
 				else if (sscanf(it->c_str(), "ahrs.crpitch=%f", &v) == 1) { ahrs.compRatioPitch = v; } 
 				else if (sscanf(it->c_str(), "ahrs.pitchoffset=%f", &v) == 1) { ahrs.pitchOffset = v; } 
+				else if (sscanf(it->c_str(), "ahrs.useauxmpu=%f", &v) == 1) { ESP32csim_useAuxMpu = v; } 
 				else if (strlen(it->c_str()) > 0) { 
 					printf("Unknown debug parameter '%s'\n", it->c_str()); 
 					exit(-1);
