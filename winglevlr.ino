@@ -506,6 +506,10 @@ static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 static uint64_t lastLoop = micros();
 static bool selEditing = false;
 
+std::string waypointList;
+WaypointsSequencerString *wpNav = NULL;
+GDL90Parser::State gdl90State;
+
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
 
@@ -516,22 +520,29 @@ void parseSerialCommandInput(const char *buf, int n) {
 		float f, f2;
 		int relay, ms;
 		if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
-		else if (sscanf(line, "navtr=%f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
-		else if (sscanf(line, "maxb=%f", &f) == 1) { ed.maxb.value = f; }
-		else if (sscanf(line, "roll=%f", &f) == 1) { desRoll = f; }
-		else if (sscanf(line, "pidp=%f", &f) == 1) { pitchPID.gain.p = f; }
-		else if (sscanf(line, "pidi=%f", &f) == 1) { pitchPID.gain.i = f; }
-		else if (sscanf(line, "pidd=%f", &f) == 1) { pitchPID.gain.d = f; }
-		else if (sscanf(line, "pidl=%f", &f) == 1) { pitchPID.gain.l = f; }
+		else if (sscanf(line, "navtr %f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
+		else if (sscanf(line, "maxb %f", &f) == 1) { ed.maxb.value = f; }
+		else if (sscanf(line, "roll %f", &f) == 1) { desRoll = f; }
+		else if (sscanf(line, "pidp %f", &f) == 1) { pitchPID.gain.p = f; }
+		else if (sscanf(line, "pidi %f", &f) == 1) { pitchPID.gain.i = f; }
+		else if (sscanf(line, "pidd %f", &f) == 1) { pitchPID.gain.d = f; }
+		else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
+		else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
 		//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 		else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 		//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
-		else if (strstr(line, "zeroimu") != NULL) { ahrs.zeroSensors(); }
+		else if (strstr(line, "zeroimu") == line) { ahrs.zeroSensors(); }
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
 		else if (sscanf(line, "trim %f %f", &f, &f2) == 2) { rollTrim = f; pitchTrim = f2; }
 		else if (sscanf(line, "dpitch %f", &f) == 1) { desPitch = f; }
 		else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
+		else if (strstr(line, "wpclear") == line) { waypointList = ""; }
+		else if (strstr(line, "wpadd ") == line) { waypointList += (line + 6); waypointList += "\n"; }
+		else if (strstr(line, "wpstart") == line && wpNav == NULL) { 
+			wpNav = new WaypointsSequencerString(waypointList); 
+		}
+		else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
 		else {
 			Serial.printf("UNKNOWN COMMAND: %s", line);
 		}
@@ -733,6 +744,7 @@ void loop() {
 					ahrsInput.alt = s.alt;
 					ahrsInput.palt = s.palt;
 					ahrsInput.gspeed = s.hvel;
+					gdl90State = s;
 				}
 			}
 		}
@@ -862,6 +874,12 @@ void loop() {
 	if (imuRead()) { 
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
 
+		if (apMode == 3 && wpNav != NULL) {
+			desiredTrk = trueToMag(wpNav->wptTracker.track);
+			wpNav->wptTracker.curPos.loc.lat = gdl90State.lat;
+			wpNav->wptTracker.curPos.loc.lon = gdl90State.lon;
+		}
+		
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
 		ahrsInput.gpsTrackVTG = gpsTrackVTG;
 		ahrsInput.gpsTrackRMC = gpsTrackRMC;
