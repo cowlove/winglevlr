@@ -254,16 +254,26 @@ namespace WaypointNav {
         void readNextWaypoint(float timestep) { 
             double lat, lon, alt, track;
             using namespace std;
-            std::string s;
+            std::string s("empty");
             if (waitTime > 0 && (waitTime -= timestep) > 0) 
                 return;
 
             wptTracker.activeWaypoint.valid = false;
-            if (in.eof() && repeat) { 
+            if (in.eof()) { 
                 in.clear();
-                in.seekg(0);
+                in.seekg(0, ios_base::beg);
             } 
-            while(wptTracker.activeWaypoint.valid == false && std::getline(in, s)) {
+            printf("valid %d", (int)wptTracker.activeWaypoint.valid);
+            while(wptTracker.activeWaypoint.valid == false) {
+                if (!std::getline(in, s)) {
+                    if (repeat) {
+                        in.clear();
+                        in.seekg(0, ios_base::beg);
+                        continue;
+                    } else {
+                        break;
+                    }
+                }      
                 cout << "READ LINE: " << s << endl;
                 char buf[128];
                 float f; 
@@ -275,7 +285,6 @@ namespace WaypointNav {
                 sscanf(s.c_str(), "HDG %f", &wptTracker.steerHdg);
                 sscanf(s.c_str(), "WAIT %f", &waitTime);
                 
-                // TODO: parse string labels instead of int INPUT.MODE=0
                 if (sscanf(s.c_str(), "INPUT.%s %f", buf, &f) == 2) { inputs[buf] = f; }
                 sscanf(s.c_str(), "REPEAT %d", &repeat);
                 if (sscanf(s.c_str(), "%lf, %lf %lf %lf", &lat, &lon, &alt, &track) == 4) {  
@@ -289,3 +298,18 @@ namespace WaypointNav {
         }
     };
 }
+
+class WaypointsSequencerFile : public WaypointNav::WaypointSequencer {
+	public:
+	std::ifstream is;
+	WaypointsSequencerFile(const char *fname) : is(fname, ios_base::in), WaypointSequencer(is) {};
+};
+
+class WaypointsSequencerString : public WaypointNav::WaypointSequencer {
+	public:
+	std::string s;
+	std::istringstream is;
+	WaypointsSequencerString(std::string &i) : s(i), is(s), WaypointSequencer(is) {};
+};
+
+
