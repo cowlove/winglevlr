@@ -930,11 +930,11 @@ void loop() {
 		pitchPID.add(ahrs.pitch - desPitch + altPID.corr, ahrs.pitch, ahrsInput.sec);
 
 		if (armServo) {  
-			float leftStringX = 8;
-			float leftStringY = 8;
+			float leftStringX = 14;
+			float leftStringY = 7;
 		
-			float rightStringX = 8;
-			float rightStringY = 8;
+			float rightStringX = 11;
+			float rightStringY = 7;
 
 			float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
 			float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
