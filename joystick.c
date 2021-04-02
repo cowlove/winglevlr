@@ -20,6 +20,16 @@
 #include <string.h>
 #include <linux/joystick.h>
 #include <math.h>
+#include <sys/time.h>
+
+
+long long millis() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return     (unsigned long long)(tv.tv_sec) * 1000 +
+        (unsigned long long)(tv.tv_usec) / 1000;
+}
 
 /**
  * Reads a joystick event from the joystick device.
