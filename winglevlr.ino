@@ -391,7 +391,7 @@ void setup() {
 	pitchPID.maxerr.i = .5;
 
 	altPID.setGains(1.0, 0.0, 0.1);
-	altPID.finalGain = .01;
+	altPID.finalGain = 1.0;
 
     // make PID select knob display text from array instead of 0-3	
 	Display::pidsel.toString = [](float v){ return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 3) ? (int)v : 0]); };		
@@ -922,12 +922,13 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 	float alt; // TODO: consider alt sources/possibilites 
-			altPID.add(alt - desAlt, alt, ahrsInput.sec);
+		 	float altErr = (apMode == 3) ? desAlt - ahrsInput.alt : 0;	
+			altPID.add(altErr, ahrsInput.alt, ahrsInput.sec);
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		pitchPID.add(ahrs.pitch - desPitch + altPID.corr, ahrs.pitch, ahrsInput.sec);
+		float altCorr = max(min(altPID.corr * 0.01, 5.0), -5.0);
+		pitchPID.add(ahrs.pitch - desPitch + altCorr, ahrs.pitch, ahrsInput.sec);
 
 		if (armServo) {  
 			float leftStringX = 14;
