@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/winglevlr_ubuntu",
-            "args": ["--serial","--tracksim","./tracksim_KBFI_14R.txt","--seconds","6000"],
+            "args": ["--serial","--startpos","47.59509212379994,-122.38743386638778,1000","--seconds","60","--log","+"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

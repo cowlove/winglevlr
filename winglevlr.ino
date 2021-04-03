@@ -875,9 +875,12 @@ void loop() {
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
 
 		if (apMode == 3 && wpNav != NULL) {
-			desiredTrk = trueToMag(wpNav->wptTracker.track);
 			wpNav->wptTracker.curPos.loc.lat = gdl90State.lat;
 			wpNav->wptTracker.curPos.loc.lon = gdl90State.lon;
+			wpNav->wptTracker.curPos.alt = gdl90State.alt;
+			wpNav->wptTracker.curPos.valid = true;
+			wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
+			desiredTrk = trueToMag(wpNav->wptTracker.track);
 		}
 		
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
@@ -1006,7 +1009,7 @@ void loop() {
 
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
-			cout << logItem.toString().c_str() << " LOG U" << endl;
+			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf LOG U", gdl90State.lat, gdl90State.lon) << endl;
 		}
 #endif
 		logItem.flags = 0;
@@ -1082,6 +1085,8 @@ public:
 	RollingAverage<float,250> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
+	float speed = 100;
+	WaypointNav::LatLonAlt curPos;
 	std::queue<float> gxDelay, pitchDelay;
 	
 	uint64_t lastMicros = 0;
@@ -1137,6 +1142,10 @@ public:
 		imu->mx = imu->my = bank * 1.4;
 		imu->mz += imu->mx;
 		
+		float dist = speed * 0.51444 * (now - lastMillis) / 1000.0; 
+		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(track), dist);
+		curPos.alt = 1000; // TODO 
+
 		lastMillis = now;
 	}
 
@@ -1221,9 +1230,10 @@ public:
 		if (1) { 
 			// Broken 
 			GDL90Parser::State s;
-			s.lat = 0;
+			s.lat = curPos.loc.lat;
+			s.lon = curPos.loc.lon;
 			s.lon = 0;
-			s.alt = 1000 / FEET_PER_METER;
+			s.alt = curPos.alt;
 			s.track = t1;
 			s.vvel = 0;
 			s.hvel = tSim != NULL ? tSim->wptTracker.speed : 0;
@@ -1231,10 +1241,12 @@ public:
 
 			WiFiUDP::InputData buf;
 			buf.resize(128);
-			buf.resize(gdl90.packMsg11(buf.data(), s));
+			int n = gdl90.packMsg11(buf.data(), s);
+			buf.resize(n);
 			ESP32sim_udpInput(4000, buf);
 			buf.resize(128);
-			buf.resize(gdl90.packMsg10(buf.data(), s));
+			n = gdl90.packMsg10(buf.data(), s);
+			buf.resize(n);
 			ESP32sim_udpInput(4000, buf);;
 			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", t2, t2)); 
 		} else {
@@ -1258,7 +1270,9 @@ public:
 		else if (strcmp(*a, "--log") == 0) { 
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));
-		}else if (strcmp(*a, "--tracksim") == 0) {
+		} else if (strcmp(*a, "--startpos") == 0) {
+			sscanf(*(++a), "%lf,%lf,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt); 
+		} else if (strcmp(*a, "--tracksim") == 0) {
 				tSim = new WaypointsSequencerFile(*(++a));
 				//tSim = trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
 				//trackSimFile = wrap_vector_as_istream(trackSimFileContents);
