@@ -106,7 +106,7 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
     return axis;
 }
 
-float xtrim = 0, ytrim = 0;
+float xtrim = 0, ytrim = -.3;
 
 void setStick(float x, float y) {
         float leftStringX = 14;
@@ -209,12 +209,11 @@ int main(int argc, char *argv[])
                         case 3: xtrim -= trimstep; break;
                         case 0: xtrim += trimstep; break;
                         case 9: 
-                            if (event.value == false) {
+                            if (event.value == 0) {
                                 runTest(testThrow, testTime); 
                             }
                             break;
-                        } 
-                    }
+                    } 
                     printf("trim %f %f\n", xtrim, ytrim);
                 case JS_EVENT_AXIS:
                     axis = get_axis_state(&event, axes);

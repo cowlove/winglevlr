@@ -12,6 +12,9 @@
 #include <map>
 #include <algorithm>
 #include <functional>
+#include <sstream>
+#include <ios>
+#include <iostream>
 
 namespace WaypointNav {
 
@@ -261,14 +264,14 @@ namespace WaypointNav {
             wptTracker.activeWaypoint.valid = false;
             if (in.eof()) { 
                 in.clear();
-                in.seekg(0, ios_base::beg);
+                in.seekg(0, std::ios_base::beg);
             } 
             printf("valid %d", (int)wptTracker.activeWaypoint.valid);
             while(wptTracker.activeWaypoint.valid == false) {
                 if (!std::getline(in, s)) {
                     if (repeat) {
                         in.clear();
-                        in.seekg(0, ios_base::beg);
+                        in.seekg(0, std::ios_base::beg);
                         continue;
                     } else {
                         break;
@@ -302,7 +305,7 @@ namespace WaypointNav {
 class WaypointsSequencerFile : public WaypointNav::WaypointSequencer {
 	public:
 	std::ifstream is;
-	WaypointsSequencerFile(const char *fname) : is(fname, ios_base::in), WaypointSequencer(is) {};
+	WaypointsSequencerFile(const char *fname) : is(fname, std::ios_base::in), WaypointSequencer(is) {};
 };
 
 class WaypointsSequencerString : public WaypointNav::WaypointSequencer {

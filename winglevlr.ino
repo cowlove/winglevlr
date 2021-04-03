@@ -78,7 +78,7 @@ struct {
 
 MPU9250_asukiaaa *imu = NULL;
 
-float pitchTrim = 0, rollTrim = 0;
+float pitchTrim = -.3, rollTrim = 0;
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
@@ -426,7 +426,7 @@ void setup() {
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
-float desRoll = 0, desPitch = 6, desAlt = 0;		
+float desRoll = 0, desPitch = -15, desAlt = 0;		
 static int serialLogFlags = 0;
 
 void udpSendString(const char *b) { 
@@ -1006,8 +1006,8 @@ void loop() {
 		} else switch(servoSetupMode) { 
 			case 2: setServos(0, -8); break;
 			case 3: setServos(0, +8); break;
-			case 0: // TODO: no hardware yet to depower the servos
-			case 1: // fall through 
+			case 0: break; // TODO: no hardware yet to depower the servos
+			case 1: setServos(0, 0); break; 
 			default: setServos(0, 0);
 		}
 		
