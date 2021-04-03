@@ -12,3 +12,4 @@ tests.OLD
 *.out
 out.plog
 joystick
+logs*
