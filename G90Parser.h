@@ -57,7 +57,7 @@ public:
 			return false;
 		
 		// TODO HACK use these ad-hoc sanit	y checks until CRC works 
-		if (state.lon == 0 || state.lat == 0) return false;
+		//if (state.lon == 0 || state.lat == 0) return false;
 		if (state.palt > 20000 / 25) return false; 
 		//if (state.lon < -130 || state.lon > -120) return false;
 		//if (state.lat < 45 || state.lat > 49) return false;

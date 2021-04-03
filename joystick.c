@@ -208,7 +208,12 @@ int main(int argc, char *argv[])
                         case 1: ytrim += trimstep; break;
                         case 3: xtrim -= trimstep; break;
                         case 0: xtrim += trimstep; break;
-                        case 9: runTest(testThrow, testTime); break;
+                        case 9: 
+                            if (event.value == false) {
+                                runTest(testThrow, testTime); 
+                            }
+                            break;
+                        } 
                     }
                     printf("trim %f %f\n", xtrim, ytrim);
                 case JS_EVENT_AXIS:
