@@ -76,7 +76,7 @@ while (( $# > 0 )); do
 	if [ "$1" == "-servo0" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($27) ax x1y2 w l tit "Servo 0", '; fi
 	if [ "$1" == "-servo1" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($28) ax x1y2 w l tit "Servo 1", '; fi
 	if [ "$1" == "-flag" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($29) w l ax x1y2 tit "flags", '; fi	
-	if [ "$1" == "-desroll" ]; then PS=$PS\ \"$F2\"	' u ($1-F2_min_x):($30)  tit "Desiried Roll", ' ; fi
+	if [ "$1" == "-desroll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($30) w l tit "Desired Roll", ' ; fi
 	if [ "$1" == "-roll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($31) w l  tit "Logged Roll", '; fi
 	if [ "$1" == "-maghdg" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($32) w l ax x1y2 tit "magHdg", '; fi
 	if [ "$1" == "-ba" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($33) w l ax x1y1 tit "bank angle", '; fi

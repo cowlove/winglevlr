@@ -808,12 +808,12 @@ void loop() {
 	}
 
 	if (Serial.available()) {
-		char buf[128];
+		char buf[1024];
 		int n = Serial.readBytes((uint8_t *)buf, sizeof(buf));
 		parseSerialCommandInput(buf, n);
 	}
 	if (udpCmd.parsePacket() > 0) {
-		char buf[128];
+		char buf[1024];
 		int n = udpCmd.read((uint8_t *)buf, sizeof(buf));
 		parseSerialCommandInput(buf, n);
 	}
@@ -1109,7 +1109,7 @@ public:
 	int logSkip = 0;
 	int logEntries = 0;
 	float bank = 0, track = 0, pitch = 0, roll = 0, yaw = 0, simPitch = 0, hdg = 0;
-	RollingAverage<float,250> rollCmd;
+	RollingAverage<float,100> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
 	float speed = 100;
@@ -1138,9 +1138,9 @@ public:
 		// servooutput read from ESP32sim_currentPwm;
 		
 		rollCmd.add((ESP32sim_currentPwm[1] - servoTrim) / servoTrim);
-		imu->gy = 0.0 + rollCmd.average() * 10.0;
+		imu->gy = 0.0 + rollCmd.average() * 1;
 		bank += imu->gy * (3500.0 / 1000000.0);
-		bank = max(-20.0, min(20.0, (double)bank));
+		bank = max(-11.0, min(11.0, (double)bank));
 		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm[0], track, desRoll, bank, imu->gy);
@@ -1304,6 +1304,8 @@ public:
 			logFilename = (*(++a));
 		} else if (strcmp(*a, "--startpos") == 0) {
 			sscanf(*(++a), "%lf,%lf,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt); 
+			gdl90State.lat = curPos.loc.lat; gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data 
+
 		} else if (strcmp(*a, "--tracksim") == 0) {
 				tSim = new WaypointsSequencerFile(*(++a));
 				//tSim = trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
@@ -1345,8 +1347,9 @@ public:
 		if (replayFile == NULL) { 
 			bm.addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
-			bm.addPress(pins.topButton, 200, 1, false); // top short press - hdg hold 
-			ahrsInput.dtk = desiredTrk = 180;
+			//bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode  
+			//bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
+			ahrsInput.dtk = desiredTrk = 90;
 			if (tSim != NULL) { 
 					tSim->wptTracker.onSteer = [&](float s) { 
 					ahrsInput.dtk = desiredTrk = trueToMag(s);
@@ -1359,9 +1362,9 @@ public:
 	bool firstLoop = true;	
 	float now, lastTime = 0;
 	bool hz(float hz) { return floor(now * hz) != floor(lastTime * hz); }
+	bool at(float t) { return now > t && lastTime < t; }
 	void loop() override {
-		now = _micros / 1000000.0;
-		
+		now = _micros / 1000000.0;		
 		if (replayFile == NULL) { 
 			if (floor(now / .1) != floor(lastTime / .1)) {
 				float g5hdg = hdg * M_PI / 180;
@@ -1375,6 +1378,17 @@ public:
 			flightSim(imu);
 			if (hz100.tick(micros()/1000.0) && tSim != NULL) {
 				tSim->run(hz100.interval / 1000.0);
+			}
+
+			if (at(200.0)) { 
+				Serial.inputLine =  "wpclear\n"
+									"wpadd REPEAT 1\n"
+									"wpadd 47.59509212379994, -122.38743386638778 1000\n"
+									"wpadd 47.59233901597324, -122.37080179677619 500\n"
+									"wpadd 47.53887718258715, -122.30994494011797 50\n"
+									"wpadd 47.46106431485166, -122.47652028295599\n"
+									"wpstart\n";
+				apMode = 3;
 			}
 			if (false && hz(1.0/6000)) {
 				//ahrs.reset();

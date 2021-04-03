@@ -199,7 +199,7 @@ namespace WaypointNav {
             if (activeWaypoint.valid && !waypointPassed) {
                 steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
                 distToWaypoint = distance(curPos.loc, activeWaypoint.loc);
-                if (distToWaypoint < 200) 
+                if (distToWaypoint < 500) 
                     waypointPassed = true;
             }
             float distTravelled = speed * .51444 * sec;
