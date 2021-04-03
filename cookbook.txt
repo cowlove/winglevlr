@@ -39,3 +39,9 @@ make winglevlr_ubuntu && ./winglevlr_ubuntu --serial --tracksim ./tracksim_KBFI_
 
 
 make winglevlr_ubuntu && ./winglevlr_ubuntu --serial --tracksim ./tracksim_KBFI_14R.txt --seconds 5500
+
+make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.6,-122.4,1000 --log + --seconds 7200 | grep "LOG" > out.plog && gnuplot -e 'p "./out.plog" u 48:47 w l; pause 999'
+
+./loglook.sh XX -file ./out.plog -roll
+
+

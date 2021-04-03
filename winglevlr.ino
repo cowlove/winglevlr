@@ -377,8 +377,8 @@ void setup() {
 	rollPID.maxerr.i = 20;
 
 	hdgPID.setGains(0.25, 0.02, 0.02);
-	hdgPID.hiGain.p = 2.50;
-	hdgPID.hiGainTrans.p = 8.0;
+	hdgPID.hiGain.p = 25.00;
+	hdgPID.hiGainTrans.p = 15.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 0.5;
 
@@ -1112,7 +1112,7 @@ public:
 	RollingAverage<float,100> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
-	float speed = 100;
+	float speed = 105;
 	WaypointNav::LatLonAlt curPos;
 	std::queue<float> gxDelay, pitchDelay;
 	
@@ -1123,6 +1123,11 @@ public:
 	}
 
 	void flightSim(MPU9250_DMP *imu) { 
+		//TODO: flightSim is very fragile/unstable.  Poke values into the
+		// main loop code to make sure things work. 
+		hdgPID.finalGain = 0.5;
+		pitchTrim = rollTrim = 0;
+
 		_micros += 3500;
 		const float servoTrim = 4915.0;
 
@@ -1140,7 +1145,7 @@ public:
 		rollCmd.add((ESP32sim_currentPwm[1] - servoTrim) / servoTrim);
 		imu->gy = 0.0 + rollCmd.average() * 1;
 		bank += imu->gy * (3500.0 / 1000000.0);
-		bank = max(-11.0, min(11.0, (double)bank));
+		bank = max(-25.0, min(25.0 , (double)bank));
 		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm[0], track, desRoll, bank, imu->gy);
@@ -1180,6 +1185,7 @@ public:
 		curPos.alt = 1000; // TODO 
 
 		lastMillis = now;
+
 	}
 
 	bool ESP32csim_useAuxMpu = false;
@@ -1349,9 +1355,9 @@ public:
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
 			//bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode  
 			//bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
-			ahrsInput.dtk = desiredTrk = 90;
+			ahrsInput.dtk = desiredTrk = 135;
 			if (tSim != NULL) { 
-					tSim->wptTracker.onSteer = [&](float s) { 
+				tSim->wptTracker.onSteer = [&](float s) { 
 					ahrsInput.dtk = desiredTrk = trueToMag(s);
 					return magToTrue(track);
 				};
@@ -1380,7 +1386,7 @@ public:
 				tSim->run(hz100.interval / 1000.0);
 			}
 
-			if (at(200.0)) { 
+			if (at(150.0)) { 
 				Serial.inputLine =  "wpclear\n"
 									"wpadd REPEAT 1\n"
 									"wpadd 47.59509212379994, -122.38743386638778 1000\n"
