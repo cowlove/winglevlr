@@ -21,6 +21,7 @@
 #include <linux/joystick.h>
 #include <math.h>
 #include <sys/time.h>
+#include <stdlib.h>
 
 
 long long millis() {
@@ -142,13 +143,13 @@ void setStick(float x, float y) {
 
 }
 
-void testPattern(float x, float y, int t) { 
+void testPattern(float x, float y, float t) { 
     int n;
-    for(n = 0; n < 10; n++) {
+    for(n = 0; n < 5; n++) {
         setStick(x, y);
         sleep(t);
         setStick(0, 0);
-        sleep(t);
+        usleep(t * 1000000);
     }
 }
 
@@ -156,8 +157,9 @@ void runTest(float testThrow, float testTime) {
     testPattern(+testThrow, 0, testTime);
     testPattern(-testThrow, 0, testTime);
     testPattern(0, +testThrow, testTime);
-    testPattern(0, testThrow, testTime);
+    testPattern(0, -testThrow, testTime);
 }
+int testNow = 0;
 
 int main(int argc, char *argv[])
 {
@@ -174,7 +176,14 @@ int main(int argc, char *argv[])
         if (strcmp(*a, "--testTime") == 0) sscanf(*(++a), "%f", &testTime);
         if (strcmp(*a, "--trimx") == 0) sscanf(*(++a), "%f", &xtrim);
         if (strcmp(*a, "--trimy") == 0) sscanf(*(++a), "%f", &ytrim);
+        if (strcmp(*a, "--testNow") == 0) testNow = 1;
     } 
+    float trimstep = .01;
+    
+    if (testNow) { 
+        runTest(testThrow, testTime); 
+        exit(0);
+    }
 
     device = "/dev/input/js0";
 
@@ -183,7 +192,7 @@ int main(int argc, char *argv[])
     if (js == -1)
         perror("Could not open joystick");    
     
-    float trimstep = .01;
+
 
     /* This loop will exit if the controller is unplugged. */
     while(1) { 
