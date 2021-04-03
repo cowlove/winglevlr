@@ -391,7 +391,7 @@ void setup() {
 	pitchPID.maxerr.i = .5;
 
 	altPID.setGains(1.0, 0.0, 0.1);
-	altPID.finalGain = .01;
+	altPID.finalGain = 1.0;
 
     // make PID select knob display text from array instead of 0-3	
 	Display::pidsel.toString = [](float v){ return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 3) ? (int)v : 0]); };		
@@ -591,16 +591,19 @@ void loop() {
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
 			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
+			"ALT %04.0f desA %04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
-			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu %d\n", 
+			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu %d"
+			"\n",
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
 			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
+			ahrsInput.alt, desAlt,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
-			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
-			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
-				logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, auxMpuPacketCount
+			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr 
+			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
+			//	logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, auxMpuPacketCount
 		);
 		if (logFile != NULL) {
 			logFile->maxWaiting =  0;
@@ -943,19 +946,20 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 	float alt; // TODO: consider alt sources/possibilites 
-			altPID.add(alt - desAlt, alt, ahrsInput.sec);
+		 	float altErr = (apMode == 3) ? desAlt - ahrsInput.alt : 0;	
+			altPID.add(altErr, ahrsInput.alt, ahrsInput.sec);
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		pitchPID.add(ahrs.pitch - desPitch + altPID.corr, ahrs.pitch, ahrsInput.sec);
+		float altCorr = max(min(altPID.corr * 0.01, 5.0), -5.0);
+		pitchPID.add(ahrs.pitch - desPitch + altCorr, ahrs.pitch, ahrsInput.sec);
 
 		if (armServo) {  
-			float leftStringX = 8;
-			float leftStringY = 8;
+			float leftStringX = 14;
+			float leftStringY = 7;
 		
-			float rightStringX = 8;
-			float rightStringY = 8;
+			float rightStringX = 11;
+			float rightStringY = 7;
 
 			float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
 			float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
