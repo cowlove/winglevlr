@@ -38,7 +38,7 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(200)/*20hz*/, altPID(200); /*20Hz*/
+PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(100)/*5hz*/, altPID(100); /*5Hz*/
 PidControl *knobPID = &hdgPID;
 
 WiFiUDP udpSL30;
@@ -490,8 +490,9 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int,40,40> loopTime;
-static EggTimer serialReportTimer(200), hz20(50), loopTimer(5), buttonCheckTimer(10);
+static EggTimer serialReportTimer(200), hz5(200), loopTimer(5), buttonCheckTimer(10);
 static int armServo = 0;
+static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 static int hdgSelect = 3; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
 static float obs = -1, lastObs = -1;
@@ -541,6 +542,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 
 void setObsKnob(float knobSel, float v) { 
 	if (knobSel == 2) {
+
 		desAlt = v * 3.2808;
 	}
 	if (knobSel == 1 || knobSel == 4) {
@@ -558,6 +560,36 @@ void setObsKnob(float knobSel, float v) {
 	}	
 }
 
+
+static const float servoThrow = 2.0;
+
+void setServos(float x, float y) { 
+	float leftStringX = 14;
+	float leftStringY = 7;
+
+	float rightStringX = 11;
+	float rightStringY = 7;
+
+	float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
+	float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
+
+	float xScale = +1.0;
+	float yScale = -1.0;
+
+	float x1 = leftStringX + xScale * x + rollTrim;
+	float y1 = leftStringY + yScale * y + pitchTrim;
+	float leftNewLen = sqrt(x1 * x1 + y1 * y1);
+
+	x1 = rightStringX - xScale * x;
+	y1 = rightStringY + yScale * y;
+	float rightNewLen = sqrt(x1 * x1 + y1 * y1);
+
+	float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
+	float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
+
+	servoOutput[0] = max(450, min(2550, (int)s0));
+	servoOutput[1] = max(450, min(2550, (int)s1));
+}
 
 void loop() {	
 	esp_task_wdt_reset();
@@ -584,15 +616,18 @@ void loop() {
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
 			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu %d"
+			"sv %04d %04d "
 			"\n",
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
 			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
 			ahrsInput.alt, desAlt,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
-			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr 
+			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
 			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
 			//	logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, auxMpuPacketCount
+			servoOutput[0], servoOutput[1],
+			/*dummy*/0
 		);
 		if (logFile != NULL) {
 			logFile->maxWaiting =  0;
@@ -627,7 +662,14 @@ void loop() {
 					desiredTrk = -1;
 			}
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) { 
-				armServo = !armServo; 
+				if (armServo) {
+					armServo = false;
+					servoSetupMode = 0;
+				} else { 
+					servoSetupMode = (servoSetupMode + 1) % 4; 
+				}
+				Serial.printf("Servo setup mode %d\n", servoSetupMode);
+
 			}
 			if (butFilt3.wasCount == 3) {
 				std::string s = ahrs.zeroSensors();
@@ -675,6 +717,7 @@ void loop() {
 			}
 			if (butFilt4.wasLong && butFilt4.wasCount == 1) {			
 				armServo = !armServo;
+				servoSetupMode = 0;
 				//rollPID.reset();
 				//hdgPID.reset();
 				//pitchPID.reset();
@@ -733,7 +776,7 @@ void loop() {
 					ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
 					logItem.flags |= LogFlags::HdgGDL; 
 					gpsFixes++;
-					ahrsInput.alt = s.alt;
+					ahrsInput.alt = s.alt * 3.2808;
 					ahrsInput.palt = s.palt;
 					ahrsInput.gspeed = s.hvel;
 				}
@@ -899,7 +942,7 @@ void loop() {
 		else if (hdgSelect == 2) ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
 		else if (hdgSelect == 3) ahrsInput.selTrack = ahrs.magHdg;
 		
-		if (hz20.tick()) {
+		if (hz5.tick()) {
 			if (ahrsInput.dtk != -1) { 
 				if (apMode == 4) {
 					xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
@@ -933,40 +976,20 @@ void loop() {
 		float altCorr = max(min(altPID.corr * 0.01, 5.0), -5.0);
 		pitchPID.add(ahrs.pitch - desPitch + altCorr, ahrs.pitch, ahrsInput.sec);
 
-		if (armServo) {  
-			float leftStringX = 14;
-			float leftStringY = 7;
-		
-			float rightStringX = 11;
-			float rightStringY = 7;
-
-			float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
-			float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
-
-			float servoThrow = 2.0;
-			float xScale = +1.0;
-			float yScale = -1.0;
-		
-			// TODO: pids were tuned and output results in units of 500-2500 servo PWM values. 
+		if (armServo == true) {  
+			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			float x = rollPID.corr / 2000 * servoThrow + rollTrim;
-			float y = pitchPID.corr / 2000 * servoThrow + pitchTrim;
-			//printf("%6f %6f\n", x, y);
-
-			float x1 = leftStringX + xScale * x;
-			float y1 = leftStringY + yScale * y;
-			float leftNewLen = sqrt(x1 * x1 + y1 * y1);
-
-			x1 = rightStringX - xScale * x;
-			y1 = rightStringY + yScale * y;
-			float rightNewLen = sqrt(x1 * x1 + y1 * y1);
+			float x = rollPID.corr / 2000 * servoThrow;
+			float y = pitchPID.corr / 2000 * servoThrow;
+			setServos(x, y);
+		} else switch(servoSetupMode) { 
+			case 2: setServos(0, -8); break;
+			case 3: setServos(0, +8); break;
+			case 0: // TODO: no hardware yet to depower the servos
+			case 1: // fall through 
+			default: setServos(0, 0);
+		}
 		
-			float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
-			float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
-
-			servoOutput[0] = max(450, min(2550, (int)s0));
-			servoOutput[1] = max(450, min(2550, (int)s1));
-		}	
 
 		ledcWrite(0, servoOutput[0] * 4915 / 1500); // scale PWM output to 1500-7300 
 		ledcWrite(1, servoOutput[1] * 4915 / 1500); // scale PWM output to 1500-7300 
