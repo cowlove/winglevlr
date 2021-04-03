@@ -11,3 +11,4 @@ y
 	python ~/src/gdl90/gdl90_sender.py -p 4000 -f ./udp4000.dat --delay 1
 	catsleep ./udp7891.dat  | socat -u - udp-sendto:255.255.255.255:7891,broadcast
 
+./winglevlr_ubuntu --startpos 47.59509212379994,-122.38743386638778,1000 --log +
