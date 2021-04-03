@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/winglevlr_ubuntu",
-            "args": ["--serial","--startpos","47.59509212379994,-122.38743386638778,1000","--seconds","60","--log","+"],
+            "args": ["--serial","--startpos","47.59509212379994,-122.38743386638778,1000","--seconds","600"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
