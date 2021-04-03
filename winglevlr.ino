@@ -1117,7 +1117,11 @@ public:
 	std::queue<float> gxDelay, pitchDelay;
 	
 	uint64_t lastMicros = 0;
-	
+
+	float stickX, stickY;
+	void pwmToStickPosition() {
+	}
+
 	void flightSim(MPU9250_DMP *imu) { 
 		_micros += 3500;
 		const float servoTrim = 4915.0;
@@ -1131,16 +1135,17 @@ public:
 		pitchDelay.push(simPitch);
 				
 		// Simulate simple airplane roll/bank/track turn response to 
-		// servooutput read from ESP32sim_currentPwm; 
-		rollCmd.add((ESP32sim_currentPwm[0] - servoTrim) / servoTrim);
+		// servooutput read from ESP32sim_currentPwm;
+		
+		rollCmd.add((ESP32sim_currentPwm[1] - servoTrim) / servoTrim);
 		imu->gy = 0.0 + rollCmd.average() * 10.0;
 		bank += imu->gy * (3500.0 / 1000000.0);
 		bank = max(-20.0, min(20.0, (double)bank));
 		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
-			ESP32sim_currentPwm[0], track, 0.0, bank, imu->gy);
+			ESP32sim_currentPwm[0], track, desRoll, bank, imu->gy);
 		}		
-		imu->gz = +1.5 + tan(bank * M_PI/180) / 100 * 1091;
+		imu->gz = 0 + tan(bank * M_PI/180) / 100 * 1091;
 		
 		uint64_t now = millis();
 		const float bper = .05;
@@ -1166,8 +1171,9 @@ public:
 		imu->ax = 0;
 
 		// simulate meaningless mag readings that stabilize when bank == 0 
-		imu->mx = imu->my = bank * 1.4;
-		imu->mz += imu->mx;
+		imu->mx = imu->my = imu->mz = 0;
+		//bank * 1.4;
+		//imu->mz += imu->mx;
 		
 		float dist = speed * 0.51444 * (now - lastMillis) / 1000.0; 
 		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(track), dist);
@@ -1259,7 +1265,6 @@ public:
 			GDL90Parser::State s;
 			s.lat = curPos.loc.lat;
 			s.lon = curPos.loc.lon;
-			s.lon = 0;
 			s.alt = curPos.alt;
 			s.track = t1;
 			s.vvel = 0;
@@ -1338,9 +1343,9 @@ public:
 	}	
 	void setup() override {
 		if (replayFile == NULL) { 
-			bm.addPress(pins.topButton, 1, 1, true); // knob long press - arm servo
+			bm.addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
-			bm.addPress(pins.topButton, 10, 1, false); // top short press - hdg hold 
+			bm.addPress(pins.topButton, 200, 1, false); // top short press - hdg hold 
 			ahrsInput.dtk = desiredTrk = 180;
 			if (tSim != NULL) { 
 					tSim->wptTracker.onSteer = [&](float s) { 
