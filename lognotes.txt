@@ -1,0 +1,8 @@
+
+
+11  parking lot steering stick deflections testthrow.sh
+14  testthrow.sh in flight
+15  big oscillations 
+17  big oscillations in fligight in alt hold 4300
+18  huge log in good hdg hold flight at various OBS settings, chasing around maghdg drift
+19  chasing pitch drift all around, slowing/speeding up
