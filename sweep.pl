@@ -22,6 +22,7 @@ while(<>) {
 		($param, $mid, $span) = split(' ', $_);
 		$span{$param} = $span;
 		$mid{$param} = $mid;
+		$bestV{$param} = $mid;
 		push(@params, $param);
 	}
 }
@@ -50,11 +51,13 @@ while($round < 100) {
 				}
 				$cmd = "./winglevlr_ubuntu  $args --replay ./logs/AHRSD$num.DAT --debug \"$valstr\"";
 				print $cmd . " :\t";
-				if (`$cmd` =~ /#\s([0-9.+-]+)\s([0-9.+-]+)/ ) {
+				if (`$cmd` =~ /#\s([0-9.+-]+)\s([0-9.+-]+)\s([0-9.+-]+)/ ) {
 					if ($field == 1) {
 						$result = $1;
 					} elsif ($field == 2) { 
 						$result = $2;
+					} elsif ($field == 3) { 
+						$result = $3;
 					}
 				}
 				$totalRuns += 1;
