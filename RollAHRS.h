@@ -195,8 +195,8 @@ public:
 	}
 	MultiCompFilter mComp;
 	
-	float magOffX = 40;
-	float magOffY = 60;
+	float magOffX = +33.2;
+	float magOffY = -09.4;
 	float magOffZ = -30;
 
 	
