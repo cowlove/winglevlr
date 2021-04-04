@@ -1031,9 +1031,9 @@ void loop() {
 		totalError.pitch += abs(pitch - ahrsInput.g5Pitch);
 	
 #ifdef UBUNTU
-		if (millis() < 1000) // don't count error during the first second while stuff initializes 
+		if (millis() < 200000) // don't count error during the 200 sec 
 			totalError.clear();
-
+	
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
 			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf %06.3f LOG U", gdl90State.lat, gdl90State.lon,
@@ -1238,14 +1238,16 @@ public:
 					magToTrue(l.ai.gpsTrackRMC));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
-			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0
-				|| ahrsInput.gspeed != l.ai.gspeed) { 
+			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || ahrsInput.gspeed != l.ai.gspeed ||
+				(l.flags & LogFlags::HdgGDL) != 0) { 
 				unsigned char buf[64];
 				GDL90Parser::State s;
-				s.track = magToTrue(l.ai.gpsTrackGDL90);
-				s.hvel = l.ai.gspeed;
-				int len = gdl90.packMsg10(buf, s);
-				ESP32sim_udpInput(4000, string((char *)buf, len));
+				if (l.ai.gpsTrackGDL90 != -1) { 	
+					s.track = magToTrue(l.ai.gpsTrackGDL90);
+					s.hvel = l.ai.gspeed;
+					int len = gdl90.packMsg10(buf, s);
+					ESP32sim_udpInput(4000, string((char *)buf, len));
+				}
 			}
 				
 			servoOutput[0] = l.pwmOutputRoll;
