@@ -214,7 +214,7 @@ public:
 
 	float compRatio1 = 0.00072;  // roll comp filter ratio 
 	float compRatioPitch = 0.001236;
-	float pitchOffset = -9.92;
+	float pitchOffset = -9.6;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 	float magDipConstant = 2.496; // unexplained correction factor for bank angle in dip calcs
@@ -249,8 +249,9 @@ public:
 	typedef TwoStageRollingLeastSquares<float> TwoStageRLS;
 	RollingLeastSquares // all at about 200 HZ */
 		gyroDriftFit = RollingLeastSquares(300), // 10HZ 
-		magHdgFit = RollingLeastSquares(50); // 10Hz
-				
+		magHdgFit = RollingLeastSquares(50), // 10Hz
+		gSpeedFit = RollingLeastSquares(50); // 10Hz
+
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
 	RollingAverage<float,20> avgMagHdg;
@@ -271,7 +272,7 @@ public:
 	float gyroDrift = 0;
 	float gpsPitch = 0, accelPitch = 0;
 	float lastGz, magCorr = 0;
-
+	float speedDelta;
 	bool valid() { 
 		return prev.selTrack != -1;
 	}
@@ -361,6 +362,7 @@ public:
 		}
 		if (tick10HZ) { 
 			gyroZeroCount.add(zeroSampleCount);
+			gSpeedFit.add(l.sec, l.gspeed);
 			zeroSampleCount = 0;
 		}
 					
@@ -447,13 +449,16 @@ public:
 		count++;
 		prev = l;
 		
-		float accelPitch = atan2(l.ay, l.az);
+		
 
+		speedDelta = gSpeedFit.slope() * 0.51444;
+		accelPitch = atan2(l.ay - speedDelta, l.az);
+		
 		//float accelRoll = RAD2DEG(atan2(avgAZ.average(), -avgAX.average()));
 		float accelRoll = RAD2DEG(atan2(avgAX.average(), avgAZ.average()));
 
 		accelRoll = min(max((double)accelRoll, -15.0), 15.0);
-		float pG = cos(DEG2RAD(compYH + accelRoll)) * l.gx - sin(DEG2RAD(compYH + accelRoll)) * l.gz;
+		float pG = cos(DEG2RAD(compYH + accelRoll)) * l.gx - sin(DEG2RAD(compYH + accelRoll)) * l.gz - speedDelta * gXdecelCorrelation;
 		//pG = i.gx;
 		pitchRaw = (pitchRaw + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioPitch) + (accelPitch * compRatioPitch);
 
@@ -465,6 +470,7 @@ public:
 		//pitch = accelRoll;
 		return compYH;
 	}	
+	float gXdecelCorrelation = 1.16;
 	float pitchRaw =0;
 	float getGyroQuality() {
 		return gyroZeroCount.average();

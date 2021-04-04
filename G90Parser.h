@@ -12,7 +12,7 @@ class GDL90Parser {
 	unsigned long bs3(const unsigned char* b) {
 		return ((unsigned long)b[0] << 16) | ((unsigned long)b[1] << 8) | b[2];
 	}
-	void unBS3(unsigned char *b, long x) { 
+	static void unBS3(unsigned char *b, long x) { 
 		b[2] = x & 0xff;
 		b[1] = (x >> 8) & 0xff;
 		b[0] = (x >> 16) & 0xff;
@@ -65,9 +65,9 @@ public:
 		//if (state.alt < -500 || state.alt > 15000) return false;
 		return true;
 	}
-	uint16_t Crc16Table[256];
+	static uint16_t Crc16Table[256];
 
-	void crcInit(void) { 
+	static void crcInit(void) { 
 		uint16_t bitctr, crc, i;     
 		for (i = 0; i < 256; i++) { 
 			crc = (i << 8);         
@@ -78,7 +78,7 @@ public:
 		} 
 	}
 	
-	uint16_t crcCompute(
+	static uint16_t crcCompute(
 		unsigned char *block,       
 		int length) {
 		uint16_t crc = 0;
@@ -97,7 +97,7 @@ public:
 			msgCount++;
 		}
 	}
-	int packStuff(unsigned char *out, unsigned char *in, int l) { 
+	static int packStuff(unsigned char *out, unsigned char *in, int l) { 
 		int outl = 0;
 		out[outl++] = 0x7e;
 		for(int n = 0; n < l; n++) { 
@@ -110,7 +110,7 @@ public:
 		out[outl++] = 0x7e;
 		return outl;
 	}
-	int packMsg10(unsigned char *out, State s) {
+	static int packMsg10(unsigned char *out, State s) {
 		unsigned char b[30];
 		bzero(b, sizeof(b));
 		b[0] = 10;
@@ -118,6 +118,11 @@ public:
 		if (s.lon < 0) s.lon += 360;
 		unBS3(b + 5, s.lat * 0x800000 / 180.0);
 		unBS3(b + 8, s.lon * 0x800000 / 180.0);
+		
+		b[11] = s.palt >> 4;
+		b[12] = ((s.palt & 0xf) << 4) | (s.misc & 0xf) ;
+		b[14] = s.hvel >> 4;
+		b[15] = (s.hvel & 0xf) << 4;
 		b[17] = s.track * 256 / 360.0;
 
 		//unsigned int_crc =(((uint16_t)(buf[index - 1]))<<8) | buf[index-2];
@@ -126,7 +131,7 @@ public:
 		b[29] = (crc >> 8) & 0xff;
 		return packStuff(out, b, sizeof(b));
 	}
-	int packMsg11(unsigned char *out, State s) {
+	static int packMsg11(unsigned char *out, State s) {
 		unsigned char b[5];
 		bzero(b, sizeof(b));
 		b[0] = 11;
@@ -190,4 +195,6 @@ public:
 
 	};
 };
+
+uint16_t GDL90Parser::Crc16Table[256];
 

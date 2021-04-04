@@ -66,6 +66,7 @@ while (( $# > 0 )); do
 	if [ "$1" == "-dtk" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($16)  w l ax x1y2 tit "DTK", '; fi
 	if [ "$1" == "-g5track" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($17) w l  tit "G% Track", '; fi
 	if [ "$1" == "-palt" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($18 > 0 ? $18 : 1/0) w l ax x1y2 tit "Press Alt", '; fi
+	if [ "$1" == "-gspeed" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($19 > 0 ? $19 : 1/0) w l ax x1y2 tit "Ground Speed", '; fi
 	if [ "$1" == "-g5pitch" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($20) w l  tit "G5 Pitch", '; fi
 	if [ "$1" == "-g5roll" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):(-$21) w l   tit "G5 Roll", '; fi
 	if [ "$1" == "-g5hdg" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($22) ax x1y2 w l  tit "G5 Heading", '; fi
@@ -93,6 +94,12 @@ while (( $# > 0 )); do
 	if [ "$1" == "-amx" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($44) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-amy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($45) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-amz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($46) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-simlat" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($47) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-simlon" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($48) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-sim49" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($49) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-simtrack" ]; then PS=$PS\ \"$F2\"' u 48:47 w l tit "Ground Track", '; fi
+	if [ "$1" == "-magplot" ]; then PS=$PS\ \"$F2\"' u 13:14 w p tit "Mag Plot", '; fi
+	if [ "$1" == "-pitcherr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35-$20) w l ax x1y1 tit "Pitch Error", '; fi
 	if [ "$1" == "-stats" ]; then 
 		STATS='stats '$RANGE' "'$F2'" u ($1-F2_min_x):($'$2')'; 
 		shift

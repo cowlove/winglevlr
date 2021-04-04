@@ -1036,7 +1036,8 @@ void loop() {
 
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
-			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf LOG U", gdl90State.lat, gdl90State.lon) << endl;
+			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf %06.3f LOG U", gdl90State.lat, gdl90State.lon,
+				ahrs.speedDelta) << endl;
 		}
 #endif
 		logItem.flags = 0;
@@ -1237,10 +1238,12 @@ public:
 					magToTrue(l.ai.gpsTrackRMC));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
-			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0) { 
+			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || (l.flags & LogFlags::HdgGDL) != 0
+				|| ahrsInput.gspeed != l.ai.gspeed) { 
 				unsigned char buf[64];
 				GDL90Parser::State s;
 				s.track = magToTrue(l.ai.gpsTrackGDL90);
+				s.hvel = l.ai.gspeed;
 				int len = gdl90.packMsg10(buf, s);
 				ESP32sim_udpInput(4000, string((char *)buf, len));
 			}
@@ -1342,6 +1345,7 @@ public:
 				else if (sscanf(it->c_str(), "ahrs.crpitch=%f", &v) == 1) { ahrs.compRatioPitch = v; } 
 				else if (sscanf(it->c_str(), "ahrs.pitchoffset=%f", &v) == 1) { ahrs.pitchOffset = v; } 
 				else if (sscanf(it->c_str(), "ahrs.useauxmpu=%f", &v) == 1) { ESP32csim_useAuxMpu = v; } 
+				else if (sscanf(it->c_str(), "ahrs.gxdecel=%f", &v) == 1) { ahrs.gXdecelCorrelation = v; } 
 				else if (strlen(it->c_str()) > 0) { 
 					printf("Unknown debug parameter '%s'\n", it->c_str()); 
 					exit(-1);
