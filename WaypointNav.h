@@ -266,7 +266,6 @@ namespace WaypointNav {
                 in.clear();
                 in.seekg(0, std::ios_base::beg);
             } 
-            printf("valid %d", (int)wptTracker.activeWaypoint.valid);
             while(wptTracker.activeWaypoint.valid == false) {
                 if (!std::getline(in, s)) {
                     if (repeat) {
@@ -277,7 +276,7 @@ namespace WaypointNav {
                         break;
                     }
                 }      
-                cout << "READ LINE: " << s << endl;
+                //cout << "READ LINE: " << s << endl;
                 char buf[128];
                 float f; 
                 if (s.find("#") != std::string::npos)
