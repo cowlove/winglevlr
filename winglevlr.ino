@@ -426,7 +426,7 @@ void setup() {
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
-float desRoll = 0, desPitch = -15, desAlt = 0;		
+float desRoll = 0, desPitch = 0, desAlt = 0;		
 static int serialLogFlags = 0;
 
 void udpSendString(const char *b) { 
@@ -621,7 +621,7 @@ namespace ServoControl {
 void setServos(float x, float y) {
 	pair<int,int> s = ServoControl::stickToServo(x, y);
 	servoOutput[0] =  max(450, min(2550, s.first));
-	servoOutput[0] =  max(450, min(2550, s.second));
+	servoOutput[1] =  max(450, min(2550, s.second));
 }
 
 void loop() {	
