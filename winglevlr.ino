@@ -721,7 +721,7 @@ void loop() {
 				if (!logChanging) {
 					logChanging = true;
 					if (logFile == NULL) {	
-							logFile = new SDCardBufferedLog<LogItem>(logFileName, 400/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
+							logFile = new SDCardBufferedLog<LogItem>(logFileName, 200/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
 							logFilename = logFile->currentFile;
 							logChanging = false;
 					} else {
@@ -1329,7 +1329,7 @@ public:
 
 	std::vector<char> trackSimFileContents;
 	//wrap_vector_as_istream tsf; 
-
+	ifstream gdl90file; 
 	void parseArg(char **&a, char **la) override {
 		if (strcmp(*a, "--replay") == 0) replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0) logSkip = atoi(*(++a));
@@ -1351,7 +1351,9 @@ public:
 			o.flush();
 			o.close();
 			exit(0);
-		} else if (strcmp(*a, "--testStick") == 0) {
+		} else if (strcmp(*a, "--gdl") == 0) { 
+            gdl90file = ifstream(*(++a), ios_base::in | ios_base::binary);
+   		} else if (strcmp(*a, "--testStick") == 0) {
 			using namespace ServoControl;
 			for (float x = -servoThrow; x <= +servoThrow; x += servoThrow / 10) {
 				for (float y = -servoThrow; y <= +servoThrow; y += servoThrow / 10) {
@@ -1393,7 +1395,7 @@ public:
 	}	
 	void setup() override {
 		setServos(1,1);
-		servoToStick(servoOutput[0],servoOutput[1]);
+		ServoControl::servoToStick(servoOutput[0],servoOutput[1]);
 		if (replayFile == NULL) { 
 			bm.addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
@@ -1414,7 +1416,18 @@ public:
 	bool hz(float hz) { return floor(now * hz) != floor(lastTime * hz); }
 	bool at(float t) { return now > t && lastTime < t; }
 	void loop() override {
-		now = _micros / 1000000.0;		
+		now = _micros / 1000000.0;
+
+		if (hz(100) && gdl90file) {
+				std::vector<unsigned char> data(300);
+				gdl90file.read((char *)data.data(), data.size());       
+				int n = gdl90file.gcount();
+				if (gdl90file && n > 0) { 
+						ESP32sim_udpInput(4000, data);
+				}
+		}       
+
+
 		if (replayFile == NULL) { 
 			if (floor(now / .1) != floor(lastTime / .1)) {
 				float g5hdg = hdg * M_PI / 180;
