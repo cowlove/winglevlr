@@ -28,7 +28,7 @@
 # ./loglook.sh 020 -roll -replay "cr1=0.00111,cr2=3.2" -roll -replay "cr1=0.00222,cr2=4.2" -roll
 
 
-
+make winglevlr_ubuntu
 
 NUM=$1
 shift
