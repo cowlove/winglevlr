@@ -1040,7 +1040,7 @@ void loop() {
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
 			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf %06.3f %f	LOG U", gdl90State.lat, gdl90State.lon,
-				ahrs.speedDelta, ahrs.accelPitch) << endl;
+				ahrs.accelRoll, ahrs.accelPitch) << endl;
 		}
 #endif
 		logItem.flags = 0;

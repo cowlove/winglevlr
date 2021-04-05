@@ -338,8 +338,8 @@ public:
 
 		avgGX.add(l.gx);
 		avgGZ.add(l.gz);
-		avgAZ.add(l.az);
-		avgAY.add(l.az);
+		avgAX.add(l.ax);
+		avgAY.add(l.ay);
 		avgAZ.add(l.az);
 		
 		magHdg = atan2(l.my, l.mx) * 180 / M_PI;
@@ -454,13 +454,11 @@ public:
 		
 		speedDelta = gSpeedFit.slope() * 0.51444;
 
-		accelRoll = RAD2DEG(atan2(avgAZ.average(), -avgAX.average()));
 		accelRoll = RAD2DEG(atan2(avgAX.average(), avgAZ.average()));
-		accelRoll = min(max((double)accelRoll, -20.0), 20.0);
-		
 		rollRad = DEG2RAD(avgRoll.average() + accelRoll);
-		accelPitch = atan2(cos(rollRad) * avgAY.average() + debugVar * sin(rollRad) * avgAX.average(), avgAZ.average());
-		
+		accelPitch = RAD2DEG(atan2(cos(rollRad) * avgAY.average() - sin(rollRad) * avgAX.average(), avgAZ.average()));
+		//accelPitch = 0;
+		//accelRoll = 0;
 
 		float pG = cos(rollRad) * l.gx - sin(rollRad) * l.gz  - speedDelta * gXdecelCorrelation;
 		pitchRaw = (pitchRaw + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioPitch) + (accelPitch * compRatioPitch);
