@@ -39,7 +39,7 @@ GDL90Parser::State state;
 
 RollAHRS ahrs;
 PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(100)/*5hz*/, altPID(100); /*5Hz*/
-PidControl *knobPID = &hdgPID;
+PidControl *knobPID = &altPID;
 
 WiFiUDP udpSL30;
 WiFiUDP udpNMEA;
@@ -404,7 +404,7 @@ void setup() {
 	ed.tttt.setValue(20); // seconds to make each test turn 
 	ed.ttlt.setValue(20); // seconds betweeen test turn  
 	ed.tzer.setValue(1000);
-	ed.pidsel.setValue(0);
+	ed.pidsel.setValue(1);
 	setKnobPid(ed.pidsel.value);
 	ed.update();
 	
@@ -1031,13 +1031,16 @@ void loop() {
 		totalError.pitch += abs(pitch - ahrsInput.g5Pitch);
 	
 #ifdef UBUNTU
-		if (millis() < 200000) // don't count error during the 200 sec 
+		static bool errorsCleared = false; 
+		if (errorsCleared == false && millis() < 200000) {  // don't count error during the first 200 sec, let AHRS stabilize  
 			totalError.clear();
+			errorsCleared = true;
+		}
 	
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) { 
-			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf %06.3f LOG U", gdl90State.lat, gdl90State.lon,
-				ahrs.speedDelta) << endl;
+			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf %06.3f %f	LOG U", gdl90State.lat, gdl90State.lon,
+				ahrs.speedDelta, ahrs.accelPitch) << endl;
 		}
 #endif
 		logItem.flags = 0;
@@ -1338,6 +1341,7 @@ public:
 				else if (sscanf(it->c_str(), "zeros.gx=%f", &v) == 1) { ahrs.gyrOffX = v; } 
 				else if (sscanf(it->c_str(), "zeros.gy=%f", &v) == 1) { ahrs.gyrOffY = v; } 
 				else if (sscanf(it->c_str(), "zeros.gz=%f", &v) == 1) { ahrs.gyrOffZ = v; } 
+				else if (sscanf(it->c_str(), "ahrs.debug=%f", &v) == 1) { ahrs.debugVar = v; } 
 				else if (sscanf(it->c_str(), "cr1=%f", &v) == 1) { ahrs.compRatio1 = v; } 
 				else if (sscanf(it->c_str(), "dc1=%f", &v) == 1) { ahrs.driftCorrCoeff1 = v; } 
 				else if (sscanf(it->c_str(), "cr2=%f", &v) == 1) { ahrs.hdgCompRatio = v; } 
@@ -1346,8 +1350,10 @@ public:
 				else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 
 				else if (sscanf(it->c_str(), "ahrs.crpitch=%f", &v) == 1) { ahrs.compRatioPitch = v; } 
 				else if (sscanf(it->c_str(), "ahrs.pitchoffset=%f", &v) == 1) { ahrs.pitchOffset = v; } 
+				else if (sscanf(it->c_str(), "ahrs.rolloffset=%f", &v) == 1) { ahrs.rollOffset = v; } 
 				else if (sscanf(it->c_str(), "ahrs.useauxmpu=%f", &v) == 1) { ESP32csim_useAuxMpu = v; } 
 				else if (sscanf(it->c_str(), "ahrs.gxdecel=%f", &v) == 1) { ahrs.gXdecelCorrelation = v; } 
+				else if (sscanf(it->c_str(), "ahrs.bankanglescale=%f", &v) == 1) { ahrs.bankAngleScale = v; }
 				else if (strlen(it->c_str()) > 0) { 
 					printf("Unknown debug parameter '%s'\n", it->c_str()); 
 					exit(-1);

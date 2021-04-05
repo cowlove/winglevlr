@@ -214,12 +214,14 @@ public:
 
 	float compRatio1 = 0.00072;  // roll comp filter ratio 
 	float compRatioPitch = 0.001236;
-	float pitchOffset = -9.6;
+	float pitchOffset = -9.28;
+	float rollOffset = +4.96;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
 	float magDipConstant = 2.496; // unexplained correction factor for bank angle in dip calcs
 	float magBankTrimCr = 0.00005;
 	float magBankTrimMaxBankErr = 12;
+	float bankAngleScale = 1.08;
 	
 	RollAHRS() { 
 		//gyrYOffsetFit.add(gyrOffY);
@@ -245,7 +247,7 @@ public:
 	float magStability = -1;
 	float hdg;
 	bool hdgInitialized = false;
-	
+
 	typedef TwoStageRollingLeastSquares<float> TwoStageRLS;
 	RollingLeastSquares // all at about 200 HZ */
 		gyroDriftFit = RollingLeastSquares(300), // 10HZ 
@@ -255,7 +257,7 @@ public:
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
 	RollingAverage<float,20> avgMagHdg;
-	RollingAverage<float,200> avgGZ, avgGX, avgAX, avgAZ;
+	RollingAverage<float,200> avgGZ, avgGX, avgAX, avgAZ, avgAY;
 	RollingAverage<float,200> gyroZeroCount;
 	
 	TwoStageRLS 
@@ -334,10 +336,11 @@ public:
 			l.gy -= gyrOffY;
 		}
 
-		avgGZ.add(l.gz);
 		avgGX.add(l.gx);
+		avgGZ.add(l.gz);
 		avgAZ.add(l.az);
-		avgAX.add(l.ax);
+		avgAY.add(l.az);
+		avgAZ.add(l.az);
 		
 		magHdg = atan2(l.my, l.mx) * 180 / M_PI;
 
@@ -389,7 +392,7 @@ public:
 		/// TODO - need to consider complete yaw rate corrected for bankAngle, not only avgGZ. 
 		float zgyrBankAngle = atan((cos(rollRad) * avgGZ.average() + (sin(abs(rollRad)) * avgGX.average())) * tas / 1091) * 180/M_PI;
 		bankAngle = (isnan(zgyrBankAngle) ? 0 : zgyrBankAngle);
-		bankAngle *= 1.00;
+		bankAngle *= bankAngleScale;
 		//bankAngle = max(-30.0, min(30.0, (double)bankAngle));
 		bankAngle = max(avgRoll.average() - 15.0, min(avgRoll.average() + 15.0, (double)bankAngle));
 		//bankAngle =0;
@@ -402,7 +405,7 @@ public:
 			gyroDrift = gyroDriftFit.slope();
 		}
 		
-		compYH = compR + gyroDrift * driftCorrCoeff1;
+		compYH = compR + gyroDrift * driftCorrCoeff1 + rollOffset;
 		//if (abs(bankAngle) < 30) {			
 		//	gyroDrift += (bankAngle - compYH) * 0.0001;
 		//}
@@ -449,20 +452,20 @@ public:
 		count++;
 		prev = l;
 		
-		
-
 		speedDelta = gSpeedFit.slope() * 0.51444;
-		accelPitch = atan2(l.ay - speedDelta, l.az);
-		
-		//float accelRoll = RAD2DEG(atan2(avgAZ.average(), -avgAX.average()));
-		float accelRoll = RAD2DEG(atan2(avgAX.average(), avgAZ.average()));
 
-		accelRoll = min(max((double)accelRoll, -15.0), 15.0);
-		float pG = cos(DEG2RAD(compYH + accelRoll)) * l.gx - sin(DEG2RAD(compYH + accelRoll)) * l.gz - speedDelta * gXdecelCorrelation;
-		//pG = i.gx;
+		accelRoll = RAD2DEG(atan2(avgAZ.average(), -avgAX.average()));
+		accelRoll = RAD2DEG(atan2(avgAX.average(), avgAZ.average()));
+		accelRoll = min(max((double)accelRoll, -20.0), 20.0);
+		
+		rollRad = DEG2RAD(avgRoll.average() + accelRoll);
+		accelPitch = atan2(cos(rollRad) * avgAY.average() + debugVar * sin(rollRad) * avgAX.average(), avgAZ.average());
+		
+
+		float pG = cos(rollRad) * l.gx - sin(rollRad) * l.gz  - speedDelta * gXdecelCorrelation;
 		pitchRaw = (pitchRaw + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioPitch) + (accelPitch * compRatioPitch);
 
-		pitch = pitchRaw + pitchOffset;
+		pitch = pitchRaw + pitchOffset - /*HACK*/(sin(abs(2.2 * rollRad)) * pitchRaw);
 	 	pitch = isnan(pitch) ? 0 : pitch;
 	 	pitch = isinf(pitch) ? 0 : pitch;
 
@@ -470,12 +473,13 @@ public:
 		//pitch = accelRoll;
 		return compYH;
 	}	
+	float debugVar = 1.0;
 	float gXdecelCorrelation = 1.16;
 	float pitchRaw =0;
 	float getGyroQuality() {
 		return gyroZeroCount.average();
 	}
-
+	float accelRoll;
 	void reset() {
 		mComp.reset();
 		gyroDriftFit.reset();

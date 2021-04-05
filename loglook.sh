@@ -45,7 +45,7 @@ XRANGE='[*:*]'
 
 F2=./logs/AHRSD$NUM.plog
 PROG=./winglevlr_ubuntu
-make $F2
+#make $F2
 
 
 while (( $# > 0 )); do 
@@ -96,10 +96,12 @@ while (( $# > 0 )); do
 	if [ "$1" == "-amz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($46) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-simlat" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($47) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-simlon" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($48) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-sim49" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($49) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-field49" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($49) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-field50" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($50) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-simtrack" ]; then PS=$PS\ \"$F2\"' u 48:47 w l tit "Ground Track", '; fi
 	if [ "$1" == "-magplot" ]; then PS=$PS\ \"$F2\"' u 13:14 w p tit "Mag Plot", '; fi
 	if [ "$1" == "-pitcherr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35-$20) w l ax x1y1 tit "Pitch Error", '; fi
+	if [ "$1" == "-rollerr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($31-$21) w l ax x1y1 tit "Roll Error", '; fi
 	if [ "$1" == "-stats" ]; then 
 		STATS='stats '$RANGE' "'$F2'" u ($1-F2_min_x):($'$2')'; 
 		shift
