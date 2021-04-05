@@ -78,7 +78,7 @@ struct {
 
 MPU9250_asukiaaa *imu = NULL;
 
-float pitchTrim = -.3, rollTrim = 0;
+float pitchTrim = 0, rollTrim = 0;
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
@@ -572,34 +572,56 @@ void setObsKnob(float knobSel, float v) {
 }
 
 
-static const float servoThrow = 2.0;
 
-void setServos(float x, float y) { 
-	float leftStringX = 14;
-	float leftStringY = 7;
+namespace ServoControl { 
+	const float servoThrow = 2.0;
+	const float leftStringX = 14;
+	const float leftStringY = 7;
 
-	float rightStringX = 11;
-	float rightStringY = 7;
+	const float rightStringX = 11;
+	const float rightStringY = 7;
 
-	float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
-	float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
+	const float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
+	const float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
 
 	float xScale = +1.0;
 	float yScale = -1.0;
 
-	float x1 = leftStringX + xScale * x + rollTrim;
-	float y1 = leftStringY + yScale * y + pitchTrim;
-	float leftNewLen = sqrt(x1 * x1 + y1 * y1);
+	pair<int, int> stickToServo(float x, float y) { 
+		float x1 = leftStringX + xScale * x + rollTrim;
+		float y1 = leftStringY + yScale * y + pitchTrim;
+		float leftNewLen = sqrt(x1 * x1 + y1 * y1);
 
-	x1 = rightStringX - xScale * x;
-	y1 = rightStringY + yScale * y;
-	float rightNewLen = sqrt(x1 * x1 + y1 * y1);
+		x1 = rightStringX - xScale * x;
+		y1 = rightStringY + yScale * y;
+		float rightNewLen = sqrt(x1 * x1 + y1 * y1);
 
-	float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
-	float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
+		float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
+		float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
 
-	servoOutput[0] = max(450, min(2550, (int)s0));
-	servoOutput[1] = max(450, min(2550, (int)s1));
+		return pair<int, int>(s0, s1);
+	}
+
+	pair<float,float> servoToStick(int s0, int s1) {
+		float a = leftStringX + rightStringX;
+		float b = (s0 - 1500.0) / 2000 * servoThrow + rightLen; 
+		float c = (s1 - 1500.0) / 2000 * servoThrow + leftLen; 
+
+		float area = sqrt( 4 * a * a * b * b - (a * a + b * b - c * c) * (a * a + b * b - c * c)) / 4;
+		float Y = area * 2 / a;
+		float X = sqrt(c * c - Y * Y);
+
+		float x = (X - leftStringX) / xScale;
+		float y = (Y - leftStringY) / yScale;
+
+		return pair<float,float>(x, y);
+	}
+};
+
+void setServos(float x, float y) {
+	pair<int,int> s = ServoControl::stickToServo(x, y);
+	servoOutput[0] =  max(450, min(2550, s.first));
+	servoOutput[0] =  max(450, min(2550, s.second));
 }
 
 void loop() {	
@@ -1000,8 +1022,8 @@ void loop() {
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			float x = rollPID.corr / 2000 * servoThrow;
-			float y = pitchPID.corr / 2000 * servoThrow;
+			float x = rollPID.corr / 2000 * ServoControl::servoThrow;
+			float y = pitchPID.corr / 2000 * ServoControl::servoThrow;
 			setServos(x, y);
 		} else switch(servoSetupMode) { 
 			case 2: setServos(0, -8); break;
@@ -1038,9 +1060,10 @@ void loop() {
 		}
 	
 		// special logfile name "+", write out log with computed values from the current simulation 			
-		if (strcmp(logFilename.c_str(), "+") == 0) { 
+		if (strcmp(logFilename.c_str(), "+") == 0) {
+			pair<float,float> stick = ServoControl::servoToStick(servoOutput[0], servoOutput[1]); 
 			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf %06.3f %f	LOG U", gdl90State.lat, gdl90State.lon,
-				ahrs.accelRoll, ahrs.accelPitch) << endl;
+				stick.first, stick.second) << endl;
 		}
 #endif
 		logItem.flags = 0;
@@ -1122,9 +1145,6 @@ public:
 	
 	uint64_t lastMicros = 0;
 
-	float stickX, stickY;
-	void pwmToStickPosition() {
-	}
 
 	void flightSim(MPU9250_DMP *imu) { 
 		//TODO: flightSim is very fragile/unstable.  Poke values into the
@@ -1331,6 +1351,16 @@ public:
 			o.flush();
 			o.close();
 			exit(0);
+		} else if (strcmp(*a, "--testStick") == 0) {
+			using namespace ServoControl;
+			for (float x = -servoThrow; x <= +servoThrow; x += servoThrow / 10) {
+				for (float y = -servoThrow; y <= +servoThrow; y += servoThrow / 10) {
+					setServos(x, y);
+					pair<float,float> r = servoToStick(servoOutput[0], servoOutput[1]);
+					printf("%+06.2f, %+06.2f  ->  %04d, %04d  ->  %+06.2f,%+06.2f\n", x, y, servoOutput[0], servoOutput[1], r.first, r.second);
+				}
+
+			}
 		} else if (strcmp(*a, "--debug") == 0) {
 			vector<string> l = split(string(*(++a)), ',');
 			float v;
@@ -1362,6 +1392,8 @@ public:
 		}
 	}	
 	void setup() override {
+		setServos(1,1);
+		servoToStick(servoOutput[0],servoOutput[1]);
 		if (replayFile == NULL) { 
 			bm.addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
