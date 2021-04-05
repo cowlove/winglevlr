@@ -99,6 +99,10 @@ namespace WaypointNav {
         double gsPercent() { 
             return max(-1.0, min(1.0, glideSlopeError() / 0.7));
         }
+        std::string toString() { 
+            return strfmt("ILS at %.6lf,%.6lf tdze %.0f, fac %.1f magnetic", 
+            tdzLocation.lat, tdzLocation.lon, tdze, faCrs);
+        }
     } *ils = NULL;
 
     struct  Approach{
@@ -262,12 +266,8 @@ namespace WaypointNav {
                 return;
 
             wptTracker.activeWaypoint.valid = false;
-            if (in.eof()) { 
-                in.clear();
-                in.seekg(0, std::ios_base::beg);
-            } 
             while(wptTracker.activeWaypoint.valid == false) {
-                if (!std::getline(in, s)) {
+                if (in.eof() || !std::getline(in, s)) {
                     if (repeat) {
                         in.clear();
                         in.seekg(0, std::ios_base::beg);
@@ -276,7 +276,7 @@ namespace WaypointNav {
                         break;
                     }
                 }      
-                //cout << "READ LINE: " << s << endl;
+                cout << "READ LINE: " << s << endl;
                 char buf[128];
                 float f; 
                 if (s.find("#") != std::string::npos)
