@@ -147,6 +147,7 @@ public:
 				f(line);
 		}
 	}
+	void add(const uint8_t *b, int n, std::function<void(const char *)> f) { add((const char *)b, n, f); } 
 };
 
 class IntervalTimer {
@@ -659,7 +660,7 @@ public:
 				}
 			} 
 		}
-		sprintf(fname, filename, fileVer);
+		snprintf(fname, sizeof(fname), filename, fileVer);
 		currentFile = String(fname);
 	}
 
@@ -959,7 +960,7 @@ public:
 
 	std::function<String(const T&)> toString = [this](const T& v)->String { 
 		char buf[64];
-		sprintf(buf, this->fmt, v);
+		snprintf(buf, sizeof(buf), this->fmt, v);
 		return String(buf);
 	};		
 	void setValue(const T&v) { 

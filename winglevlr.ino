@@ -19,7 +19,7 @@
 #include "RollingLeastSquares.h"
 #include "PidControl.h"
 #include "RollAHRS.h"
-#include "G90Parser.h"
+#include "GDL90Parser.h"
 #include "WaypointNav.h"
 using WaypointNav::trueToMag;
 using WaypointNav::magToTrue;
@@ -380,8 +380,8 @@ void setup() {
 	rollPID.maxerr.i = 20;
 
 	hdgPID.setGains(0.25, 0.02, 0.02);
-	hdgPID.hiGain.p = 25.00;
-	hdgPID.hiGainTrans.p = 15.0;
+	hdgPID.hiGain.p = 2.50;
+	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 0.5;
 
@@ -793,33 +793,24 @@ void loop() {
 			
 	}
 
-	int recsize = 0;
-	do {
-		recsize = 0;
-		int avail = udpG90.parsePacket();
-		while(avail > 0) {
-			unsigned char buf[1024]; 
-			recsize = udpG90.read(buf, min(avail,(int)sizeof(buf)));
-			if (recsize <= 0)
-				break;
-			avail -= recsize;
-			udpBytes += recsize; //+ random(0,2);
-			for (int i = 0; i < recsize; i++) {  
-				gdl90.add(buf[i]);
-				GDL90Parser::State s = gdl90.getState();
-				if (s.valid && s.updated) {
-					gpsTrackGDL90 = trueToMag(s.track);
-					ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
-					logItem.flags |= LogFlags::HdgGDL; 
-					gpsFixes++;
-					ahrsInput.alt = s.alt * 3.2808;
-					ahrsInput.palt = s.palt;
-					ahrsInput.gspeed = s.hvel;
-					gdl90State = s;
-				}
+	if (udpG90.parsePacket() > 0) { 
+		unsigned char buf[1024]; 
+		int n = udpG90.read(buf, sizeof(buf));
+		for (int i = 0; i < n; i++) {  
+			gdl90.add(buf[i]);
+			GDL90Parser::State s = gdl90.getState();
+			if (s.valid && s.updated) {
+				gpsTrackGDL90 = trueToMag(s.track);
+				ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
+				logItem.flags |= LogFlags::HdgGDL; 
+				gpsFixes++;
+				ahrsInput.alt = s.alt * 3.2808;
+				ahrsInput.palt = s.palt;
+				ahrsInput.gspeed = s.hvel;
+				gdl90State = s;
 			}
 		}
-	} while(recsize > 0);
+	}
 
 	if (Serial2.available()) {
 		static unsigned char buf[128]; // TODO make a line parser class with a lambda/closure
@@ -837,77 +828,64 @@ void loop() {
 		int n = Serial.readBytes((uint8_t *)buf, sizeof(buf));
 		parseSerialCommandInput(buf, n);
 	}
+
 	if (udpCmd.parsePacket() > 0) {
 		char buf[1024];
 		int n = udpCmd.read((uint8_t *)buf, sizeof(buf));
 		parseSerialCommandInput(buf, n);
 	}
 
-	int avail = 0;
-	while((avail = udpSL30.parsePacket()) > 0) { 
-		static char line[200];
-		static unsigned char buf[256];
-		static int index;
-		float knobSel = -1;
+	if (udpSL30.parsePacket() > 0) { 
+		uint8_t buf[1024];
+		static LineBuffer lb;
 		int n = udpSL30.read(buf, sizeof(buf));
-		//printf("READ: %s\n", buf);
-		if (n <= 0)
-			break;
-		buf[n] = '\0';
-		avail -= n;
-		udpBytes += n; // + random(0,2);
-		for (int i = 0; i < n; i++) {
-			if (index >= sizeof(line) - 1)
-				index = 0;
-			if (buf[i] != '\r')
-				line[index++] = buf[i];
-			if (buf[i] == '\n' || buf[i] == '\r') {
-				line[index++] = '\0';
-				index = 0;
-
-				vector<string> l = split(string(line), ' ');
-				float v;
-				for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
-					if      (sscanf(it->c_str(), "P=%f",   &v) == 1) { ahrsInput.g5Pitch = v; canMsgCount = canMsgCount + 1; logItem.flags |= LogFlags::g5Ins; }  
-					else if (sscanf(it->c_str(), "R=%f",   &v) == 1) { ahrsInput.g5Roll = v; logItem.flags |= LogFlags::g5Ins; } 
-					else if (sscanf(it->c_str(), "IAS=%f", &v) == 1) { ahrsInput.g5Ias = v; logItem.flags |= LogFlags::g5Ps;} 
-					else if (sscanf(it->c_str(), "TAS=%f", &v) == 1) { ahrsInput.g5Tas = v; logItem.flags |= LogFlags::g5Ps;} 
-					else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) { ahrsInput.g5Palt = v; logItem.flags |= LogFlags::g5Ps;} 
-					else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) { 
-						ahrsInput.g5Hdg = v; logItem.flags |= LogFlags::g5Nav;
-						ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
-					} 
-					else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) { ahrsInput.g5Track = v; logItem.flags |= LogFlags::g5Nav; } 
-					else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) { apMode = v; } 
-					else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) { knobSel = v; } 
-					else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) { setObsKnob(knobSel, v); } 
-				}
-				
-				float pit, roll, magHdg, magTrack, knobSel, knobVal, ias, tas, palt, age;
-				int mode = 0;
-				//printf("LINE %s\n", line);
-				if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
-				&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
-					&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
-					&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
-					//Serial.printf("CAN: %s\n", line);
-					ahrsInput.g5Pitch = pit * 180 / M_PI;
-					ahrsInput.g5Roll = roll * 180 / M_PI;
-					ahrsInput.g5Hdg = magHdg * 180 / M_PI;
-					ahrsInput.g5Track = magTrack * 180 / M_PI;
-					ahrsInput.g5Palt = palt / 3.2808;
-					ahrsInput.g5Ias = ias / 0.5144;
-					ahrsInput.g5Tas = tas / 0.5144;
-					ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
-					apMode = mode;
+		lb.add(buf, n, [](const char *line) {
+			vector<string> l = split(string(line), ' ');
+			float v, knobSel = 0;
+			for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
+				if      (sscanf(it->c_str(), "P=%f",   &v) == 1) { ahrsInput.g5Pitch = v; canMsgCount = canMsgCount + 1; logItem.flags |= LogFlags::g5Ins; }  
+				else if (sscanf(it->c_str(), "R=%f",   &v) == 1) { ahrsInput.g5Roll = v; logItem.flags |= LogFlags::g5Ins; } 
+				else if (sscanf(it->c_str(), "IAS=%f", &v) == 1) { ahrsInput.g5Ias = v; logItem.flags |= LogFlags::g5Ps;} 
+				else if (sscanf(it->c_str(), "TAS=%f", &v) == 1) { ahrsInput.g5Tas = v; logItem.flags |= LogFlags::g5Ps;} 
+				else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) { ahrsInput.g5Palt = v; logItem.flags |= LogFlags::g5Ps;} 
+				else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) { 
+					ahrsInput.g5Hdg = v; logItem.flags |= LogFlags::g5Nav;
 					ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
-					logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
-					setObsKnob(knobSel, knobVal);
-					//Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
-					canMsgCount = canMsgCount + 1;
-				}
+				} 
+				else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) { ahrsInput.g5Track = v; logItem.flags |= LogFlags::g5Nav; } 
+				else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) { apMode = v; } 
+				else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) { knobSel = v; } 
+				else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) { setObsKnob(knobSel, v); } 
+			}
+			
+			float pit, roll, magHdg, magTrack, knobVal, ias, tas, palt, age;
+			int mode = 0;
+			//printf("LINE %s\n", line);
+			if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", 
+			&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt,  &knobSel, &knobVal, &age, &mode) == 11
+				&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) 
+				&& (magTrack > -7 && magTrack < 7) && (knobSel >=0 && knobSel < 6)) {
+				//Serial.printf("CAN: %s\n", line);
+				ahrsInput.g5Pitch = pit * 180 / M_PI;
+				ahrsInput.g5Roll = roll * 180 / M_PI;
+				ahrsInput.g5Hdg = magHdg * 180 / M_PI;
+				ahrsInput.g5Track = magTrack * 180 / M_PI;
+				ahrsInput.g5Palt = palt / 3.2808;
+				ahrsInput.g5Ias = ias / 0.5144;
+				ahrsInput.g5Tas = tas / 0.5144;
+				ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
+				apMode = mode;
+				ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
+				logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
+				setObsKnob(knobSel, knobVal);
+				//Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
+				canMsgCount = canMsgCount + 1;
 			}
 
+		});
+
+		// TODO - get rid of TinyGPSPlus, just use pattern matchine 
+		for (int i = 0; i < n; i++) {
 			gps.encode(buf[i]);
 			if (buf[i] == '\r' || buf[i] == '\n') { 
 				if (vtgCourse.isUpdated()) {  // VTG typically from G5 NMEA serial output
@@ -918,11 +896,6 @@ void loop() {
 					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07); 	
 					logItem.flags |= LogFlags::HdgRMC;
 				}
-				//if (gps.location.isUpdated() && hdgSelect == 2) {
-				//	ahrsInput.alt = gps.altitude.meters() * 3.2808;
-				//	ahrsInput.gspeed = gps.speed.knots();
-				//	gpsFixes++;
-				//}
 				if (desiredHeading.isUpdated()) { 
 					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
 					if (navDTK < 0)
@@ -1260,7 +1233,7 @@ public:
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
 				char buf[128];
-				sprintf(buf, "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", 
+				snprintf(buf, sizeof(buf), "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", 
 					magToTrue(l.ai.gpsTrackRMC));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
