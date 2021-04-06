@@ -1268,7 +1268,7 @@ public:
 				if (l.ai.gpsTrackGDL90 != -1) { 	
 					s.track = magToTrue(l.ai.gpsTrackGDL90);
 					s.hvel = l.ai.gspeed;
-					int len = gdl90.packMsg10(buf, s);
+					int len = gdl90.packMsg10(buf, sizeof(buf), s);
 					ESP32sim_udpInput(4000, string((char *)buf, len));
 				}
 			}
@@ -1307,11 +1307,11 @@ public:
 
 			WiFiUDP::InputData buf;
 			buf.resize(128);
-			int n = gdl90.packMsg11(buf.data(), s);
+			int n = gdl90.packMsg11(buf.data(), buf.size(), s);
 			buf.resize(n);
 			ESP32sim_udpInput(4000, buf);
 			buf.resize(128);
-			n = gdl90.packMsg10(buf.data(), s);
+			n = gdl90.packMsg10(buf.data(), buf.size(), s);
 			buf.resize(n);
 			ESP32sim_udpInput(4000, buf);;
 			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", t2, t2)); 
