@@ -53,7 +53,7 @@ void esp_task_wdt_init(int, int) {}
 void esp_task_wdt_reset() {}
 esp_err_t esp_task_wdt_add(void *) { return 0; }
 esp_err_t esp_task_wdt_delete(const void *) { return 0; }
-
+int rtc_get_reset_reason(int) { return 0; } 
 namespace fs { 
 class File {
 	public: 

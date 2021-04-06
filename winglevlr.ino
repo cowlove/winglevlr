@@ -9,6 +9,7 @@
 #include <esp_task_wdt.h>
 #include <soc/soc.h>
 #include <soc/rtc_cntl_reg.h>
+#include <rom/rtc.h>
 #include <MPU9250_asukiaaa.h>
 #endif // #else // UBUNTU
 
@@ -83,6 +84,8 @@ void halInit() {
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
 
+	Serial.printf("\nReset reason: %d %d\n", (int)rtc_get_reset_reason(0), (int)rtc_get_reset_reason(1));
+	
 	Wire.begin(21,22);
 	Serial.println("Scanning I2C bus on pins 21,22");
 	if (scanI2c() == 0) { 
