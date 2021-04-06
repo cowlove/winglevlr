@@ -7,7 +7,7 @@ class GDL90Parser {
 	void unlock() {};
 	
 	unsigned char buf[256];
-	int index = -1;
+	int index = 0;
 	bool esc = 0;
 	unsigned long bs3(const unsigned char* b) {
 		return ((unsigned long)b[0] << 16) | ((unsigned long)b[1] << 8) | b[2];
@@ -31,7 +31,7 @@ public:
 		int misc;
 	} state, lastState;
 
-	GDL90Parser() : index(-1), esc(0) {
+	GDL90Parser() : index(0), esc(0) {
 		//hMutex = CreateMutex(NULL, FALSE, NULL);
 		state.valid = false;
 		lastState.valid = false;
@@ -51,6 +51,8 @@ public:
 		return rval;
 	}
 	bool checkForValid() {
+		if (index < 2) 
+			return false; 
 		unsigned int crc = crcCompute(buf, index - 2);
 		unsigned int found_crc =(((uint16_t)(buf[index - 1]))<<8) | buf[index-2];
 		if (found_crc != crc) 
@@ -65,8 +67,8 @@ public:
 		//if (state.alt < -500 || state.alt > 15000) return false;
 		return true;
 	}
-	static uint16_t Crc16Table[256];
 
+	static uint16_t Crc16Table[256];
 	static void crcInit(void) { 
 		uint16_t bitctr, crc, i;     
 		for (i = 0; i < 256; i++) { 
@@ -97,10 +99,10 @@ public:
 			msgCount++;
 		}
 	}
-	static int packStuff(unsigned char *out, unsigned char *in, int l) { 
+	static int packStuff(unsigned char *out, int buflen, unsigned char *in, int l) { 
 		int outl = 0;
 		out[outl++] = 0x7e;
-		for(int n = 0; n < l; n++) { 
+		for(int n = 0; n < l && outl << buflen; n++) { 
 			if (in[n] == 0x7e || in[n] == 0x7d) {
 				out[outl++] = 0x7d;
 				out[outl++] = in[n] ^ 0x20;
@@ -110,7 +112,7 @@ public:
 		out[outl++] = 0x7e;
 		return outl;
 	}
-	static int packMsg10(unsigned char *out, State s) {
+	static int packMsg10(unsigned char *out, int buflen, State s) {
 		unsigned char b[30];
 		bzero(b, sizeof(b));
 		b[0] = 10;
@@ -129,9 +131,9 @@ public:
 		unsigned int crc = crcCompute(b, 28);
 		b[28] = crc & 0xff;
 		b[29] = (crc >> 8) & 0xff;
-		return packStuff(out, b, sizeof(b));
+		return packStuff(out, buflen, b, sizeof(b));
 	}
-	static int packMsg11(unsigned char *out, State s) {
+	static int packMsg11(unsigned char *out, int buflen, State s) {
 		unsigned char b[5];
 		bzero(b, sizeof(b));
 		b[0] = 11;
@@ -142,11 +144,11 @@ public:
 		unsigned int crc = crcCompute(b, 3);
 		b[3] = crc & 0xff;
 		b[4] = (crc >> 8) & 0xff;
-		return packStuff(out, b, sizeof(b));
+		return packStuff(out, buflen, b, sizeof(b));
 	}
 	void add(char b) { // handle one character in GDL90 stream
 		if (b == 0x7e) { // got a flag byte
-			if (index >= 0) { // end of packet flag, packet complete
+			if (index > 1) { // end of packet flag, packet complete
 				if (buf[0] == 0) { // MSG00 heartbeat
 					state.timestamp = (((unsigned long)buf[4]) << 8) + ((unsigned long)(buf[3]));
 				}
@@ -173,15 +175,12 @@ public:
 						//printf("MSG11: %d\n", state.alt);
 					}
 				}
-				if (index > 0) // finished packet, wait for next one 
-					index = -1;
 				setValid();
-				return;
-			} else { // start of packet flag
 				index = 0;
-			}
+				return;
+			} 
 		}
-		else {
+		else { // everything other than a flag byte 0x7e 
 			if (b == 0x7d) { // escape character
 				esc = 1;
 				return;

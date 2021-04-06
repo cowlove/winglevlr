@@ -5,7 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${HOME}/Arduino/libraries/**",
-                "/home/jim/Arduino/libraries/TinyGPSPlus-1.0.2/src"
+                "/home/jim/Arduino/libraries/TinyGPSPlus/src"
             ],
             "defines": [
                 "UBUNTU",
