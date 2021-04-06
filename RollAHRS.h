@@ -478,6 +478,7 @@ public:
 		return gyroZeroCount.average();
 	}
 	float accelRoll;
+	float dummy[10];
 	void reset() {
 		mComp.reset();
 		gyroDriftFit.reset();
