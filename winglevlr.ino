@@ -195,7 +195,7 @@ namespace Display {
 	const int c2x = 70;
 	JDisplayItem<const char *>  ip(&jd,10,y,"WIFI:", "%s ");
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>    trk(&jd,c2x,y,  " TRK:", "%05.1f ");
-	JDisplayItem<float> navt(&jd,10,y+=10,"NAVT:", "%05.1f ");  JDisplayItem<float>    obs(&jd,c2x,y,  " OBS:", "%05.1f ");
+	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+03.1f ");  JDisplayItem<float>    obs(&jd,c2x,y,  " OBS:", "%05.1f ");
 	JDisplayItem<float> roll(&jd,10,y+=10,"ROLL:", "%+03.1f");   JDisplayItem<int>    mode(&jd,c2x,y,  "MODE:", "%05d ");
 	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> maghdg(&jd,c2x,y,  " MAG:", "%05.1f ");
 	//JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
@@ -208,6 +208,8 @@ namespace Display {
 	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> maxi(&jd,c2x,y,    "MAXI:", "%04.1f ");
 	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); 	
 	JDisplayItem<float>  dead(&jd,00,y+=10,"DZ:", "%03.1f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");
+
+    JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 }
 
 class MyEditor : public JDisplayEditor {
@@ -325,7 +327,7 @@ void setup() {
 	Serial.printf("Log file number %d\n", l);
 	logFileNumber = l + 1;
 
-	esp_task_wdt_init(15, true);
+	esp_task_wdt_init(22, true);
 	esp_err_t err = esp_task_wdt_add(NULL);
 
     //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector   
@@ -805,7 +807,7 @@ void loop() {
 				logItem.flags |= LogFlags::HdgGDL; 
 				gpsFixes++;
 				ahrsInput.alt = s.alt * 3.2808;
-				ahrsInput.palt = s.palt;
+				ahrsInput.palt = s.palt;// * 25 + 1000;
 				ahrsInput.gspeed = s.hvel;
 				gdl90State = s;
 			}
@@ -1073,6 +1075,7 @@ void loop() {
 		Display::maghdg = (float)ahrs.magHdg;
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
+		Display::pitc = pitch; 
 		Display::drop = logFile != NULL ? logFile->dropped : -1;
 		Display::logw = logFile != NULL ? logFile->written / 200 : -1;
 		//Display::pitch = pitch;
@@ -1244,6 +1247,11 @@ public:
 				if (l.ai.gpsTrackGDL90 != -1) { 	
 					s.track = magToTrue(l.ai.gpsTrackGDL90);
 					s.hvel = l.ai.gspeed;
+					s.palt = l.ai.palt;
+					s.alt = l.ai.alt / 3.328;
+					s.lat = curPos.loc.lat;
+					s.lon = curPos.loc.lon;
+					s.track = l.ai.gpsTrackGDL90;
 					int len = gdl90.packMsg10(buf, sizeof(buf), s);
 					ESP32sim_udpInput(4000, string((char *)buf, len));
 				}
