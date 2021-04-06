@@ -195,6 +195,6 @@ public:
 
 	};
 };
-
+float protect[10]; 
 uint16_t GDL90Parser::Crc16Table[256];
 
