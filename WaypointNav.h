@@ -228,7 +228,7 @@ namespace WaypointNav {
             activeWaypoint = p;
             waypointPassed = false;
             wayPointCount++;
-            if (wayPointCount == 1) { // first waypoint, initial position
+            if (wayPointCount == 1 && curPos.valid == false) { // first waypoint, initial position
                 curPos = activeWaypoint;
                 waypointPassed = true;
             }
