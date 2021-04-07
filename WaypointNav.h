@@ -182,7 +182,7 @@ namespace WaypointNav {
     public: 
         LatLonAlt curPos;
         int wayPointCount = 0;
-        LatLonAlt activeWaypoint;
+        LatLonAlt activeWaypoint, startWaypoint;
         bool waypointPassed;
         float speed; // knots 
         float vvel;  // fpm
@@ -207,16 +207,16 @@ namespace WaypointNav {
                 return;
             if (activeWaypoint.valid && !waypointPassed) {
                 steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
-                distToWaypoint = distance(curPos.loc, activeWaypoint.loc);
+                distToWaypoint = abs(distance(curPos.loc, activeWaypoint.loc));
                 if (distToWaypoint < 2000 && distToWaypoint > lastDistToWaypoint) 
                     waypointPassed = true;
                 lastDistToWaypoint = distToWaypoint;
+                float legDist = abs(distance(activeWaypoint.loc, startWaypoint.loc));
+                commandAlt = (activeWaypoint.alt - startWaypoint.alt) * (1 - distToWaypoint / legDist) + startWaypoint.alt;
+
             }
             float distTravelled = speed * .51444 * sec;
-            commandAlt = curPos.alt;
-
-            if (distToWaypoint > 0 ) 
-                commandAlt += (activeWaypoint.alt - curPos.alt) * (distTravelled / distToWaypoint) + vWiggle;
+            
             commandAlt += corrV;//distToWaypoint / 1000;
             steerHdg += corrH;//distToWaypoint / 1000;
             vvel = (commandAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
@@ -237,6 +237,7 @@ namespace WaypointNav {
                 curPos = activeWaypoint;
                 waypointPassed = true;
             }
+            startWaypoint = curPos;
             corrV = corrH = 0;
         }
     };

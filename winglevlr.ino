@@ -503,8 +503,8 @@ static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg.
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 struct {
-	double hdg, roll, pitch; 
-	void clear() { hdg = roll = pitch = 0; }
+	double hdg, roll, pitch, hdgSum, rollSum, pitchSum;
+	void clear() { hdg = roll = pitch = hdgSum = rollSum = pitchSum = 0; }
 } totalError;
 //static int ledOn = 0;
 static int manualRelayMs = 60;
@@ -925,10 +925,11 @@ void loop() {
 			wpNav->wptTracker.curPos.loc.lat = gdl90State.lat;
 			wpNav->wptTracker.curPos.loc.lon = gdl90State.lon;
 			wpNav->wptTracker.curPos.alt = gdl90State.alt;
+			wpNav->wptTracker.speed = ahrsInput.gspeed;
 			wpNav->wptTracker.curPos.valid = true;
 			wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
 			desiredTrk = trueToMag(wpNav->wptTracker.commandTrack);
-			desAlt = wpNav->wptTracker.commandAlt / 3.2808;
+			desAlt = wpNav->wptTracker.commandAlt * 3.2808;
 		}
 		
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
@@ -991,13 +992,13 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 	float altErr = (apMode == 3) ? desAlt - ahrsInput.alt: 0;	
+		 	float altErr = (apMode == 3 && desAlt != -1000) ? desAlt - ahrsInput.alt: 0;	
 			altPID.add(altErr, altErr, ahrsInput.sec);
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(altPID.corr * 0.01, 5.0), -5.0);
-		pitchCmd = desPitch - altCorr;
+		pitchCmd = desPitch + altCorr;
 		pitchPID.add(ahrs.pitch - pitchCmd, ahrs.pitch - pitchCmd, ahrsInput.sec);
 
 		if (armServo == true) {  
@@ -1019,8 +1020,10 @@ void loop() {
 		ledcWrite(0, servoOutput[0] * 4915 / 1500); // scale PWM output to 1500-7300 
 		ledcWrite(1, servoOutput[1] * 4915 / 1500); // scale PWM output to 1500-7300 
 
-		logItem.pwmOutputRoll = servoOutput[0];
-		logItem.pwmOutputPitch = servoOutput[1];
+		logItem.pwmOutput0 = servoOutput[0];
+		logItem.pwmOutput1 = servoOutput[1];
+		logItem.desRoll = desRoll;
+		logItem.desAlt = (apMode == 3) ? desAlt : -1000;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
 		logItem.magHdg = ahrs.magHdg;
@@ -1031,8 +1034,11 @@ void loop() {
 		logItem.auxMpu = auxMPU;
 
 		totalError.roll += abs(roll + ahrsInput.g5Roll);
+		totalError.rollSum += roll + ahrsInput.g5Roll;
 		totalError.hdg += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
+		totalError.hdgSum += (angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
 		totalError.pitch += abs(pitch - ahrsInput.g5Pitch);
+		totalError.pitchSum += (pitch - ahrsInput.g5Pitch);
 	
 #ifdef UBUNTU
 		static bool errorsCleared = false; 
@@ -1102,9 +1108,6 @@ void loop() {
 // Code below this point is used in compiling/running ESP32sim simulation
 
 
-//bool ESP32sim_replayLogItem(ifstream &);
-float ESP32sim_pitchCmd = 940.0;
-//void ESP32sim_set_gpsTrackGDL90(float v);
 void ESP32sim_done();
 
 class ESP32sim_winglevlr : public ESP32sim_Module {
@@ -1136,21 +1139,24 @@ public:
 		pitchTrim = rollTrim = 0;
 
 		_micros += 3500;
-		const float servoTrim = 4915.0;
+		//const float servoTrim = 4915.0;
 
-		float rawCmd = ESP32sim_pitchCmd;
-		cmdPitch = rawCmd > 0 ? (940 - rawCmd) / 13 : 0;
-		float ngx = (cmdPitch - simPitch) * 1.3;
-		ngx = max((float)-5.0,min((float)5.0, ngx));
-		simPitch += (cmdPitch - simPitch) * .0015;
-		gxDelay.push(ngx);
-		pitchDelay.push(simPitch);
-				
 		// Simulate simple airplane roll/bank/track turn response to 
 		// servooutput read from ESP32sim_currentPwm;
-		
-		rollCmd.add((ESP32sim_currentPwm[1] - servoTrim) / servoTrim);
-		imu->gy = 0.0 + rollCmd.average() * 1;
+		pair<float,float> stick = ServoControl::servoToStick(
+			ESP32sim_currentPwm[0] * 1500.0 / 4915, 
+			ESP32sim_currentPwm[1] * 1500.0 / 4915);
+		float stickX = stick.first;
+		float stickY = stick.second;
+
+		cmdPitch = stickY * 85.5;
+		float ngx = (cmdPitch - simPitch) * 0.15;
+		imu->gx = max((float)-15.0,min((float)15.0, ngx));
+		simPitch += (cmdPitch - simPitch) * 0.15;
+		this->pitch = simPitch;
+
+		rollCmd.add(stickX);
+		imu->gy = 0.0 + rollCmd.average() * .85;
 		bank += imu->gy * (3500.0 / 1000000.0);
 		bank = max(-25.0, min(25.0 , (double)bank));
 		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
@@ -1171,15 +1177,13 @@ public:
 		hdg = track - 35.555; // simluate mag var and arbitrary WCA 
 		if (hdg < 0) hdg += 360;	
 
-		while(gxDelay.size() > 400) {
-			gxDelay.pop();
-			pitchDelay.pop();
-			imu->gx = gxDelay.front();
-			pitch = pitchDelay.front();
+		if (0) { 
+			printf("SIM %08.3f (%+04.1f,%+04.1f) %+05.2f %+05.2f %+05.2f %+05.2f\n", 
+				(float)(millis()/1000.0), stickX, stickY, imu->gx, cmdPitch, pitch, logItem.pitch);
 		}
-		//printf("SIM %08.3f %+05.2f %+05.2f %+05.2f\n", millis()/1000.0, gx, pitch, cmdPitch);
-		imu->az = cos(pitch * M_PI / 180) * 1.0;
-		imu->ay = sin(pitch * M_PI / 180) * 1.0;
+		const float simPitchOffset = 5.5;
+		imu->az = cos((this->pitch + simPitchOffset) * M_PI / 180) * 1.0;
+		imu->ay = sin((this->pitch + simPitchOffset)* M_PI / 180) * 1.0;
 		imu->ax = 0;
 
 		// simulate meaningless mag readings that stabilize when bank == 0 
@@ -1189,7 +1193,7 @@ public:
 		
 		float dist = speed * 0.51444 * (now - lastMillis) / 1000.0; 
 		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(track), dist);
-		curPos.alt = 1000; // TODO 
+		curPos.alt += sin((pitch + simPitchOffset) * M_PI/180) * dist; 
 
 		lastMillis = now;
 
@@ -1261,8 +1265,9 @@ public:
 				}
 			}
 				
-			servoOutput[0] = l.pwmOutputRoll;
-			servoOutput[1] = l.pwmOutputPitch;
+			servoOutput[0] = l.pwmOutput0;
+			servoOutput[1] = l.pwmOutput1;
+			desiredTrk = l.ai.dtk;
 
 			// special logfile name "-", just replay existing log back out to stdout 
 			if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
@@ -1290,7 +1295,8 @@ public:
 			s.alt = curPos.alt;
 			s.track = t1;
 			s.vvel = 0;
-			s.hvel = tSim != NULL ? tSim->wptTracker.speed : 0;
+			s.hvel = 105;
+			//tSim != NULL ? tSim->wptTracker.speed : 0;
 			s.palt = (s.alt + 1000) / 25;
 
 			WiFiUDP::InputData buf;
@@ -1434,10 +1440,14 @@ public:
 			if (at(150.0)) { 
 				Serial.inputLine =  "wpclear\n"
 									"wpadd REPEAT 1\n"
-									"wpadd 47.59509212379994, -122.38743386638778 1000\n"
-									"wpadd 47.59233901597324, -122.37080179677619 500\n"
-									"wpadd 47.53887718258715, -122.30994494011797 50\n"
-									"wpadd 47.46106431485166, -122.47652028295599\n"
+								//	"wpadd 47.59509212379994, -122.38743386638778 1000\n"
+								//	"wpadd 47.59233901597324, -122.37080179677619 500\n"
+								//	"wpadd 47.53887718258715, -122.30994494011797 50\n"
+								//	"wpadd 47.46106431485166, -122.47652028295599\n"
+
+									"wpadd 47.46106431485166, -122.47652028295599 1000\n" // 2S1 rwy 17 
+									"wpadd 47.46276277164776, -122.56987914788057 1500\n" // WN13 
+									"wpadd 47.40034707858388, -122.50118521538386 1200\n" // Wax orchards 
 									"wpstart\n";
 				apMode = 3;
 			}

@@ -515,8 +515,8 @@ struct LogItemOld {
 };
 
 struct LogItemNew {
-	short pwmOutputRoll, pwmOutputPitch, flags;  
-	float desRoll, roll, magHdg, bankAngle, magBank, pitch, spare1, spare2;
+	short pwmOutput0, pwmOutput1, flags;  
+	float desRoll, roll, magHdg, bankAngle, magBank, pitch, desAlt, desPitch;
 	struct AuxMpuData auxMpu;
 	AhrsInputB ai;
 	String toString() const {
@@ -524,7 +524,7 @@ struct LogItemNew {
 		const AuxMpuData &a = auxMpu;
 		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f %f "
 		"%f %f %f %f %f %f %f %f %f ",
-		(int)pwmOutputRoll, (int)pwmOutputPitch, (int)flags, desRoll, roll, magHdg,  bankAngle, magBank, pitch, spare1, spare2,
+		(int)pwmOutput0, (int)pwmOutput1, (int)flags, desRoll, roll, magHdg,  bankAngle, magBank, pitch, desAlt, desPitch,
 		a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz);
 		return ai.toString() + String(buf);
 	} 
@@ -534,14 +534,14 @@ struct LogItemNew {
 	}
 	LogItemNew &operator =(const LogItemOld &c) {
 		ai = c.ai;
-		pwmOutputRoll = c.pwmOutputRoll;
+		pwmOutput0 = c.pwmOutputRoll;
 		flags = c.flags;
 		desRoll = c.desRoll;
 		roll = c.roll;
 		magHdg = c.magHdg;
 		bankAngle = c.bankAngle;
 		magBank = c.magBank;
-		pwmOutputPitch = pitch = spare1 = spare2 = -1000;
+		pwmOutput1 = pitch = desAlt = desPitch  = -1000;
 		return *this;
 	}
 };
