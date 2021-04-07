@@ -1183,17 +1183,17 @@ public:
         }
         void open() {
         }
-        std::string pmrrv(const std::string& r) {
+        std::string pmrrv(const char *r) {
                 return std::string("$PMRRV") + r + twoenc(chksum(r)) + "\r\n";
                 //Serial2.write(s.c_str());
 				//Serial.printf("G5: %s", s.c_str());
                 //Serial.write(s.c_str());
         }
-        void setCDI(double hd, double vd) {
+        std::string setCDI(double hd, double vd) {
                 int flags = 0b11111010;
                 hd *= 127 / 3;
                 vd *= 127 / 3;
-                pmrrv(std::string("21") + twoenc(hd) + twoenc(vd) + twoenc(flags));
+                return pmrrv((std::string("21") + twoenc(hd) + twoenc(vd) + twoenc(flags)).c_str());
         }
 };
 

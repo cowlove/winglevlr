@@ -39,7 +39,7 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(100)/*5hz*/, altPID(100); /*5Hz*/
+PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(100)/*5hz*/, altPID(25); /*5Hz*/
 PidControl *knobPID = &altPID;
 
 WiFiUDP udpSL30;
@@ -395,8 +395,8 @@ void setup() {
 	pitchPID.finalGain = 5.0;
 	pitchPID.maxerr.i = .5;
 
-	altPID.setGains(1.0, 0.0, 0.1);
-	altPID.finalGain = 1.0;
+	altPID.setGains(1.0, 0.0, 3.0);
+	altPID.finalGain = -4.0;
 
     // make PID select knob display text from array instead of 0-3	
 	Display::pidsel.toString = [](float v){ return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 3) ? (int)v : 0]); };		
@@ -431,7 +431,7 @@ void setup() {
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
-float desRoll = 0, desPitch = 0, desAlt = 0;		
+float desRoll = 0, desPitch = -8, pitchCmd = 0, desAlt = 0;		
 static int serialLogFlags = 0;
 
 void udpSendString(const char *b) { 
@@ -499,7 +499,7 @@ static EggTimer serialReportTimer(200), hz5(200), loopTimer(5), buttonCheckTimer
 static int armServo = 0;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 3; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
+static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 struct {
@@ -590,15 +590,15 @@ namespace ServoControl {
 	const float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
 
 	float xScale = +1.0;
-	float yScale = -1.0;
+	float yScale = +1.0;
 
 	pair<int, int> stickToServo(float x, float y) { 
 		float x1 = leftStringX + xScale * x + rollTrim;
 		float y1 = leftStringY + yScale * y + pitchTrim;
 		float leftNewLen = sqrt(x1 * x1 + y1 * y1);
 
-		x1 = rightStringX - xScale * x;
-		y1 = rightStringY + yScale * y;
+		x1 = rightStringX - xScale * x - rollTrim;
+		y1 = rightStringY + yScale * y + pitchTrim;
 		float rightNewLen = sqrt(x1 * x1 + y1 * y1);
 
 		float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
@@ -649,7 +649,7 @@ void loop() {
 		Serial.printf(
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"R %+05.2f P %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
+			"R %+05.2f P %+05.2f DP %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
 			"ALT %04.0f desA %04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
@@ -658,7 +658,7 @@ void loop() {
 			"\n",
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
+			roll, pitch, pitchCmd, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
 			ahrsInput.alt, desAlt,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
@@ -989,19 +989,21 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 	float altErr = (apMode == 3) ? desAlt - ahrsInput.alt : 0;	
-			altPID.add(altErr, ahrsInput.alt, ahrsInput.sec);
+		 	float altErr = (apMode == 3) ? desAlt - ahrsInput.alt: 0;	
+			altPID.add(altErr, altErr, ahrsInput.sec);
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(altPID.corr * 0.01, 5.0), -5.0);
-		pitchPID.add(ahrs.pitch - desPitch + altCorr, ahrs.pitch, ahrsInput.sec);
+		pitchCmd = desPitch - altCorr;
+		pitchPID.add(ahrs.pitch - pitchCmd, ahrs.pitch - pitchCmd, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
 			float x = rollPID.corr / 2000 * ServoControl::servoThrow;
 			float y = pitchPID.corr / 2000 * ServoControl::servoThrow;
+			//	y = 0; // disable pitch
 			setServos(x, y);
 		} else switch(servoSetupMode) { 
 			case 2: setServos(0, -8); break;
