@@ -655,7 +655,7 @@ void loop() {
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
 			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu %d"
-			"sv %04d %04d "
+			"sv %04d %04d "			
 			"\n",
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
@@ -927,7 +927,8 @@ void loop() {
 			wpNav->wptTracker.curPos.alt = gdl90State.alt;
 			wpNav->wptTracker.curPos.valid = true;
 			wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
-			desiredTrk = trueToMag(wpNav->wptTracker.track);
+			desiredTrk = trueToMag(wpNav->wptTracker.commandTrack);
+			desAlt = wpNav->wptTracker.commandAlt / 3.2808;
 		}
 		
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;

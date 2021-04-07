@@ -186,10 +186,11 @@ namespace WaypointNav {
         bool waypointPassed;
         float speed; // knots 
         float vvel;  // fpm
-        float steerHdg, track;
+        float steerHdg, commandTrack, commandAlt;
         float lastHd, lastVd;
         float corrH = 0, corrV = 0;
         float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
+
         void setCDI(float hd, float vd, float decisionHeight) {
             float gain = min(1.0, curPos.alt / 200.0);
             corrH = +0.2 * gain * ((abs(hd) < 2.0) ? hd + (hd - lastHd) * 400 : 0);
@@ -210,20 +211,22 @@ namespace WaypointNav {
                     waypointPassed = true;
             }
             float distTravelled = speed * .51444 * sec;
-            float newAlt = curPos.alt;
+            commandAlt = curPos.alt;
 
             if (distToWaypoint > 0 ) 
-                newAlt += (activeWaypoint.alt - curPos.alt) * (distTravelled / distToWaypoint) + vWiggle;
-            newAlt += corrV;//distToWaypoint / 1000;
+                commandAlt += (activeWaypoint.alt - curPos.alt) * (distTravelled / distToWaypoint) + vWiggle;
+            commandAlt += corrV;//distToWaypoint / 1000;
             steerHdg += corrH;//distToWaypoint / 1000;
-            vvel = (newAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
-            track = onSteer(steerHdg);
-            LatLon newPos = locationBearingDistance(curPos.loc, track, distTravelled);
-            curPos = LatLonAlt(newPos, newAlt);
+            vvel = (commandAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
+            commandTrack = onSteer(steerHdg);
+            LatLon newPos = locationBearingDistance(curPos.loc, commandTrack, distTravelled);
+            curPos = LatLonAlt(newPos, commandAlt);
             if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90)
                 waypointPassed = true;
         }	
+
         std::function<float(float)> onSteer = [](float steer){ return steer; };
+
         void setWaypoint(const LatLonAlt &p) {
             activeWaypoint = p;
             waypointPassed = false;
@@ -232,13 +235,9 @@ namespace WaypointNav {
                 curPos = activeWaypoint;
                 waypointPassed = true;
             }
+            corrV = corrH = 0;
         }
     };
-
-    // HACK - shit to make this compile when transplanted from autotrim 
-    //float vd, hd;
-
-
 
     class WaypointSequencer { 
         istream &in;
