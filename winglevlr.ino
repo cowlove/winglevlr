@@ -511,7 +511,7 @@ static int manualRelayMs = 60;
 static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
 static uint64_t lastLoop = micros();
 static bool selEditing = false;
-
+float stickX, stickY;
 std::string waypointList;
 WaypointsSequencerString *wpNav = NULL;
 GDL90Parser::State gdl90State;
@@ -646,10 +646,11 @@ void loop() {
 	lastLoop = now;
 	PidControl *pid = &rollPID;
 	if (true && serialReportTimer.tick()) {
+		// SERIAL STATUS line output 
 		Serial.printf(
 			"%06.3f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"R %+05.2f P %+05.2f DP %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
+			"S: %+05.2f,%+05.2f R %+05.2f P %+05.2f DP %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
 			"ALT %04.0f desA %04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
@@ -658,7 +659,7 @@ void loop() {
 			"\n",
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			roll, pitch, pitchCmd, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
+			stickX, stickY, roll, pitch, pitchCmd, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
 			ahrsInput.alt, desAlt,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
@@ -1001,10 +1002,10 @@ void loop() {
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			float x = rollPID.corr / 2000 * ServoControl::servoThrow;
-			float y = pitchPID.corr / 2000 * ServoControl::servoThrow;
+			stickX = rollPID.corr / 2000 * ServoControl::servoThrow;
+			stickY = pitchPID.corr / 2000 * ServoControl::servoThrow;
 			//	y = 0; // disable pitch
-			setServos(x, y);
+			setServos(stickX, stickY);
 		} else switch(servoSetupMode) { 
 			case 2: setServos(0, -8); break;
 			case 3: setServos(0, +8); break;
