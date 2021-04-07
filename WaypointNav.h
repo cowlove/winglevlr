@@ -190,6 +190,7 @@ namespace WaypointNav {
         float lastHd, lastVd;
         float corrH = 0, corrV = 0;
         float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
+        float lastDistToWaypoint;
 
         void setCDI(float hd, float vd, float decisionHeight) {
             float gain = min(1.0, curPos.alt / 200.0);
@@ -207,8 +208,9 @@ namespace WaypointNav {
             if (activeWaypoint.valid && !waypointPassed) {
                 steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
                 distToWaypoint = distance(curPos.loc, activeWaypoint.loc);
-                if (distToWaypoint < 1000) 
+                if (distToWaypoint < 2000 && distToWaypoint > lastDistToWaypoint) 
                     waypointPassed = true;
+                lastDistToWaypoint = distToWaypoint;
             }
             float distTravelled = speed * .51444 * sec;
             commandAlt = curPos.alt;
