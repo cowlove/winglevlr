@@ -129,7 +129,7 @@ class ScopedMutex {
 class LineBuffer {
 public:
 	char line[1024];
-	char len;
+	char len = 0;
 	int add(char c) {
 		int r = 0;
 		if (c != '\r' && c != '\n')

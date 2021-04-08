@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
                             }
                             break;
                     } 
-                    printf("trim %f %f\n", xtrim, ytrim);
+                    printf("strim %f %f\n", xtrim, ytrim);
                 case JS_EVENT_AXIS:
                     axis = get_axis_state(&event, axes);
                     break;

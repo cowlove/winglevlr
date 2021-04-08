@@ -79,7 +79,7 @@ struct AuxMpuData {
 		return String(strfmt("MPU %f %f %f %f %f %f %f %f %f", ax, ay, az, gx, gy, gz, mx, my, mz).c_str());
 	}
 	bool fromString(const char *s) { 
-		return sscanf(s, "MPU %f %f %f %f %f %f %f %f %f", &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz) == 9;
+		return sscanf(s, "MPU %f %f %f %f %f %f %f %f %f", &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz) == 10;
 	}
 } auxMPU;
 
@@ -523,9 +523,9 @@ struct LogItemNew {
 		char buf[200];
 		const AuxMpuData &a = auxMpu;
 		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f %f "
-		"%f %f %f %f %f %f %f %f %f ",
+		" %f %f %f %f %f %f %f %f %f ",
 		(int)pwmOutput0, (int)pwmOutput1, (int)flags, desRoll, roll, magHdg,  bankAngle, magBank, pitch, desAlt, desPitch,
-		a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz);
+		 a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz);
 		return ai.toString() + String(buf);
 	} 
 	LogItemNew fromString(const char *s) { 

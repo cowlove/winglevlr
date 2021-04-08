@@ -271,15 +271,18 @@ bool imuRead() {
 		x.mz = imu->magZ();
 	}
 	// disable mpu logging 
-	if (false && lastUsec / 20000 != micros() / 20000) { 
+	if (false && lastUsec / 10000 != micros() / 10000) { 
 		AuxMpuData a;
 		a.ax = x.ax; a.ay = x.ay; a.az = x.az;
 		a.gx = x.gx; a.gy = x.gy; a.gz = x.gz;
 		a.mx = x.mx; a.my = x.my; a.mz = x.mz;
-		String ad = a.toString();
-		if (Serial2.availableForWrite() > 120) { 
+		String ad = a.toString() + "\n";
+		if (false && Serial2.availableForWrite() > 120) { 
 			Serial2.println(a.toString());
 		}
+		udpG90.beginPacket("255.255.255.255", 7892);
+		udpG90.write((uint8_t *)ad.c_str(), ad.length());
+		udpG90.endPacket();
 	}	
 	lastUsec = micros();
 	// remaining items set (alt, hdg, speed) set by main loop
@@ -637,7 +640,7 @@ void loop() {
 			"ALT %04.0f desA %04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
-			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu %d"
+			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu %d "
 			"sv %04d %04d "			
 			"\n",
 			millis()/1000.0,
@@ -646,8 +649,8 @@ void loop() {
 			ahrsInput.alt, desAlt,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
-			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
-			//	logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, auxMpuPacketCount
+			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
+				logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, auxMpuPacketCount,
 			servoOutput[0], servoOutput[1],
 			/*dummy*/0
 		);
@@ -799,12 +802,22 @@ void loop() {
 	}
 
 	if (Serial2.available()) {
-		static unsigned char buf[128]; // TODO make a line parser class with a lambda/closure
+		unsigned char buf[128]; 
 		static LineBuffer lb;
-		int n = Serial2.readBytes(buf, min((int)sizeof(buf), (int)Serial2.available()));
+		int n = Serial2.readBytes(buf, sizeof(buf));
 		lb.add((char *)buf, n, [](const char *line) { 
-			auxMpuPacketCount++;
 			if (auxMPU.fromString(line)) {
+				auxMpuPacketCount++;
+			}
+		});
+	}
+	if (udpNMEA.parsePacket() > 0) { 
+		char buf[1024];
+		static LineBuffer lb;
+		int n = udpNMEA.read((uint8_t *)buf, sizeof(buf));
+		lb.add((char *)buf, n, [](const char *line) { 
+			if (auxMPU.fromString(line)) {
+				auxMpuPacketCount++;
 			}
 		});
 	}
@@ -989,7 +1002,7 @@ void loop() {
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
 			stickX = rollPID.corr / 2000 * ServoControl::servoThrow;
 			stickY = pitchPID.corr / 2000 * ServoControl::servoThrow +
-				(ahrs.pitch - desPitch) * -pitchToStick; 
+				(desPitch - pitchTrim) * pitchToStick; 
 			//	y = 0; // disable pitch
 			setServos(stickX, stickY);
 		} else switch(servoSetupMode) { 
@@ -1132,7 +1145,7 @@ public:
 		float stickX = stick.first;
 		float stickY = stick.second;
 
-		cmdPitch = stickY * 15.5;
+		cmdPitch = stickY * 10.5;
 		float ngx = (cmdPitch - simPitch) * 0.15;
 		imu->gx = max((float)-15.0,min((float)15.0, ngx));
 		simPitch += (cmdPitch - simPitch) * 0.15;
