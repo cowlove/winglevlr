@@ -79,7 +79,7 @@ struct {
 
 MPU9250_asukiaaa *imu = NULL;
 
-float pitchTrim = 0, rollTrim = 0;
+float servoTrimY = 0, servoTrimX = 0;
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
@@ -431,7 +431,7 @@ void setup() {
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
-float desRoll = 0, desPitch = -8, pitchCmd = 0, desAlt = 0;		
+float desRoll = 0, pitchTrim = -8, pitchToStick = 0.15, desPitch = 0, desAlt = 0;		
 static int serialLogFlags = 0;
 
 void udpSendString(const char *b) { 
@@ -447,23 +447,6 @@ void udpSendString(const char *b) {
 			udpG90.endPacket();
 		}
 	}
-}
-	
-void pitchTrimSet(float p) { 
-	char l[60];
-	static int seq = 5;
-	snprintf(l, sizeof(l), "trim %f %d\n", p, seq++);
-	udpSendString(l);
-	//logItem.pitchCmd = p;
-}
-
-void pitchTrimRelay(int relay, int ms) { 
-	char l[60];
-	static int seq = 5;
-	logItem.flags |= ((1 << relay) | (ms << 8));
-	serialLogFlags |= ((1 << relay) | (ms << 8));
-	snprintf(l, sizeof(l), "pin %d 0 %d %d\n", relay, ms, seq++);
-	udpSendString(l);
 }
 
 void setKnobPid(int f) { 
@@ -540,8 +523,10 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (strstr(line, "zeroimu") == line) { ahrs.zeroSensors(); }
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
-		else if (sscanf(line, "trim %f %f", &f, &f2) == 2) { rollTrim = f; pitchTrim = f2; }
-		else if (sscanf(line, "dpitch %f", &f) == 1) { desPitch = f; }
+		else if (sscanf(line, "strim %f %f", &f, &f2) == 2) { servoTrimX = f; servoTrimY = f2; }
+		else if (sscanf(line, "ptrim %f", &f) == 1) { pitchTrim = f; }
+		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
+		else if (sscanf(line, "mode %f", &f) == 1) { apMode = f; }
 		else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
 		else if (strstr(line, "wpclear") == line) { waypointList = ""; }
 		else if (strstr(line, "wpadd ") == line) { waypointList += (line + 6); waypointList += "\n"; }
@@ -555,13 +540,11 @@ void parseSerialCommandInput(const char *buf, int n) {
 	});
 }
 
-
 void setObsKnob(float knobSel, float v) { 
 	if (knobSel == 2) {
-
 		desAlt = v * 3.2808;
 	}
-	if (knobSel == 1 || knobSel == 4) {
+	if (knobSel == 1 /*|| knobSel == 4*/) {
 		obs = v * 180.0 / M_PI;
 		if (obs <= 0) obs += 360;
 		if (apMode != 4 && obs != lastObs) {
@@ -593,12 +576,12 @@ namespace ServoControl {
 	float yScale = +1.0;
 
 	pair<int, int> stickToServo(float x, float y) { 
-		float x1 = leftStringX + xScale * x + rollTrim;
-		float y1 = leftStringY + yScale * y + pitchTrim;
+		float x1 = leftStringX + xScale * x + servoTrimX;
+		float y1 = leftStringY + yScale * y + servoTrimY;
 		float leftNewLen = sqrt(x1 * x1 + y1 * y1);
 
-		x1 = rightStringX - xScale * x - rollTrim;
-		y1 = rightStringY + yScale * y + pitchTrim;
+		x1 = rightStringX - xScale * x - servoTrimX;
+		y1 = rightStringY + yScale * y + servoTrimY;
 		float rightNewLen = sqrt(x1 * x1 + y1 * y1);
 
 		float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
@@ -659,7 +642,7 @@ void loop() {
 			"\n",
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			stickX, stickY, roll, pitch, pitchCmd, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
+			stickX, stickY, roll, pitch, desPitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
 			ahrsInput.alt, desAlt,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
@@ -998,14 +981,15 @@ void loop() {
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(altPID.corr * 0.01, 5.0), -5.0);
-		pitchCmd = desPitch + altCorr;
-		pitchPID.add(ahrs.pitch - pitchCmd, ahrs.pitch - pitchCmd, ahrsInput.sec);
+		desPitch = pitchTrim + altCorr;
+		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
 			stickX = rollPID.corr / 2000 * ServoControl::servoThrow;
-			stickY = pitchPID.corr / 2000 * ServoControl::servoThrow;
+			stickY = pitchPID.corr / 2000 * ServoControl::servoThrow +
+				(ahrs.pitch - desPitch) * -pitchToStick; 
 			//	y = 0; // disable pitch
 			setServos(stickX, stickY);
 		} else switch(servoSetupMode) { 
@@ -1016,7 +1000,6 @@ void loop() {
 			default: setServos(0, 0);
 		}
 		
-
 		ledcWrite(0, servoOutput[0] * 4915 / 1500); // scale PWM output to 1500-7300 
 		ledcWrite(1, servoOutput[1] * 4915 / 1500); // scale PWM output to 1500-7300 
 
@@ -1136,7 +1119,7 @@ public:
 		//TODO: flightSim is very fragile/unstable.  Poke values into the
 		// main loop code to make sure things work. 
 		hdgPID.finalGain = 0.5;
-		pitchTrim = rollTrim = 0;
+		servoTrimY = servoTrimX = 0;
 
 		_micros += 3500;
 		//const float servoTrim = 4915.0;
@@ -1149,7 +1132,7 @@ public:
 		float stickX = stick.first;
 		float stickY = stick.second;
 
-		cmdPitch = stickY * 85.5;
+		cmdPitch = stickY * 15.5;
 		float ngx = (cmdPitch - simPitch) * 0.15;
 		imu->gx = max((float)-15.0,min((float)15.0, ngx));
 		simPitch += (cmdPitch - simPitch) * 0.15;
