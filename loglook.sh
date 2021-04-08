@@ -83,8 +83,8 @@ while (( $# > 0 )); do
 	if [ "$1" == "-ba" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($33) w l ax x1y1 tit "bank angle", '; fi
 	if [ "$1" == "-magBank" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($34) w l ax x1y1 tit "magBank", '; fi
 	if [ "$1" == "-pitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35) w l ax x1y1 tit "logged pitch", '; fi
-	if [ "$1" == "-spare1" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($36) w l ax x1y1 tit "logged pitch", '; fi
-	if [ "$1" == "-spare2" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($37) w l ax x1y1 tit "logged pitch", '; fi
+	if [ "$1" == "-dalt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($36) w l ax x1y1 tit "des alt", '; fi
+	if [ "$1" == "-dpitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($37) w l ax x1y1 tit "des pitch", '; fi
 	if [ "$1" == "-aax" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($38) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-aay" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($39) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-aaz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($40) w l ax x1y1 tit "'$1'", '; fi
@@ -96,9 +96,9 @@ while (( $# > 0 )); do
 	if [ "$1" == "-amz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($46) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-simlat" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($47) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-simlon" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($48) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-field49" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($49) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-field50" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($50) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-simtrack" ]; then PS=$PS\ \"$F2\"' u 48:47 w l tit "Ground Track", '; fi
+	if [ "$1" == "-stickX" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($49) w l ax x1y2 tit "'$1'", '; fi
+	if [ "$1" == "-stickY" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($50) w l ax x1y2 tit "'$1'", '; fi
+	if [ "$1" == "-map" ]; then PS=$PS\ \"$F2\"' u 48:47 ax x2y2 w l tit "Ground Track", '; fi
 	if [ "$1" == "-magplot" ]; then PS=$PS\ \"$F2\"' u 13:14 w p tit "Mag Plot", '; fi
 	if [ "$1" == "-pitcherr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35-$20) w l ax x1y1 tit "Pitch Error", '; fi
 	if [ "$1" == "-rollerr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($31-$21) w l ax x1y1 tit "Roll Error", '; fi
