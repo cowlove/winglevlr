@@ -24,6 +24,8 @@
 #include <stdlib.h>
 
 
+float xtrim = 0, ytrim = 0;
+
 long long millis() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -37,16 +39,14 @@ long long millis() {
  *
  * Returns 0 on success. Otherwise -1 is returned.
  */
+
 int read_event(int fd, struct js_event *event)
 {
-    ssize_t bytes;
-
-    bytes = read(fd, event, sizeof(*event));
-
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    ssize_t bytes = read(fd, event, sizeof(*event));
     if (bytes == sizeof(*event))
         return 0;
-
-    /* Error, could not read full event. */
     return -1;
 }
 
@@ -106,7 +106,6 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
     return axis;
 }
 
-float xtrim = 0, ytrim = -.3;
 
 void setStick(float x, float y) {
         float leftStringX = 14;
@@ -143,33 +142,80 @@ void setStick(float x, float y) {
 
 }
 
+void changeTrim(float x, float y) {
+    xtrim += x;
+    ytrim += y;
+    printf("strim %f %f\n", xtrim, ytrim);
+}
+void readJoystick(int);
+
+void delayWhileWatchingJoystick(int msec) {
+    long long start = millis();
+    while(millis() - start < msec) {
+        readJoystick(0);
+        usleep(1090);
+    } 
+}
 void testPattern(float x, float y, float t) { 
     int n;
     for(n = 0; n < 5; n++) {
-        setStick(x, y);
-        sleep(t);
-        setStick(0, 0);
-        usleep(t * 1000000);
+        changeTrim(x, y);    delayWhileWatchingJoystick(t * 1000);
+        changeTrim(-x * 2, -y * 2);    delayWhileWatchingJoystick(t * 1000);
+        changeTrim(x, y);    delayWhileWatchingJoystick(t * 1000);
+        changeTrim(-x, -y);  delayWhileWatchingJoystick(t * 1000);
+        changeTrim(x * 2, y * 2);    delayWhileWatchingJoystick(t * 1000);
+        changeTrim(-x, -y);  delayWhileWatchingJoystick(t * 1000);
     }
 }
 
 void runTest(float testThrow, float testTime) { 
-    testPattern(+testThrow, 0, testTime);
-    testPattern(-testThrow, 0, testTime);
-    testPattern(0, +testThrow, testTime);
-    testPattern(0, -testThrow, testTime);
+    testPattern(testThrow, 0, testTime);
+    testPattern(0, testThrow, testTime);
 }
+
 int testNow = 0;
+const char *device;
+int js;
+struct js_event event;
+struct axis_state axes[3] = {0};
+size_t axis;
+float trimstep = .01; 
+float testThrow = .1, testTime = 2;
+
+void readJoystick(int setServos) { 
+        while (read_event(js, &event) == 0)
+        {
+            switch (event.type)
+            {
+                case JS_EVENT_BUTTON:
+                    printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
+                    switch (event.number) {
+                        case 2: changeTrim(0, -trimstep); break;
+                        case 1: changeTrim(0, +trimstep); break;
+                        case 3: changeTrim(-trimstep, 0); break;
+                        case 0: changeTrim(+trimstep, 0); break;
+                        case 9: 
+                            if (event.value == 0) {
+                                runTest(testThrow, testTime); 
+                            }
+                            break;
+                    } 
+                case JS_EVENT_AXIS:
+                    axis = get_axis_state(&event, axes);
+                    break;
+                default:
+                    /* Ignore init events. */
+                    break;
+            }           
+            float x = axes[0].y / 32767.0;            
+            float y = axes[0].x / 32767.0;
+            if (setServos) 
+                setStick(x, y);
+        }
+}
 
 int main(int argc, char *argv[])
 {
-    const char *device;
-    int js;
-    struct js_event event;
-    struct axis_state axes[3] = {0};
-    size_t axis;
-
-    float testThrow = .1, testTime = 2;
 
     for(char **a = argv + 1; a < argv+argc; a++) {
         if (strcmp(*a, "--testThrow") == 0) sscanf(*(++a), "%f", &testThrow);
@@ -178,12 +224,7 @@ int main(int argc, char *argv[])
         if (strcmp(*a, "--trimy") == 0) sscanf(*(++a), "%f", &ytrim);
         if (strcmp(*a, "--testNow") == 0) testNow = 1;
     } 
-    float trimstep = .01;
     
-    if (testNow) { 
-        runTest(testThrow, testTime); 
-        exit(0);
-    }
 
     device = "/dev/input/js0";
 
@@ -192,41 +233,16 @@ int main(int argc, char *argv[])
     if (js == -1)
         perror("Could not open joystick");    
     
+    if (testNow) { 
+        runTest(testThrow, testTime); 
+        exit(0);
+    }
 
 
     /* This loop will exit if the controller is unplugged. */
     while(1) { 
-        
-        while (read_event(js, &event) == 0)
-        {
-            switch (event.type)
-            {
-                case JS_EVENT_BUTTON:
-                    printf("Button %u %s\n", event.number, event.value ? "pressed" : "released");
-                    switch (event.number) {
-                        case 2: ytrim -= trimstep; break;
-                        case 1: ytrim += trimstep; break;
-                        case 3: xtrim -= trimstep; break;
-                        case 0: xtrim += trimstep; break;
-                        case 9: 
-                            if (event.value == 0) {
-                                runTest(testThrow, testTime); 
-                            }
-                            break;
-                    } 
-                    printf("strim %f %f\n", xtrim, ytrim);
-                case JS_EVENT_AXIS:
-                    axis = get_axis_state(&event, axes);
-                    break;
-                default:
-                    /* Ignore init events. */
-                    break;
-            }   
-        
-            float x = axes[0].y / 32767.0;            
-            float y = axes[0].x / 32767.0;
-            setStick(x, y);
-        }
+        readJoystick(1);
+        usleep(100000);
     }
 
     close(js);

@@ -79,7 +79,7 @@ struct AuxMpuData {
 		return String(strfmt("MPU %f %f %f %f %f %f %f %f %f", ax, ay, az, gx, gy, gz, mx, my, mz).c_str());
 	}
 	bool fromString(const char *s) { 
-		return sscanf(s, "MPU %f %f %f %f %f %f %f %f %f", &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz) == 10;
+		return sscanf(s, "MPU %f %f %f %f %f %f %f %f %f", &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz) == 9;
 	}
 } auxMPU;
 

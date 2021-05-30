@@ -79,7 +79,7 @@ struct {
 
 MPU9250_asukiaaa *imu = NULL;
 
-float servoTrimY = 0, servoTrimX = 0;
+float stickTrimY = 0, stickTrimX = 0;
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
@@ -526,7 +526,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (strstr(line, "zeroimu") == line) { ahrs.zeroSensors(); }
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
-		else if (sscanf(line, "strim %f %f", &f, &f2) == 2) { servoTrimX = f; servoTrimY = f2; }
+		else if (sscanf(line, "strim %f %f", &f, &f2) == 2) { stickTrimX = f; stickTrimY = f2; }
 		else if (sscanf(line, "ptrim %f", &f) == 1) { pitchTrim = f; }
 		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
 		else if (sscanf(line, "mode %f", &f) == 1) { apMode = f; }
@@ -579,12 +579,12 @@ namespace ServoControl {
 	float yScale = +1.0;
 
 	pair<int, int> stickToServo(float x, float y) { 
-		float x1 = leftStringX + xScale * x + servoTrimX;
-		float y1 = leftStringY + yScale * y + servoTrimY;
+		float x1 = leftStringX + xScale * x;
+		float y1 = leftStringY + yScale * y;
 		float leftNewLen = sqrt(x1 * x1 + y1 * y1);
 
-		x1 = rightStringX - xScale * x - servoTrimX;
-		y1 = rightStringY + yScale * y + servoTrimY;
+		x1 = rightStringX - xScale * x;
+		y1 = rightStringY + yScale * y;
 		float rightNewLen = sqrt(x1 * x1 + y1 * y1);
 
 		float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
@@ -634,24 +634,26 @@ void loop() {
 	if (true && serialReportTimer.tick()) {
 		// SERIAL STATUS line output 
 		Serial.printf(
-			"%06.3f "
+			"%06.2f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"S: %+05.2f,%+05.2f R %+05.2f P %+05.2f DP %+05.2f g5 %+05.2f %+05.2f %+05.2f  "
-			"ALT %04.0f desA %04.0f "
+			"%+05.2f,%+05.2f R%+05.1f P%+05.1f DP%+05.1f "
+			"A%04.0f DA%04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
-			"PID %+06.2f %+06.2f %+06.2f %+06.2f " 
-			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu %d "
-			"sv %04d %04d "			
+			"C %+06.2f %+05.1f %+05.1f %+05.1f " 
+			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu"
+			"a%d "
+			//"s%04d %04d "			
 			"\n",
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
-			stickX, stickY, roll, pitch, desPitch, ahrsInput.g5Roll, ahrsInput.g5Pitch, ahrsInput.g5Hdg,
+			stickX, stickY, roll, pitch, desPitch, 
 			ahrsInput.alt, desAlt,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
-			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
-				logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, auxMpuPacketCount,
-			servoOutput[0], servoOutput[1],
+			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
+			//	logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, 
+			auxMpuPacketCount, 
+			//servoOutput[0], servoOutput[1],
 			/*dummy*/0
 		);
 		if (logFile != NULL) {
@@ -1000,17 +1002,28 @@ void loop() {
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			stickX = rollPID.corr / 2000 * ServoControl::servoThrow;
-			stickY = pitchPID.corr / 2000 * ServoControl::servoThrow +
+			stickX = stickTrimX + rollPID.corr / 2000 * ServoControl::servoThrow;
+			stickY = stickTrimY + pitchPID.corr / 2000 * ServoControl::servoThrow +
 				(desPitch - pitchTrim) * pitchToStick; 
 			//	y = 0; // disable pitch
 			setServos(stickX, stickY);
 		} else switch(servoSetupMode) { 
-			case 2: setServos(0, -8); break;
-			case 3: setServos(0, +8); break;
-			case 0: break; // TODO: no hardware yet to depower the servos
-			case 1: setServos(0, 0); break; 
-			default: setServos(0, 0);
+			case 0:
+				// leave servos where they are  
+				break;
+			case 1: 
+				stickX = stickTrimX;
+				stickY = stickTrimY;  
+				setServos(stickX, stickY); 
+				break;
+			case 2:
+				stickX = 0; stickY = +8;  
+				setServos(stickX, stickY); 
+				break;
+			case 3: 
+				stickX = 0; stickY = -8;  
+				setServos(stickX, stickY); 
+				break;
 		}
 		
 		ledcWrite(0, servoOutput[0] * 4915 / 1500); // scale PWM output to 1500-7300 
@@ -1132,7 +1145,7 @@ public:
 		//TODO: flightSim is very fragile/unstable.  Poke values into the
 		// main loop code to make sure things work. 
 		hdgPID.finalGain = 0.5;
-		servoTrimY = servoTrimX = 0;
+		stickTrimY = stickTrimX = 0;
 
 		_micros += 3500;
 		//const float servoTrim = 4915.0;
@@ -1487,8 +1500,21 @@ public:
 
 #endif
 
+/*
+MIN132 board
 
+GND 		RST  				TXD/IO03  	GND 
+NC      	IO36                RXD   		IO27
+IO39 		IO26                IO22  		IO25
+IO35		IO18 				IO21  		IO32
+IO33 		IO19				IO17 		TDI/IO12 
+IO34 		IO23 				IO16 		IO04
+TMS/IO14 	IO05 				GND 		IO00
+NC 			3.3V 				VCC			IO02/LED
+SD2			TCK/IO13			TDO/IO15	SD1
+CMD			SD3					SDD			CLK
 
+*/
 /*
  * TTGO TS 1.4 PINOUTS
  * 

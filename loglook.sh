@@ -36,6 +36,7 @@ TERMSPEC="set term qt size 2048,1024"
 WAIT="pause 1000"
 XRANGE='[*:*]'
 
+make logs/AHRSD$NUM.plog
 #          1      2         3             4            5           6   7   8   9   10  11  12  13  14  15  16  17     18    19  
 # 	float sec, gpsTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk,g5trk, palt, gspeed;
 #         20       21      22     23     24     25      26

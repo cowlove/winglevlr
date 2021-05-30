@@ -24,6 +24,8 @@
 #include <SPIFFS.h>
 #include <Update.h>			
 #include <WebServer.h>
+#include <soc/soc.h>
+#include <soc/rtc_cntl_reg.h>
 #include <mySD.h> // Add "EXCLUDE_DIRS=esp32-micro-sdcard" to Makefile if this breaks ESP8266 builds
 #endif //ESP32
 #endif // !UBUNTU
@@ -1419,6 +1421,7 @@ class JimWiFi {
 	EggTimer report = EggTimer(1000);
 	bool firstRun = true, firstConnect = true;
 	std::function<void(void)> connectFunc = NULL;
+	std::function<void(void)> otaFunc = NULL;
 	bool updateInProgress = false;
 public:
 	WiFiUDP udp;
@@ -1426,8 +1429,15 @@ public:
 	void onConnect(std::function<void(void)> oc) { 
 		connectFunc = oc;
 	}
+	void onOTA(std::function<void(void)> oo) { 
+		otaFunc = oo;
+	}
 	void run() { 
 		if (firstRun) {
+			WiFi.disconnect(true);
+			WiFi.mode(WIFI_STA);
+			WiFi.setSleep(false);
+
 			wifi.addAP("ChloeNet", "niftyprairie7");
 			//wifi.addAP("TUK-FIRE", "FD priv n3t 20 q4");
 			firstRun = false;
@@ -1449,21 +1459,26 @@ public:
 				server.sendHeader("Connection", "close");
 				server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
 				ESP.restart();
-			  }, []() {
+			  }, [this]() {
 				HTTPUpload& upload = server.upload();
 				esp_task_wdt_reset();
 
 				if (upload.status == UPLOAD_FILE_START) {
+					if (this->otaFunc != NULL) { 
+						this->otaFunc();
+					}
 				  Serial.printf("Update: %s\n", upload.filename.c_str());
 				  if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
 					Update.printError(Serial);
 				  }
 				} else if (upload.status == UPLOAD_FILE_WRITE) {
-				  Serial.printf("Update: write %d bytes\n", upload.currentSize);
+				  //Serial.printf("Update: write %d bytes\n", upload.currentSize);
+				  esp_task_wdt_reset();	
 				  /* flashing firmware to ESP*/
 				  if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
 					Update.printError(Serial);
 				  }
+				  delay(10);
 				} else if (upload.status == UPLOAD_FILE_END) {
 				  if (Update.end(true)) { //true to set the size to the current progress
 					Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
@@ -1475,26 +1490,31 @@ public:
 			  server.begin();
 
 
-				ArduinoOTA.onStart([]() {
+			ArduinoOTA.onStart([this]() {
 				String type;
+				if (this->otaFunc != NULL) { 
+					this->otaFunc();
+				}
 				if (ArduinoOTA.getCommand() == U_FLASH) {
 				  type = "sketch";
 				} else { // U_FS
 				  type = "filesystem";
 				}
+				WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector   
 
 				// NOTE: if updating FS this would be the place to unmount FS using FS.end()
 				Serial.println("Start updating " + type);
 				});
 				ArduinoOTA.onEnd([]() {
 				Serial.println("\nEnd");
-				});
-				ArduinoOTA.onProgress([&](unsigned int progress, unsigned int total) {
-				Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
-				esp_task_wdt_reset();
-				updateInProgress = true;
-				});
-				ArduinoOTA.onError([&](ota_error_t error) {
+			});
+			ArduinoOTA.onProgress([&](unsigned int progress, unsigned int total) {
+					//Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
+					esp_task_wdt_reset();
+					updateInProgress = true;
+					delay(30);
+			});
+			ArduinoOTA.onError([&](ota_error_t error) {
 				Serial.printf("Error[%u]: ", error);
 				if (error == OTA_AUTH_ERROR) {
 				  Serial.println("Auth Failed");
@@ -1508,10 +1528,10 @@ public:
 				  Serial.println("End Failed");
 				}
 				updateInProgress = false;
-				});
+			});
  
 				
-				ArduinoOTA.begin();
+			ArduinoOTA.begin();
 
 				udp.begin(9999);
 				if (connectFunc != NULL) { 
@@ -1519,9 +1539,9 @@ public:
 				}
 			}
 			
-			do {
+			do { 
 				ArduinoOTA.handle();
-			} while(updateInProgress == true); 
+			} while(updateInProgress == true);
 			server.handleClient();
 			
 			if (report.tick()) { 
