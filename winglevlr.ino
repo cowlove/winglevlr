@@ -85,7 +85,7 @@ void halInit() {
 	Serial.setTimeout(1);
 
 	Serial.printf("\nReset reason: %d %d\n", (int)rtc_get_reset_reason(0), (int)rtc_get_reset_reason(1));
-	
+	Serial.printf(__BASE_FILE__ " ver %s\n", GIT_VERSION);
 	Wire.begin(21,22);
 	Serial.println("Scanning I2C bus on pins 21,22");
 	if (scanI2c() == 0) { 

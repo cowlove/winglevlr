@@ -381,6 +381,17 @@ public:
 	bool endTransmission() { return false; }
 } Wire;
 
+typedef enum {
+    ESP_NOW_SEND_SUCCESS = 0,       /**< Send ESPNOW data successfully */
+    ESP_NOW_SEND_FAIL,              /**< Send ESPNOW data fail */
+} esp_now_send_status_t;
+typedef void (*esp_now_recv_cb_t)(const uint8_t *mac_addr, const uint8_t *data, int data_len);
+typedef void (*esp_now_send_cb_t)(const uint8_t *mac_addr, esp_now_send_status_t status);
+void esp_now_init() {}
+void esp_now_register_send_cb(esp_now_send_cb_t) {}
+void esp_now_register_recv_cb(esp_now_recv_cb_t) {}
+int esp_now_send(const uint8_t*, const uint8_t*, size_t) { return 0; }
+
 #define INV_SUCCESS 1
 #define INV_XYZ_GYRO 1
 #define INV_XYZ_ACCEL 1
