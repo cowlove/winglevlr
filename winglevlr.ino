@@ -224,7 +224,7 @@ public:
 	JDisplayEditableItem maxi = JDisplayEditableItem(&Display::maxi, .1);
 	JDisplayEditableItem tttt = JDisplayEditableItem(&Display::tttt, 1);
 	JDisplayEditableItem ttlt = JDisplayEditableItem(&Display::ttlt, 1);
-	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
+//	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
 	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 3);
 	JDisplayEditableItem dead = JDisplayEditableItem(&Display::dead, .1);
 	
@@ -411,7 +411,7 @@ void setup() {
 	ed.maxb.setValue(12);
 	ed.tttt.setValue(20); // seconds to make each test turn 
 	ed.ttlt.setValue(20); // seconds betweeen test turn  
-	ed.tzer.setValue(1000);
+	//ed.tzer.setValue(1000);
 	ed.pidsel.setValue(1);
 	setKnobPid(ed.pidsel.value);
 	ed.update();
@@ -521,7 +521,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
 		else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
 		//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
-		else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
+		//else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 		//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
 		else if (strstr(line, "zeroimu") == line) { ahrs.zeroSensors(); }
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
