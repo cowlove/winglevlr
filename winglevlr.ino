@@ -207,13 +207,15 @@ namespace Display {
 	JDisplayItem<float>  pidi(&jd,00,y+=10," I:", "%03.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> maxi(&jd,c2x,y,    "MAXI:", "%04.1f ");
 	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); 	
-	JDisplayItem<float>  dead(&jd,00,y+=10,"DZ:", "%03.1f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");
+    JDisplayItem<float>  dalt(&jd,10,y+=10,"DALT:", "%05.0f ");
+	JDisplayItem<float>  dead(NULL,00,y+=10,"DZ:", "%03.1f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");
 
-    JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
+    //JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 }
 
 class MyEditor : public JDisplayEditor {
 public:
+	JDisplayEditableItem dtrk = JDisplayEditableItem(&Display::dtk, 1, 0, 359, true);
 	JDisplayEditableItem pidpl = JDisplayEditableItem(&Display::pidpl, .01);
 	JDisplayEditableItem pidph = JDisplayEditableItem(&Display::pidph, .01);
 	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
@@ -225,21 +227,24 @@ public:
 	JDisplayEditableItem tttt = JDisplayEditableItem(&Display::tttt, 1);
 	JDisplayEditableItem ttlt = JDisplayEditableItem(&Display::ttlt, 1);
 //	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
-	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 3);
+	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 4);
 	JDisplayEditableItem dead = JDisplayEditableItem(&Display::dead, .1);
+	JDisplayEditableItem desAlt = JDisplayEditableItem(&Display::dalt, 20);
 	
 	MyEditor() : JDisplayEditor(26, 0) { // add in correct knob selection order
+		add(&dtrk);	
 		add(&pidpl);	
 		add(&pidph);	
 		add(&pidi);	
 		add(&pidd);	
 		add(&pidg);	
-		add(&dead);
+		add(&desAlt);
 		add(&tttt);
 		add(&ttlt);	
 		add(&maxb);
 		add(&maxi);
 		add(&pidsel);
+		//add(&desAlt);
 	}
 } ed;
 
@@ -295,6 +300,17 @@ LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
 bool logChanging = false;
 const char *logFileName = "AHRSD%03d.DAT";
+static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
+static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
+static StaleData<int> canMsgCount(3000,-1);
+static float desiredTrk = -1;
+float desRoll = 0, pitchTrim = -8, pitchToStick = 0.15, desPitch = 0;//, desAlt = 0;		
+static int serialLogFlags = 0;
+
+void setDesiredTrk(float f) { 
+	desiredTrk = round(f);
+	ed.dtrk.setValue(desiredTrk);
+}
 
 void sdLog()  {
 	//Serial.println(x.toString());
@@ -312,7 +328,6 @@ void printMag() {
       Serial.println("");
 }
 
-static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
 
 void setup() {	
 	//SPIFFS.begin();
@@ -384,11 +399,11 @@ void setup() {
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
 
-	hdgPID.setGains(0.25, 0.02, 0.02);
+	hdgPID.setGains(0.25, 0.07, 0.02);
 	hdgPID.hiGain.p = 2.50;
 	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20;
-	hdgPID.finalGain = 0.5;
+	hdgPID.finalGain = 1.0;
 
 	xtePID.setGains(8.0, 0.00, 0.05);
 	xtePID.maxerr.i = 1.0;
@@ -399,10 +414,11 @@ void setup() {
 	pitchPID.maxerr.i = .5;
 
 	altPID.setGains(1.0, 0.0, 3.0);
-	altPID.finalGain = -4.0;
+	altPID.finalGain = -.5;
 
     // make PID select knob display text from array instead of 0-3	
-	Display::pidsel.toString = [](float v){ return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 3) ? (int)v : 0]); };		
+	Display::pidsel.toString = [](float v){ return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 4) ? (int)v : 0]); 
+	};		
 	ed.begin();
 
 #ifndef UBUNTU
@@ -413,6 +429,8 @@ void setup() {
 	ed.ttlt.setValue(20); // seconds betweeen test turn  
 	//ed.tzer.setValue(1000);
 	ed.pidsel.setValue(1);
+	ed.dtrk.setValue(desiredTrk);
+	ed.desAlt.setValue(1000);
 	setKnobPid(ed.pidsel.value);
 	ed.update();
 	
@@ -431,11 +449,6 @@ void setup() {
 }
 
  
-static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
-static StaleData<int> canMsgCount(3000,-1);
-static float desiredTrk = -1;
-float desRoll = 0, pitchTrim = -8, pitchToStick = 0.15, desPitch = 0, desAlt = 0;		
-static int serialLogFlags = 0;
 
 void udpSendString(const char *b) { 
 	for (int repeat = 0; repeat < 3; repeat++) { 
@@ -456,9 +469,9 @@ void setKnobPid(int f) {
 	Serial.printf("Knob PID %d\n", f);
 	if      (f == 0) { knobPID = &pitchPID; }
 	else if (f == 1) { knobPID = &altPID;}
-	else if (f == 1) { knobPID = &rollPID; }
-	else if (f == 2) { knobPID = &xtePID; }
-	else if (f == 3) { knobPID = &hdgPID; }
+	else if (f == 2) { knobPID = &rollPID; }
+	else if (f == 3) { knobPID = &xtePID; }
+	else if (f == 4) { knobPID = &hdgPID; }
 	
 	ed.pidpl.setValue(knobPID->gain.p);
 	ed.pidph.setValue(knobPID->hiGain.p);
@@ -468,8 +481,8 @@ void setKnobPid(int f) {
 	ed.pidg.setValue(knobPID->finalGain);
 	ed.maxi.setValue(knobPID->maxerr.i);
 	ed.dead.setValue(knobPID->hiGainTrans.p);
-}	
-	
+}
+
 static bool testTurnActive = false;
 static int testTurnAlternate = 0;
 static float testTurnLastTurnTime = 0;
@@ -485,7 +498,7 @@ static EggTimer serialReportTimer(200), hz5(200), loopTimer(5), buttonCheckTimer
 static int armServo = 0;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 0; //  0 use GDL90 but switch to mode 1 on first can msg. 1- use g5 hdg, 2 use GDL90 data 
+static int hdgSelect = 3; //  0 use fusion magHdg 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 struct {
@@ -524,13 +537,14 @@ void parseSerialCommandInput(const char *buf, int n) {
 		//else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 		//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
 		else if (strstr(line, "zeroimu") == line) { ahrs.zeroSensors(); }
-		else if (sscanf(line, "dtrk=%f", &f) == 1) { desiredTrk = f; }
+		else if (sscanf(line, "dtrk=%f", &f) == 1) { setDesiredTrk(f); }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
 		else if (sscanf(line, "strim %f %f", &f, &f2) == 2) { stickTrimX = f; stickTrimY = f2; }
 		else if (sscanf(line, "ptrim %f", &f) == 1) { pitchTrim = f; }
 		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
 		else if (sscanf(line, "mode %f", &f) == 1) { apMode = f; }
 		else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
+		else if (sscanf(line, "alt %f", &f) == 1) { ed.desAlt.value = f; }
 		else if (strstr(line, "wpclear") == line) { waypointList = ""; }
 		else if (strstr(line, "wpadd ") == line) { waypointList += (line + 6); waypointList += "\n"; }
 		else if (strstr(line, "wpstart") == line && wpNav == NULL) { 
@@ -545,13 +559,13 @@ void parseSerialCommandInput(const char *buf, int n) {
 
 void setObsKnob(float knobSel, float v) { 
 	if (knobSel == 2) {
-		desAlt = v * 3.2808;
+		ed.desAlt.value = v * 3.2808;
 	}
 	if (knobSel == 1 /*|| knobSel == 4*/) {
 		obs = v * 180.0 / M_PI;
 		if (obs <= 0) obs += 360;
 		if (apMode != 4 && obs != lastObs) {
-			desiredTrk = obs;
+			setDesiredTrk(obs);
 			crossTrackError.reset();
 			testTurnActive = false;
 		}
@@ -647,7 +661,7 @@ void loop() {
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
 			stickX, stickY, roll, pitch, desPitch, 
-			ahrsInput.alt, desAlt,
+			ahrsInput.alt, ed.desAlt.value,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
 			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
@@ -667,13 +681,14 @@ void loop() {
 	// KNOB/BUTTON INTERFACE
 	// 
 	// TOP:    short   - apMode = 1, toggle between wing level and hdg hold 
-	//         long    - arm servo
+	//         long    - servo setup mode 1, 2, 3, 4
 	//         triple  - zero sensors
 	// MIDDLE: short   - left 10 degrees
 	//         double  - hdg select mode
 	//         long    - start/stop log
 	// BOTTOM: short   - right 10 degrees
-	//         long    - active test turn sequence 
+	//		   long    - alt hold 
+	//         double  - active test turn sequence 
 	// KNOB    long    - arm servo
 	//         triple  - servo test mode
 	           
@@ -684,9 +699,9 @@ void loop() {
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {		// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
 				apMode = 1;
 				if (desiredTrk == -1) 
-					desiredTrk = ahrsInput.selTrack;
+					setDesiredTrk(ahrsInput.selTrack);
 				else 
-					desiredTrk = -1;
+					setDesiredTrk(-1);
 			}
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) { 
 				if (armServo) {
@@ -706,7 +721,7 @@ void loop() {
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
 				if (butFilt.wasCount == 1) {
-					desiredTrk = constrain360(desiredTrk - 10);
+					setDesiredTrk(constrain360(desiredTrk - 10));
 					apMode = 1;
 				} else { 
 					hdgSelect = (hdgSelect + 1) % 4;
@@ -729,12 +744,16 @@ void loop() {
 		}
 		if (butFilt2.newEvent()) { // BOTTOM or LfffEFT button
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
-				testTurnActive = !testTurnActive;
-				testTurnAlternate = 0;
+				ed.desAlt.value = floor(ahrsInput.alt / 20) * 20;
+				apMode = 3;
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	
-				desiredTrk = constrain360(desiredTrk + 10);
+				setDesiredTrk(constrain360(desiredTrk + 10));
 				apMode = 1;
+			}
+			if (butFilt2.wasCount == 2) {
+				testTurnActive = !testTurnActive;
+				testTurnAlternate = 0;
 			}
 		}
 								
@@ -778,7 +797,7 @@ void loop() {
 			if (nowSec - testTurnLastTurnTime > ed.tttt.value) { 
 				testTurnLastTurnTime = nowSec;
 				testTurnAlternate  = (testTurnAlternate + 1) % 3;
-				desiredTrk = desiredTrk + ed.ttlt.value * (testTurnAlternate == 0 ? -1 : 1);
+				setDesiredTrk(desiredTrk + ed.ttlt.value * (testTurnAlternate == 0 ? -1 : 1));
 			}
 		}
 			
@@ -926,8 +945,8 @@ void loop() {
 			wpNav->wptTracker.speed = ahrsInput.gspeed;
 			wpNav->wptTracker.curPos.valid = true;
 			wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
-			desiredTrk = trueToMag(wpNav->wptTracker.commandTrack);
-			desAlt = wpNav->wptTracker.commandAlt * 3.2808;
+			setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack));
+			ed.desAlt.value = wpNav->wptTracker.commandAlt * 3.2808;
 		}
 		
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
@@ -969,7 +988,7 @@ void loop() {
 				if (apMode == 4) {
 					xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
 					xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
-					desiredTrk = navDTK + xteCorrection;
+					setDesiredTrk(navDTK + xteCorrection);
 					ahrsInput.dtk = desiredTrk;
 				} else { 
 					xteCorrection = 0;
@@ -990,7 +1009,7 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 	float altErr = (apMode == 3 && desAlt != -1000) ? desAlt - ahrsInput.alt: 0;	
+		 	float altErr = (apMode == 3 && ed.desAlt.value != -1000) ? ed.desAlt.value - ahrsInput.alt: 0;	
 			altPID.add(altErr, altErr, ahrsInput.sec);
 		}
 
@@ -1032,7 +1051,7 @@ void loop() {
 		logItem.pwmOutput0 = servoOutput[0];
 		logItem.pwmOutput1 = servoOutput[1];
 		logItem.desRoll = desRoll;
-		logItem.desAlt = (apMode == 3) ? desAlt : -1000;
+		logItem.desAlt = (apMode == 3) ? ed.desAlt.value : -1000;
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
 		logItem.magHdg = ahrs.magHdg;
@@ -1085,9 +1104,9 @@ void loop() {
 		knobPID->hiGainTrans.p = ed.dead.value;
 		
 		Display::ip = WiFi.localIP().toString().c_str(); 
-		Display::dtk = desiredTrk; 
+		//Display::dtk = desiredTrk; 
 		Display::trk = ahrsInput.selTrack; 
-		Display::navt = auxMPU.gy; //navDTK; 
+		//Display::navt = auxMPU.gy; //navDTK; 
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
 		Display::gdl = (float)gpsTrackGDL90;
@@ -1276,7 +1295,7 @@ public:
 				
 			servoOutput[0] = l.pwmOutput0;
 			servoOutput[1] = l.pwmOutput1;
-			desiredTrk = l.ai.dtk;
+			setDesiredTrk(l.ai.dtk);
 
 			// special logfile name "-", just replay existing log back out to stdout 
 			if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
@@ -1404,10 +1423,11 @@ public:
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
 			//bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode  
 			//bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
-			ahrsInput.dtk = desiredTrk = 135;
+			setDesiredTrk(ahrsInput.dtk = 135);
 			if (tSim != NULL) { 
-				tSim->wptTracker.onSteer = [&](float s) { 
-					ahrsInput.dtk = desiredTrk = trueToMag(s);
+				tSim->wptTracker.onSteer = [&](float s) {
+					setDesiredTrk(trueToMag(s)); 
+					ahrsInput.dtk = trueToMag(s);
 					return magToTrue(track);
 				};
 			}

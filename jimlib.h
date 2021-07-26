@@ -1032,9 +1032,10 @@ public:
 	}
 	float value, newValue, increment;
 	float min, max;
+	bool wrap;
 	enum { UNSELECTED, SELECTED, EDITING } state;
-	JDisplayEditableItem(JDisplayItem<float> *i, float inc, float mi = -100000, float ma = +10000) : 
-		di(i), increment(inc), min(mi), max(ma) {}
+	JDisplayEditableItem(JDisplayItem<float> *i, float inc, float mi = -100000, float ma = +10000, bool wr = false) : 
+		di(i), increment(inc), min(mi), max(ma), wrap(wr) {}
 	void update() {
 		if (di == NULL)
 			return;
@@ -1094,7 +1095,7 @@ inline void JDisplayEditor::buttonPress(bool longpress) {
 		it->update();
 		re.limMin = (it->min - it->value) / it->increment;
 		re.limMax = (it->max - it->value) / it->increment;
-		re.wrap = false;
+		re.wrap = it->wrap;
 		re.value = 0;
 	} else { 
 		editing = false;
