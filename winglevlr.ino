@@ -206,9 +206,9 @@ namespace Display {
 	JDisplayItem<float> pidph(&jd,00,y+=10,"PH:", "%03.2f "); JDisplayItem<float> ttlt(&jd,c2x,y,    " TT2:", "%04.1f ");;
 	JDisplayItem<float>  pidi(&jd,00,y+=10," I:", "%03.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> maxi(&jd,c2x,y,    "MAXI:", "%04.1f ");
-	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); 	
+	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");	
+	JDisplayItem<float>  dead(NULL,00,y+=00,"DZ:", "%03.1f "); 
     JDisplayItem<float>  dalt(&jd,10,y+=10,"DALT:", "%05.0f ");
-	JDisplayItem<float>  dead(NULL,00,y+=10,"DZ:", "%03.1f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");
 
     //JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 }
