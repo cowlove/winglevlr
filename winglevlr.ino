@@ -578,7 +578,7 @@ void setObsKnob(float knobSel, float v) {
 
 
 
-namespace ServoControl { 
+namespace ServoControlOld { 
 	const float servoThrow = 2.0;
 	const float leftStringX = 14;
 	const float leftStringY = 7;
@@ -622,6 +622,24 @@ namespace ServoControl {
 		return pair<float,float>(x, y);
 	}
 };
+
+namespace ServoControl { 
+	const float servoThrow = +2.0;
+
+	pair<int, int> stickToServo(float x, float y) { 
+		float s1 = -x / servoThrow * 2000 + 1500;
+		float s0 = -y / servoThrow * 2000 + 1500;
+		return pair<int, int>(s0, s1);
+	}
+
+	pair<float,float> servoToStick(int s0, int s1) {
+		float x = -(s1 - 1500) / 2000.0 * servoThrow;
+		float y = -(s0 - 1500) / 2000.0 * servoThrow;
+		
+		return pair<float,float>(x, y);
+	}
+};
+
 
 void setServos(float x, float y) {
 	pair<int,int> s = ServoControl::stickToServo(x, y);
