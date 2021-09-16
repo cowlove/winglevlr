@@ -43,7 +43,7 @@ public:
 	float calcGain(float err, float loGain, float hiGain, float transition) {
 		float c =  err * loGain;
 		if (hiGain > 0 && (abs(err) > transition))
-			c += (abs(err) - transition) * (hiGain - loGain) * err/abs(err);
+			c += (abs(err) - transition) * (hiGain - 1) * loGain * err/abs(err);
 		return c;
 	}
 

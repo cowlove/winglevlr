@@ -206,9 +206,9 @@ namespace Display {
 	JDisplayItem<float> pidph(&jd,00,y+=10,"PH:", "%03.2f "); JDisplayItem<float> ttlt(&jd,c2x,y,    " TT2:", "%04.1f ");;
 	JDisplayItem<float>  pidi(&jd,00,y+=10," I:", "%03.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
 	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> maxi(&jd,c2x,y,    "MAXI:", "%04.1f ");
-	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");	
+	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); JDisplayItem<float> ptrim(&jd,c2x,y,  "PTRM:", "%+4.1f");
 	JDisplayItem<float>  dead(NULL,00,y+=00,"DZ:", "%03.1f "); 
-    JDisplayItem<float>  dalt(&jd,10,y+=10,"DALT:", "%05.0f ");
+    JDisplayItem<float>  dalt(&jd,10,y+=10,"DALT:", "%05.0f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");		
 
     //JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 }
@@ -228,6 +228,7 @@ public:
 	JDisplayEditableItem ttlt = JDisplayEditableItem(&Display::ttlt, 1);
 //	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
 	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 4);
+	JDisplayEditableItem pitchTrim = JDisplayEditableItem(&Display::ptrim, .1);
 	JDisplayEditableItem dead = JDisplayEditableItem(&Display::dead, .1);
 	JDisplayEditableItem desAlt = JDisplayEditableItem(&Display::dalt, 20);
 	
@@ -243,6 +244,7 @@ public:
 		add(&ttlt);	
 		add(&maxb);
 		add(&maxi);
+		add(&pitchTrim);
 		add(&pidsel);
 		//add(&desAlt);
 	}
@@ -304,7 +306,7 @@ static AhrsInput lastAhrsInput, lastAhrsGoodG5;
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
-float desRoll = 0, pitchTrim = -8, pitchToStick = 0.15, desPitch = 0;//, desAlt = 0;		
+float desRoll = 0, /*pitchTrim = -8,*/ pitchToStick = 0.15, desPitch = 0;//, desAlt = 0;		
 static int serialLogFlags = 0;
 
 void setDesiredTrk(float f) { 
@@ -394,13 +396,13 @@ void setup() {
 	
 	// Set up PID gains 
 	rollPID.setGains(7.52, 0.05, 0.11);
-	rollPID.hiGain.p = 1;
+	rollPID.hiGain.p = 2;
 	rollPID.hiGainTrans.p = 5;
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
 
 	hdgPID.setGains(0.25, 0.07, 0.02);
-	hdgPID.hiGain.p = 2.50;
+	hdgPID.hiGain.p = 10;
 	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 1.0;
@@ -431,6 +433,7 @@ void setup() {
 	ed.pidsel.setValue(1);
 	ed.dtrk.setValue(desiredTrk);
 	ed.desAlt.setValue(1000);
+	ed.pitchTrim.setValue(-8);
 	setKnobPid(ed.pidsel.value);
 	ed.update();
 	
@@ -540,7 +543,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { setDesiredTrk(f); }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
 		else if (sscanf(line, "strim %f %f", &f, &f2) == 2) { stickTrimX = f; stickTrimY = f2; }
-		else if (sscanf(line, "ptrim %f", &f) == 1) { pitchTrim = f; }
+		else if (sscanf(line, "ptrim %f", &f) == 1) { ed.pitchTrim.setValue(f); }
 		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
 		else if (sscanf(line, "mode %f", &f) == 1) { apMode = f; }
 		else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
@@ -1033,7 +1036,7 @@ void loop() {
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(altPID.corr * 0.01, 5.0), -5.0);
-		desPitch = pitchTrim + altCorr;
+		desPitch = ed.pitchTrim.value + altCorr;
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
@@ -1041,8 +1044,10 @@ void loop() {
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
 			stickX = stickTrimX + rollPID.corr / 2000 * ServoControl::servoThrow;
 			stickY = stickTrimY + pitchPID.corr / 2000 * ServoControl::servoThrow +
-				(desPitch - pitchTrim) * pitchToStick; 
+				(desPitch - ed.pitchTrim.value) * pitchToStick; 
 			//	y = 0; // disable pitch
+			stickX += cos(millis() / 100.0) * .04;
+			stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
 		} else switch(servoSetupMode) { 
 			case 0:
@@ -1051,14 +1056,16 @@ void loop() {
 			case 1: 
 				stickX = stickTrimX;
 				stickY = stickTrimY;  
+				stickX += cos(millis() / 100.0) * .04;
+				stickY += sin(millis() / 100.0) * .04;
 				setServos(stickX, stickY); 
 				break;
 			case 2:
-				stickX = 0; stickY = +8;  
+				stickX = stickY = +8;  
 				setServos(stickX, stickY); 
 				break;
 			case 3: 
-				stickX = 0; stickY = -8;  
+				stickX = stickY = -8;  
 				setServos(stickX, stickY); 
 				break;
 		}
