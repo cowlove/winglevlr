@@ -543,6 +543,8 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { setDesiredTrk(f); }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
 		else if (sscanf(line, "strim %f %f", &f, &f2) == 2) { stickTrimX = f; stickTrimY = f2; }
+		else if (sscanf(line, "strimx %f", &f) == 1) { stickTrimX = f; }
+		else if (sscanf(line, "strimy %f", &f) == 1) { stickTrimY = f; }
 		else if (sscanf(line, "ptrim %f", &f) == 1) { ed.pitchTrim.setValue(f); }
 		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
 		else if (sscanf(line, "mode %f", &f) == 1) { apMode = f; }
@@ -650,6 +652,9 @@ void setServos(float x, float y) {
 	servoOutput[1] =  max(450, min(2550, s.second));
 }
 
+bool firstLoop = true;
+bool immediateLogStart = false;
+
 void loop() {	
 	esp_task_wdt_reset();
 	ArduinoOTA.handle();	
@@ -714,6 +719,12 @@ void loop() {
 	//         triple  - servo test mode
 	           
 	//ed.re.check();
+	if (firstLoop == true && digitalRead(buttonMid.pin) == 0) { 
+		logFile = new SDCardBufferedLog<LogItem>(logFileName, 200/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
+		logFilename = logFile->currentFile;
+		logChanging = false;
+		immediateLogStart = true;
+	}
 	if (buttonCheckTimer.tick()) { 
 		buttonISR();
 		if (butFilt3.newEvent()) { // TOP or RIGHT button 
@@ -748,7 +759,7 @@ void loop() {
 					hdgSelect = (hdgSelect + 1) % 4;
 				}					
 			} else { 
-				if (!logChanging) {
+				if (!logChanging && (immediateLogStart != true || millis() > 10000)) {
 					logChanging = true;
 					if (logFile == NULL) {	
 							logFile = new SDCardBufferedLog<LogItem>(logFileName, 200/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
@@ -760,6 +771,7 @@ void loop() {
 						logChanging = false;
 					}
 				}
+				immediateLogStart = false;
 			}
 			
 		}
@@ -1154,6 +1166,7 @@ void loop() {
 	// Use onboard LED to indicate active logging 
 	//pinMode(pins.led, OUTPUT);
 	//digitalWrite(pins.led, logFile == NULL);
+	firstLoop = false;
 }
 
 #ifdef UBUNTU
