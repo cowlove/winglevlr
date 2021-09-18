@@ -197,7 +197,7 @@ namespace Display {
 	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>    trk(&jd,c2x,y,  " TRK:", "%05.1f ");
 	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+03.1f ");  JDisplayItem<float>    obs(&jd,c2x,y,  " OBS:", "%05.1f ");
 	JDisplayItem<float> roll(&jd,10,y+=10,"ROLL:", "%+03.1f");   JDisplayItem<int>    mode(&jd,c2x,y,  "MODE:", "%05d ");
-	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> maghdg(&jd,c2x,y,  " MAG:", "%05.1f ");
+	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> g5hdg(&jd,c2x,y,  "G5HD:", "%05.1f ");
 	//JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
 	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s-"); JDisplayItem<int>   drop(&jd,c2x+30,y,    "", "%03d ");
     JDisplayItem<float> logw(&jd,10,y+=10,"LOGW:", "%05.0f ");
@@ -501,7 +501,7 @@ static EggTimer serialReportTimer(200), hz5(200), loopTimer(5), buttonCheckTimer
 static int armServo = 0;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 3; //  0 use fusion magHdg 
+static int hdgSelect = 0; //  0 use fusion magHdg 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 struct {
@@ -1135,7 +1135,7 @@ void loop() {
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
 		Display::gdl = (float)gpsTrackGDL90;
-		Display::maghdg = (float)ahrs.magHdg;
+		Display::g5hdg = (float)ahrsInput.g5Hdg;
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
 		Display::pitc = pitch; 
@@ -1312,7 +1312,6 @@ public:
 					s.alt = l.ai.alt / 3.328;
 					s.lat = curPos.loc.lat;
 					s.lon = curPos.loc.lon;
-					s.track = l.ai.gpsTrackGDL90;
 					int len = gdl90.packMsg10(buf, sizeof(buf), s);
 					ESP32sim_udpInput(4000, string((char *)buf, len));
 				}
