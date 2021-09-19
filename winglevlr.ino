@@ -515,7 +515,7 @@ static uint64_t lastLoop = micros();
 static bool selEditing = false;
 float stickX, stickY;
 std::string waypointList;
-WaypointsSequencerString *wpNav = NULL;
+WaypointNav::WaypointSequencer *wpNav = NULL;
 GDL90Parser::State gdl90State;
 
 Windup360 currentHdg;
@@ -1178,11 +1178,9 @@ void ESP32sim_done();
 
 class ESP32sim_winglevlr : public ESP32sim_Module {
 public:
-	ifstream trackSimFile;
-	//using WaypointNav::TrackSimFileParser;
-	WaypointsSequencerFile *tSim = NULL;
 	IntervalTimer hz100 = IntervalTimer(100/*msec*/);
 
+	string wpFile;
 	ifstream ifile;
 	const char *replayFile = NULL;
 	int logSkip = 0;
@@ -1361,7 +1359,6 @@ public:
 			s.track = t1;
 			s.vvel = 0;
 			s.hvel = 105;
-			//tSim != NULL ? tSim->wptTracker.speed : 0;
 			s.palt = (s.alt + 1000) / 25;
 
 			WiFiUDP::InputData buf;
@@ -1400,9 +1397,7 @@ public:
 			gdl90State.lat = curPos.loc.lat; gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data 
 
 		} else if (strcmp(*a, "--tracksim") == 0) {
-				tSim = new WaypointsSequencerFile(*(++a));
-				//tSim = trackSimFile = ifstream(*(++a), ios_base::in | ios_base::binary);
-				//trackSimFile = wrap_vector_as_istream(trackSimFileContents);
+				wpFile = *(++a);
 		} else if (strcmp(*a, "--logConvert") == 0) {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
@@ -1461,14 +1456,8 @@ public:
 			//bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode  
 			//bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
 			setDesiredTrk(ahrsInput.dtk = 135);
-			if (tSim != NULL) { 
-				tSim->wptTracker.onSteer = [&](float s) {
-					setDesiredTrk(trueToMag(s)); 
-					ahrsInput.dtk = trueToMag(s);
-					return magToTrue(track);
-				};
-			}
 		}
+		
 	}
 
 	bool firstLoop = true;	
@@ -1499,22 +1488,9 @@ public:
 				//ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5hdg));
 			}
 			flightSim(imu);
-			if (hz100.tick(micros()/1000.0) && tSim != NULL) {
-				tSim->run(hz100.interval / 1000.0);
-			}
 
-			if (at(150.0)) { 
-				Serial.inputLine =  "wpclear\n"
-									"wpadd REPEAT 1\n"
-								//	"wpadd 47.59509212379994, -122.38743386638778 1000\n"
-								//	"wpadd 47.59233901597324, -122.37080179677619 500\n"
-								//	"wpadd 47.53887718258715, -122.30994494011797 50\n"
-								//	"wpadd 47.46106431485166, -122.47652028295599\n"
-
-									"wpadd 47.46106431485166, -122.47652028295599 1000\n" // 2S1 rwy 17 
-									"wpadd 47.46276277164776, -122.56987914788057 1500\n" // WN13 
-									"wpadd 47.40034707858388, -122.50118521538386 1200\n" // Wax orchards 
-									"wpstart\n";
+			if (at(5.0) && wpFile.length()) {
+				wpNav = new WaypointsSequencerFile(wpFile.c_str());
 				apMode = 3;
 			}
 			if (false && hz(1.0/6000)) {
@@ -1550,7 +1526,6 @@ public:
 		totalError.roll / logEntries, totalError.pitch / logEntries,  totalError.hdg / logEntries, logEntries, millis() / 1000.0);
 	}
 } espsim;
-
 
 #include "TinyGPS++.h"
 #include "TinyGPS++.cpp"

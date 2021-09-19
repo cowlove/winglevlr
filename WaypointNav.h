@@ -205,6 +205,7 @@ namespace WaypointNav {
             float distToWaypoint = 0;
             if (!curPos.valid)
                 return;
+            commandAlt = curPos.alt;
             if (activeWaypoint.valid && !waypointPassed) {
                 steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
                 distToWaypoint = abs(distance(curPos.loc, activeWaypoint.loc));
