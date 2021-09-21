@@ -427,8 +427,8 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.setValue(12);
-	ed.tttt.setValue(20); // seconds to make each test turn 
-	ed.ttlt.setValue(20); // seconds betweeen test turn  
+	ed.tttt.setValue(30); // seconds to make each test turn 
+	ed.ttlt.setValue(20); // seconds betweeen test turn, ordegrees per turn   
 	//ed.tzer.setValue(1000);
 	ed.pidsel.setValue(1);
 	ed.dtrk.setValue(desiredTrk);
@@ -1186,7 +1186,7 @@ public:
 	int logSkip = 0;
 	int logEntries = 0;
 	float bank = 0, track = 0, pitch = 0, roll = 0, yaw = 0, simPitch = 0, hdg = 0;
-	RollingAverage<float,100> rollCmd;
+	RollingAverage<float,30> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
 	float speed = 105;
@@ -1220,19 +1220,21 @@ public:
 		this->pitch = simPitch;
 
 		rollCmd.add(stickX);
-		imu->gy = 0.0 + rollCmd.average() * .85;
-		bank += imu->gy * (3500.0 / 1000000.0);
-		bank = max(-25.0, min(25.0 , (double)bank));
+		imu->gy = ahrs.gyrOffY + rollCmd.average() * 2;
+		imu->gy *= -1;
+		bank += imu->gy * (3500.0 / 1000000.0) * 2.2;
+		bank = max(-15.0, min(15.0 , (double)bank));
 		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
-			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f\n", (float)millis()/1000.0, 
+			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm[0], track, desRoll, bank, imu->gy);
 		}		
-		imu->gz = 0 + tan(bank * M_PI/180) / 100 * 1091;
-		
+		imu->gz = ahrs.gyrOffZ + tan(bank * M_PI/180) / 100 * 1091;
+		imu->gz *= -1;
+
 		uint64_t now = millis();
-		const float bper = .05;
+		const float bper = .04;
 		if (floor(lastMillis * bper) != floor(now * bper)) { // 10hz
-			track -= tan(bank * M_PI / 180) * 9.8 / 40 * 25 * bper;
+			track += (tan((bank + ahrs.rollOffset) * M_PI / 180) * 9.8 / 40 * 25) * bper * 1.0;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
 			set_gpsTrack(track);
@@ -1251,9 +1253,12 @@ public:
 		imu->ax = 0;
 
 		// simulate meaningless mag readings that stabilize when bank == 0 
-		imu->mx = imu->my = imu->mz = 0;
-		//bank * 1.4;
-		//imu->mz += imu->mx;
+		imu->mx = cos(hdg * M_PI/180) * 50;
+		imu->my = sin(hdg * M_PI/180) * 50 + 50;
+		imu->mz = -70;
+		//imu->mx =imu->my = imu->mz = 0;
+		ahrs.magBankTrim = 0; // TODO simulate mag so this doesn't oscillate
+		//ahrs.magHdg = hdg;
 		
 		float dist = speed * 0.51444 * (now - lastMillis) / 1000.0; 
 		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(track), dist);
@@ -1398,7 +1403,13 @@ public:
 
 		} else if (strcmp(*a, "--tracksim") == 0) {
 				wpFile = *(++a);
-		} else if (strcmp(*a, "--logConvert") == 0) {
+		} else if (strcmp(*a, "--button") == 0) {
+			int pin, clicks, longclick;
+			float tim;
+			sscanf(*(++a), "%f,%d,%d,%d", &tim, &pin, &clicks, &longclick);
+			bm.addPress(pin, tim, clicks, longclick);
+
+		} else if (strcmp(*a, "--logConvert") == 0)	 {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);			
 			ESP32sim_convertLogOldToNew(i, o);
@@ -1455,7 +1466,7 @@ public:
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
 			//bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode  
 			//bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
-			setDesiredTrk(ahrsInput.dtk = 135);
+			//setDesiredTrk(ahrsInput.dtk = 135);
 		}
 		
 	}

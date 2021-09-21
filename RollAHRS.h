@@ -216,13 +216,13 @@ public:
 	float compRatio1 = 0.00072;  // roll comp filter ratio 
 	float compRatioPitch = 0.01428;
 	float pitchOffset = -1.47;
-	float rollOffset = +7.2;
+	float rollOffset = +3.8;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = .000472;  // composite filter ratio for hdg 
 	float magDipConstant = 2.11; // unexplained correction factor for bank angle in dip calcs
 	float magBankTrimCr = 0.00005;
 	float magBankTrimMaxBankErr = 12;
-	float bankAngleScale = 0.83;
+	float bankAngleScale = 0.92;
 	float debugVar = 1.0;
 	float gXdecelCorrelation = 1.08;
 	float pitchRaw =0;

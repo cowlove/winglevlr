@@ -164,7 +164,9 @@ stats f2 u 1:16 name "F2"
 $STATS
 set grid
 set y2tic
+set x2tic
 set ytic nomirror
+set xtic nomirror
 
 print "**********************************************"
 
