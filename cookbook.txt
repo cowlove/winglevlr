@@ -33,4 +33,7 @@ make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.6,-122.4,1000 --tracks
 
 
 
+# fly testTurnActive cicle for an hour
+make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.6,-122.4,1000  --button 30,36,1,0 --button 60,39,2,0 --log + --seconds 3600 | grep "LOG" > out.plog && ./loglook.sh X -file out.plog -roll -maghdg -dtk -desroll
+
 
