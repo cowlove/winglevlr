@@ -844,7 +844,7 @@ void loop() {
 			GDL90Parser::State s = gdl90.getState();
 			if (s.valid && s.updated) {
 				gpsTrackGDL90 = trueToMag(s.track);
-				ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
+				ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.02);
 				logItem.flags |= LogFlags::HdgGDL; 
 				gpsFixes++;
 				ahrsInput.alt = s.alt * 3.2808;
@@ -903,7 +903,7 @@ void loop() {
 				else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) { ahrsInput.g5Palt = v; logItem.flags |= LogFlags::g5Ps;} 
 				else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) { 
 					ahrsInput.g5Hdg = v; logItem.flags |= LogFlags::g5Nav;
-					ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
+					ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.03);
 				} 
 				else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) { ahrsInput.g5Track = v; logItem.flags |= LogFlags::g5Nav; } 
 				else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) { apMode = v; } 
@@ -928,7 +928,7 @@ void loop() {
 				ahrsInput.g5Tas = tas / 0.5144;
 				ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
 				apMode = mode;
-				ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);
+				ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.03);
 				logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
 				setObsKnob(knobSel, knobVal);
 				//Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
@@ -1430,7 +1430,7 @@ public:
 				else if (sscanf(it->c_str(), "ahrs.debug=%f", &v) == 1) { ahrs.debugVar = v; } 
 				else if (sscanf(it->c_str(), "cr1=%f", &v) == 1) { ahrs.compRatio1 = v; } 
 				else if (sscanf(it->c_str(), "dc1=%f", &v) == 1) { ahrs.driftCorrCoeff1 = v; } 
-				else if (sscanf(it->c_str(), "cr2=%f", &v) == 1) { ahrs.hdgCompRatio = v; } 
+				else if (sscanf(it->c_str(), "ahrs.crhdg=%f", &v) == 1) { ahrs.hdgCompRatio = v; } 
 				else if (sscanf(it->c_str(), "mbt.cr=%f", &v) == 1) { ahrs.magBankTrimCr = v; } 
 				else if (sscanf(it->c_str(), "mbt.maxerr=%f", &v) == 1) { ahrs.magBankTrimMaxBankErr = v; } 
 				else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 

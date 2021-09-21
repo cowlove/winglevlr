@@ -36,8 +36,8 @@ while($round < 100) {
 			delete $best{$t};
 			$span = $span{$t} / $round;
 			$inc = $span / 5;
-			$lo = $mid{$t} - $span;
-			$hi = $mid{$t} + $span;
+			$lo = $mid{$t} - $span - $inc * 2;
+			$hi = $mid{$t} + $span + $inc * 2;
 			print "Sweep '$t' $lo to $hi by $inc, iteration $it:\n";
 			for ($v = $lo; $v <= $hi; $v = $v + $inc) {  
 				$valstr = ",";

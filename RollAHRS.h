@@ -148,7 +148,7 @@ inline static float windup360(float now, float prev) {
 class MultiCompFilter { 
 	bool first = true;
 	float defaultCr = 0.03;
-	float age = 5.0;
+	float age = 10.0;
 public:
 	float value, prevMainValue, bestCr, bestAux, bestAuxPri, expires, priority;
 	void reset() { first = true; } 
@@ -159,6 +159,7 @@ public:
 			first = false;
 			expires = now + age;
 		}
+		// 
 		if(now > expires || bestAuxPri >= priority) { 
 			if (bestAuxPri == -1) {
 				bestAux = v;
@@ -195,8 +196,8 @@ public:
 	}
 	MultiCompFilter mComp;
 	
-	float magOffX = +33.2;
-	float magOffY = -09.4;
+	float magOffX = 0;
+	float magOffY = 55;
 	float magOffZ = -30;
 
 	
@@ -213,15 +214,15 @@ public:
 		  accOffZ = -0;
 
 	float compRatio1 = 0.00072;  // roll comp filter ratio 
-	float compRatioPitch = 0.00101;
-	float pitchOffset = -8.78;
-	float rollOffset = 0;//+4.96;
+	float compRatioPitch = 0.01428;
+	float pitchOffset = -1.47;
+	float rollOffset = +7.2;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
-	float hdgCompRatio = .00013;  // composite filter ratio for hdg 
-	float magDipConstant = 2.496; // unexplained correction factor for bank angle in dip calcs
+	float hdgCompRatio = .000472;  // composite filter ratio for hdg 
+	float magDipConstant = 2.11; // unexplained correction factor for bank angle in dip calcs
 	float magBankTrimCr = 0.00005;
 	float magBankTrimMaxBankErr = 12;
-	float bankAngleScale = 1.08;
+	float bankAngleScale = 0.83;
 	float debugVar = 1.0;
 	float gXdecelCorrelation = 1.08;
 	float pitchRaw =0;
@@ -259,6 +260,7 @@ public:
 
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
+	RollingAverage<float,100> avgPitch;
 	RollingAverage<float,20> avgMagHdg;
 	RollingAverage<float,200> avgGZ, avgGX, avgAX, avgAZ, avgAY;
 	RollingAverage<float,200> gyroZeroCount;
@@ -419,7 +421,6 @@ public:
 		//magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 150;
 
 
-
 		// attempt magnetic dip bank error correction 
 		float ra = magDipConstant * avgRoll.average() / 180 * M_PI;   
 		float z = sin(67.0*M_PI/180) * cos(ra); 
@@ -435,9 +436,9 @@ public:
 			hdg = magHdg360;
 		}
 		hdg =  (hdg - (cos(rollRad) * l.gz + sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;		
-
-		
-		float cHdg = mComp.calculate(l.sec, hdg);
+	
+		float cHdg = hdg;
+		cHdg = mComp.calculate(l.sec, hdg);
 		if (tick10HZ) {
 			magHdgFit.add(l.sec, cHdg);
 		}
@@ -448,7 +449,7 @@ public:
 			magBank = -atan(magHdgFit.slope() * tas / 1091) * 180/M_PI;
 			if (abs(compYH - magBank) < magBankTrimMaxBankErr) { 
 				magBankTrim += (compYH - magBank) * magBankTrimCr;
-				magBankTrim = max(min((double)magBankTrim, 4.0), -4.0);
+				magBankTrim = max(min((double)magBankTrim, 10.0), -10.0);
 			}
 		}
 		
@@ -470,6 +471,8 @@ public:
 	 	pitch = isnan(pitch) ? 0 : pitch;
 	 	pitch = isinf(pitch) ? 0 : pitch;
 
+		avgPitch.add(pitch);
+		pitch = avgPitch.average();
 
 		//pitch = accelRoll;
 		return compYH;
