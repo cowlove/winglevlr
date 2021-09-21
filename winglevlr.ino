@@ -427,8 +427,8 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.setValue(12);
-	ed.tttt.setValue(30); // seconds to make each test turn 
-	ed.ttlt.setValue(20); // seconds betweeen test turn, ordegrees per turn   
+	ed.tttt.setValue(20); // seconds to make each test turn 
+	ed.ttlt.setValue(15); // seconds betweeen test turn, ordegrees per turn   
 	//ed.tzer.setValue(1000);
 	ed.pidsel.setValue(1);
 	ed.dtrk.setValue(desiredTrk);
@@ -1202,7 +1202,8 @@ public:
 		hdgPID.finalGain = 0.5;
 		stickTrimY = stickTrimX = 0;
 
-		_micros += 3500;
+		_micros = (_micros + 5000);
+		_micros -= (_micros % 5000);
 		//const float servoTrim = 4915.0;
 
 		// Simulate simple airplane roll/bank/track turn response to 
@@ -1224,7 +1225,7 @@ public:
 		imu->gy *= -1;
 		bank += imu->gy * (3500.0 / 1000000.0) * 2.2;
 		bank = max(-15.0, min(15.0 , (double)bank));
-		if (0 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
+		if (1 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm[0], track, desRoll, bank, imu->gy);
 		}		
@@ -1398,7 +1399,7 @@ public:
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));
 		} else if (strcmp(*a, "--startpos") == 0) {
-			sscanf(*(++a), "%lf,%lf,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt); 
+			sscanf(*(++a), "%lf,%lf,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track); 
 			gdl90State.lat = curPos.loc.lat; gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data 
 
 		} else if (strcmp(*a, "--tracksim") == 0) {
@@ -1503,15 +1504,6 @@ public:
 			if (at(5.0) && wpFile.length()) {
 				wpNav = new WaypointsSequencerFile(wpFile.c_str());
 				apMode = 3;
-			}
-			if (false && hz(1.0/6000)) {
-				//ahrs.reset();
-				//rollPID.reset();
-				//hdgPID.reset();
-				/*tSim.wptTracker.onNavigate = [](float) { 
-					ahrsInput.dtk = desiredTrk = 100; 
-					return magToTrue(ahrsInput.g5Hdg); 
-				};*/
 			}
 
 		} else {

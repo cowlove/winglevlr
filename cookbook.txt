@@ -1,3 +1,4 @@
+#!/bin/bash 
 # To sweep and tune
 ####################
 for f in $(seq -1.2 .05 -0.6); do echo -n "$f:  "; ./winglevlr_ubuntu --replay ./logs/AHRSD112.DAT --debug "zeros.gy=$f,zeros.gz=1.3"; done
@@ -37,3 +38,12 @@ make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.6,-122.4,1000 --tracks
 make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.6,-122.4,1000  --button 30,36,1,0 --button 60,39,2,0 --log + --seconds 3600 | grep "LOG" > out.plog && ./loglook.sh X -file out.plog -roll -maghdg -dtk -desroll
 
 
+
+# cookbook to make tracksim file from a simulated TTA run 
+make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.6,-122.4,1000,90  --button 1,36,1,0 --button 33,39,2,0 --log + --seconds 1440 | grep "LOG" > out.plog 
+egrep '^[0-9]*[02468]0\.000000' out.plog   > out20.plog
+#gnuplot -e 'p "./out.plog" u 48:47 w l, "./out20.plog" u 48:47;pause 99'
+echo REPEAT 1 > tracksim_tta.txt
+cut '-d ' -f 48,49 out20.plog  | tr ' ' ',' >> tracksim_tta.txt
+# simulate following the flight plan
+ make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.5,-122.3,1000 --tracksim ./tracksim_tta.txt --log + --seconds 5500 | grep "LOG" > out.plog && ./loglook.sh X -file out.plog -map
