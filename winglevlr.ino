@@ -21,6 +21,11 @@
 #include "RollAHRS.h"
 #include "GDL90Parser.h"
 #include "WaypointNav.h"
+#include <SparkFun_u-blox_GNSS_Arduino_Library.h> 
+
+SFE_UBLOX_GNSS myGNSS;
+
+
 using WaypointNav::trueToMag;
 using WaypointNav::magToTrue;
 
@@ -73,13 +78,46 @@ struct {
 	int scl = 22; 
 //	int led = 19;
 	int tft_backlight = 27;
-	int serial2_tx = 27;
 	int serial2_rx = 19;
+	int serial2_tx = 27;
+	int gps_rx = 19;
+	int gps_tx = 27;
+
+
 } pins;
 
 MPU9250_asukiaaa *imu = NULL;
 
-float stickTrimY = 0, stickTrimX = 0;
+void gpsInit() { 
+	Serial.printf("Trying 115K BPS\n");
+	Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+	if (myGNSS.begin(Serial2) == false) { 
+      Serial.printf("Trying 9.6K BPS\n");
+      Serial2.begin(9600, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+      if (myGNSS.begin(Serial2) == false)  {
+        Serial.println(F("u-blox GNSS not detected at default I2C address. Please check wiring. Freezing."));
+        ESP.restart();
+      }
+      myGNSS.setSerialRate(115200); //Set UART1 to 57600bps.
+      Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+      myGNSS.saveConfiguration();        //Optional: Save the current settings to flash and BBR
+	}
+}
+
+float gpsHdg = -1;
+void gpsCheck() { 
+	if (myGNSS.getPVT(150)) {
+		float lon = myGNSS.getLongitude() / 10000000.0;
+		gpsHdg = myGNSS.getHeading() / 1000000.0;
+		float lat = myGNSS.getLatitude() / 10000000.0;
+		float alt = myGNSS.getAltitudeMSL() / 1000.0;
+		float hac = myGNSS.getHeadingAccEst() / 100000.0;
+		float gs = myGNSS.getGroundSpeed() / 1000.0;
+		int siv = myGNSS.getSIV();
+	}
+}
+
+float stickTrimY = 0.20, stickTrimX = 0.10;
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
@@ -87,9 +125,11 @@ void halInit() {
 	Serial.printf("\nReset reason: %d %d\n", (int)rtc_get_reset_reason(0), (int)rtc_get_reset_reason(1));
 	Serial.printf(__BASE_FILE__ " ver %s\n", GIT_VERSION);
 	Wire.begin(21,22);
+	Wire.setClock(400000);
 	Serial.println("Scanning I2C bus on pins 21,22");
 	if (scanI2c() == 0) { 
 		Wire.begin(19,18);
+		Wire.setClock(400000);
 		Serial.println("Scanning I2C bus on pins 19,18");
 		if (scanI2c() == 0) {
 			Serial.println("No I2C devices found, rebooting...");
@@ -141,7 +181,11 @@ void halInit() {
 	imu->beginAccel(ACC_FULL_SCALE_4_G);
 	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
 	imu->beginMag(MAG_MODE_CONTINUOUS_100HZ);
+
+	gpsInit();
 }
+
+
 
 DigitalButton buttonTop(pins.topButton); // top
 DigitalButton buttonMid(pins.midButton); // middle
@@ -433,7 +477,7 @@ void setup() {
 	ed.pidsel.setValue(1);
 	ed.dtrk.setValue(desiredTrk);
 	ed.desAlt.setValue(1000);
-	ed.pitchTrim.setValue(-8);
+	ed.pitchTrim.setValue(-3);
 	setKnobPid(ed.pidsel.value);
 	ed.update();
 	
@@ -967,6 +1011,8 @@ void loop() {
 		}
 	}
 
+	gpsCheck();
+
 	//printMag();
 	if (imuRead()) { 
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
@@ -1147,7 +1193,8 @@ void loop() {
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
 		Display::gdl = (float)gpsTrackGDL90;
-		Display::g5hdg = (float)ahrsInput.g5Hdg;
+		Display::g5hdg = gpsHdg;
+		//Display::g5hdg = (float)ahrsInput.g5Hdg;
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
 		Display::pitc = pitch; 
