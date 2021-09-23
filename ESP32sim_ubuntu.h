@@ -54,6 +54,9 @@ void esp_task_wdt_reset() {}
 esp_err_t esp_task_wdt_add(void *) { return 0; }
 esp_err_t esp_task_wdt_delete(const void *) { return 0; }
 int rtc_get_reset_reason(int) { return 0; } 
+
+
+
 namespace fs { 
 class File {
 	public: 
@@ -496,6 +499,32 @@ public:
 
 struct RTC_DS3231 {
 };
+
+#define COM_TYPE_UBX 0
+class SFE_UBLOX_GNSS {
+public:
+	float lat, lon, hdg, hac, gs, siv, alt;
+	bool fresh = false; 
+	bool begin(FakeSerial &) { return true; } 
+	bool setUART1Output(int) { return true; } 
+	float getHeading() { return hdg; }
+	float getHeadingAccEst() { return hac; }
+	float getLatitude() { return lat; }
+	float getLongitude() { return lon; }
+	float getAltitudeMSL() { return alt; }
+	float getGroundSpeed() { return gs; }
+	float getSIV() { return siv; }
+	bool getPVT(int) { 
+		bool rval = fresh;
+		fresh = false;
+		return rval;
+	}	
+	bool setSerialRate(int) { return 0; }
+	bool setAutoPVT(int, int) { return 0; }
+	void saveConfiguration() {}
+	bool setNavigationFrequency(int) { return 0; } 
+};
+
 
 void setup(void);
 void loop(void);

@@ -11,6 +11,7 @@
 #include <soc/rtc_cntl_reg.h>
 #include <rom/rtc.h>
 #include <MPU9250_asukiaaa.h>
+#include <SparkFun_u-blox_GNSS_Arduino_Library.h> 
 #endif // #else // UBUNTU
 
 #include <TinyGPS++.h>
@@ -21,10 +22,8 @@
 #include "RollAHRS.h"
 #include "GDL90Parser.h"
 #include "WaypointNav.h"
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h> 
 
-SFE_UBLOX_GNSS myGNSS;
-
+bool debugFastBoot = false;
 
 using WaypointNav::trueToMag;
 using WaypointNav::magToTrue;
@@ -88,34 +87,52 @@ struct {
 
 MPU9250_asukiaaa *imu = NULL;
 
-void gpsInit() { 
-	Serial.printf("Trying 115K BPS\n");
-	Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
-	if (myGNSS.begin(Serial2) == false) { 
-      Serial.printf("Trying 9.6K BPS\n");
-      Serial2.begin(9600, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
-      if (myGNSS.begin(Serial2) == false)  {
-        Serial.println(F("u-blox GNSS not detected at default I2C address. Please check wiring. Freezing."));
-        ESP.restart();
-      }
-      myGNSS.setSerialRate(115200); //Set UART1 to 57600bps.
-      Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
-      myGNSS.saveConfiguration();        //Optional: Save the current settings to flash and BBR
-	}
-}
 
-float gpsHdg = -1;
-void gpsCheck() { 
-	if (myGNSS.getPVT(150)) {
-		float lon = myGNSS.getLongitude() / 10000000.0;
-		gpsHdg = myGNSS.getHeading() / 1000000.0;
-		float lat = myGNSS.getLatitude() / 10000000.0;
-		float alt = myGNSS.getAltitudeMSL() / 1000.0;
-		float hac = myGNSS.getHeadingAccEst() / 100000.0;
-		float gs = myGNSS.getGroundSpeed() / 1000.0;
-		int siv = myGNSS.getSIV();
+class UbloxGPS {
+public: 
+	SFE_UBLOX_GNSS myGNSS;
+	int gpsGood = 0;
+	void init() {
+		Serial.printf("Trying 115K BPS...\n");
+		Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+		if (myGNSS.begin(Serial2) == false) { 
+		Serial.printf("Trying 9.6K BPS...\n");
+		Serial2.begin(9600, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+		if (myGNSS.begin(Serial2) == false)  {
+			Serial.println("u-blox GNSS not detected. Please check wiring");
+			return;
+		}
+		myGNSS.setSerialRate(115200); //Set UART1 to 57600bps.
+		Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+		myGNSS.saveConfiguration();        //Optional: Save the current settings to flash and BBR
+
+		}
+
+		myGNSS.setUART1Output(COM_TYPE_UBX);
+		myGNSS.setNavigationFrequency(10); 
+		myGNSS.setAutoPVT(true, true); 
+		//myGNSS.setAutoPVTrate(0.10); //Set output to 5 times a second
+
+		gpsGood = 1;
+		Serial.printf("Found GPS\n");
 	}
-}
+	float lat, lon, hdg, hac, gs, siv, alt;
+	bool check() { 
+		if (gpsGood && myGNSS.getPVT(220)) {
+			lon = myGNSS.getLongitude() / 10000000.0;
+			hdg = myGNSS.getHeading() / 100000.0;
+			lat = myGNSS.getLatitude() / 10000000.0;
+			alt = myGNSS.getAltitudeMSL() / 1000.0;
+			hac = myGNSS.getHeadingAccEst() / 100000.0;
+			gs = myGNSS.getGroundSpeed() / 1000.0;
+			siv = myGNSS.getSIV();
+			//Serial.printf("GPS: %+09.4f, %+09.4f %+05.1f %02d\n", lat, lon, hdg, siv);
+			return true;
+		}
+		return false;
+	}
+} ublox; 
+
 
 float stickTrimY = 0.20, stickTrimX = 0.10;
 void halInit() { 
@@ -125,11 +142,11 @@ void halInit() {
 	Serial.printf("\nReset reason: %d %d\n", (int)rtc_get_reset_reason(0), (int)rtc_get_reset_reason(1));
 	Serial.printf(__BASE_FILE__ " ver %s\n", GIT_VERSION);
 	Wire.begin(21,22);
-	Wire.setClock(400000);
+	//Wire.setClock(400000);
 	Serial.println("Scanning I2C bus on pins 21,22");
 	if (scanI2c() == 0) { 
 		Wire.begin(19,18);
-		Wire.setClock(400000);
+		//Wire.setClock(400000);
 		Serial.println("Scanning I2C bus on pins 19,18");
 		if (scanI2c() == 0) {
 			Serial.println("No I2C devices found, rebooting...");
@@ -162,10 +179,7 @@ void halInit() {
 	if (0) {
 		pinMode(pins.tft_backlight, OUTPUT); // TFT backlight
 		digitalWrite(pins.tft_backlight, 1);
-	} else { 
-		Serial2.begin(57600, SERIAL_8N1, pins.serial2_rx, pins.serial2_tx);
-		Serial2.setTimeout(1);
-	}
+	} 
 
 	while(0) { // basic hardware testing - halt here and debug pins 
 		static int alternate = 0;
@@ -182,7 +196,7 @@ void halInit() {
 	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
 	imu->beginMag(MAG_MODE_CONTINUOUS_100HZ);
 
-	gpsInit();
+	ublox.init();
 }
 
 
@@ -231,6 +245,7 @@ namespace LogFlags {
 	static const int g5Ps =   0x04;
 	static const int HdgRMC = 0x08;
 	static const int HdgGDL = 0x10;
+	static const int ublox = 0x20;
 }
 
 namespace Display {
@@ -328,9 +343,6 @@ bool imuRead() {
 		a.gx = x.gx; a.gy = x.gy; a.gz = x.gz;
 		a.mx = x.mx; a.my = x.my; a.mz = x.mz;
 		String ad = a.toString() + "\n";
-		if (false && Serial2.availableForWrite() > 120) { 
-			Serial2.println(a.toString());
-		}
 		udpG90.beginPacket("255.255.255.255", 7892);
 		udpG90.write((uint8_t *)ad.c_str(), ad.length());
 		udpG90.endPacket();
@@ -422,7 +434,7 @@ void setup() {
 	wifi.addAP("Team America", "51a52b5354");
 	wifi.addAP("ChloeNet", "niftyprairie7");
 
-	if (!buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
+	if (!debugFastBoot && !buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
 			wifi.run();
@@ -724,7 +736,7 @@ void loop() {
 			"A%04.0f DA%04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"C %+06.2f %+05.1f %+05.1f %+05.1f " 
-			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d auxmpu"
+			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d "
 			"a%d "
 			//"s%04d %04d "			
 			"\n",
@@ -734,8 +746,8 @@ void loop() {
 			ahrsInput.alt, ed.desAlt.value,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
-			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
-			//	logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, 
+			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
+				logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, 
 			auxMpuPacketCount, 
 			//servoOutput[0], servoOutput[1],
 			/*dummy*/0
@@ -763,8 +775,8 @@ void loop() {
 	//         triple  - servo test mode
 	           
 	//ed.re.check();
-	if (firstLoop == true && digitalRead(buttonMid.pin) == 0) { 
-		logFile = new SDCardBufferedLog<LogItem>(logFileName, 200/*q size*/, 0/*timeout*/, 5000/*flushInterval*/, false/*textMode*/);
+	if (firstLoop == true && (digitalRead(buttonMid.pin) == 0  || debugFastBoot)) { 
+		logFile = new SDCardBufferedLog<LogItem>(logFileName, 500/*q size*/, 0/*timeout*/, 500/*flushInterval*/, false/*textMode*/);
 		logFilename = logFile->currentFile;
 		logChanging = false;
 		immediateLogStart = true;
@@ -899,16 +911,6 @@ void loop() {
 		}
 	}
 
-	if (Serial2.available()) {
-		unsigned char buf[128]; 
-		static LineBuffer lb;
-		int n = Serial2.readBytes(buf, sizeof(buf));
-		lb.add((char *)buf, n, [](const char *line) { 
-			if (auxMPU.fromString(line)) {
-				auxMpuPacketCount++;
-			}
-		});
-	}
 	if (udpNMEA.parsePacket() > 0) { 
 		char buf[1024];
 		static LineBuffer lb;
@@ -947,7 +949,7 @@ void loop() {
 				else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) { ahrsInput.g5Palt = v; logItem.flags |= LogFlags::g5Ps;} 
 				else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) { 
 					ahrsInput.g5Hdg = v; logItem.flags |= LogFlags::g5Nav;
-					ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.03);
+					ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
 				} 
 				else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) { ahrsInput.g5Track = v; logItem.flags |= LogFlags::g5Nav; } 
 				else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) { apMode = v; } 
@@ -972,7 +974,7 @@ void loop() {
 				ahrsInput.g5Tas = tas / 0.5144;
 				ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
 				apMode = mode;
-				ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.03);
+				ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
 				logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
 				setObsKnob(knobSel, knobVal);
 				//Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
@@ -1011,7 +1013,14 @@ void loop() {
 		}
 	}
 
-	gpsCheck();
+	if (ublox.check()) { 
+		logItem.flags |= LogFlags::ublox;
+		ahrsInput.ubloxHdg = ublox.hdg;
+		ahrsInput.ubloxHdgAcc = ublox.hac;
+		ahrsInput.ubloxAlt = ublox.alt;
+		ahrsInput.ubloxGroundSpeed = ublox.gs;
+		ahrs.mComp.addAux(ublox.hdg, 1, .01);
+	}
 
 	//printMag();
 	if (imuRead()) { 
@@ -1193,7 +1202,7 @@ void loop() {
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
 		Display::gdl = (float)gpsTrackGDL90;
-		Display::g5hdg = gpsHdg;
+		Display::g5hdg = ublox.hdg;
 		//Display::g5hdg = (float)ahrsInput.g5Hdg;
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
@@ -1358,6 +1367,13 @@ public:
 			if ((l.flags & LogFlags::g5Ins) || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch) { 
 				ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
 			}
+			if (l.flags & LogFlags::ublox) { 
+				ublox.myGNSS.hdg = l.ai.ubloxHdg * 100000.0;
+				ublox.myGNSS.hac = l.ai.ubloxHdgAcc * 100000.0;
+				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0;
+				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 1000.0;
+				ublox.myGNSS.fresh = true;
+			}
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
 				char buf[128];
 				snprintf(buf, sizeof(buf), "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E", 
@@ -1431,7 +1447,7 @@ public:
 			// TODO: mComp filter breaks at millis() rollover 
 			// make winglevlr_ubuntu && time ./winglevlr_ubuntu --serial --tracksim ./tracksim_KBFI_14R.txt --seconds 10000  | grep -a "TSIM" > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; set y2tic; set ytic nomirror; p f u 5 w l, f u 6 w l, f u 7 w l ax x1y2; pause 111'
 			ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.03);
-			ahrs.mComp.addAux(ahrsInput.g5Hdg, 1, 0.02);					
+			ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.02);					
 		}
 	}
 

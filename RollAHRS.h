@@ -69,7 +69,49 @@ struct AhrsInputB {
 		
 };
 
-typedef AhrsInputB AhrsInput; 
+struct AhrsInputC { 
+	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt; 
+	float ax, ay, az;  
+	float gx, gy, gz, mx, my, mz, dtk, g5Track;
+	float palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
+	float ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed;
+	String toString() const { 
+		static char buf[512];
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f " /* 1 - 10 */
+			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 11 - 20 */
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f "  /* 21 - 27 */ 
+			"%.1f %.1f %.1f %.1f",
+		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
+		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp,
+		ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed);
+		return String(buf);	
+	 }
+	 AhrsInputC fromString(const char *s) { 
+		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		&sec, &selTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
+		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp,
+		&ubloxHdg, &ubloxHdgAcc, &ubloxAlt, &ubloxGroundSpeed);
+		return *this;
+	}
+	AhrsInputC &operator =(const AhrsInputB &a) { 
+		sec = a.sec;
+		selTrack = a.selTrack;
+		gpsTrackGDL90 = a.gpsTrackGDL90;
+		gpsTrackVTG = a.gpsTrackVTG;
+		gpsTrackRMC = a.gpsTrackRMC;
+		alt = a.alt;
+		ax = a.ax; ay = a.ay; az = a.az;
+		gx = a.gx; gy = a.gy; gz = a.gz;
+		mx = a.mx; my = a.my; mz = a.mz;
+		palt = a.palt; gspeed = a.gspeed; g5Pitch = a.g5Pitch; g5Roll = a.g5Roll; g5Hdg = a.g5Hdg; g5Ias = a.g5Ias; g5Tas = a.g5Tas;
+		g5Palt = a.g5Palt; g5TimeStamp = a.g5TimeStamp;
+		return *this;
+	}
+		
+};
+
+
+typedef AhrsInputC AhrsInput; 
 
 
 
@@ -501,7 +543,7 @@ public:
 	}
 };
 
-struct LogItemOld {
+struct LogItemA {
 	short pwmOutputRoll, pwmOutputPitch, flags;  
 	float desRoll, roll, magHdg, bankAngle, magBank, pitch, spare1, spare2;
 	AhrsInputB ai;
@@ -511,13 +553,13 @@ struct LogItemOld {
 			desRoll, roll, magHdg,  bankAngle, magBank, pitch, spare1, spare2);
 		return ai.toString() +  String(buf);
 	} 
-	LogItemOld fromString(const char *s) { 
+	LogItemA fromString(const char *s) { 
 		ai.fromString(s);
 		return *this;
 	}
 };
 
-struct LogItemNew {
+struct LogItemB {
 	short pwmOutput0, pwmOutput1, flags;  
 	float desRoll, roll, magHdg, bankAngle, magBank, pitch, desAlt, desPitch;
 	struct AuxMpuData auxMpu;
@@ -531,11 +573,11 @@ struct LogItemNew {
 		 a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz);
 		return ai.toString() + String(buf);
 	} 
-	LogItemNew fromString(const char *s) { 
+	LogItemB fromString(const char *s) { 
 		ai.fromString(s);
 		return *this;
 	}
-	LogItemNew &operator =(const LogItemOld &c) {
+	LogItemB &operator =(const LogItemA &c) {
 		ai = c.ai;
 		pwmOutput0 = c.pwmOutputRoll;
 		flags = c.flags;
@@ -549,14 +591,46 @@ struct LogItemNew {
 	}
 };
 
-typedef LogItemNew LogItem;	
+struct LogItemC {
+	short pwmOutput0, pwmOutput1, flags;  
+	float desRoll, roll, magHdg, bankAngle, magBank, pitch, desAlt, desPitch;
+	struct AuxMpuData auxMpu;
+	AhrsInputC ai;
+	String toString() const {
+		char buf[200];
+		const AuxMpuData &a = auxMpu;
+		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f %f "
+		" %f %f %f %f %f %f %f %f %f ",
+		(int)pwmOutput0, (int)pwmOutput1, (int)flags, desRoll, roll, magHdg,  bankAngle, magBank, pitch, desAlt, desPitch,
+		 a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz);
+		return ai.toString() + String(buf);
+	} 
+	LogItemC fromString(const char *s) { 
+		ai.fromString(s);
+		return *this;
+	}
+	LogItemC &operator =(const LogItemB &c) {
+		ai = c.ai;
+		pwmOutput0 = c.pwmOutput0;
+		flags = c.flags;
+		desRoll = c.desRoll;
+		roll = c.roll;
+		magHdg = c.magHdg;
+		bankAngle = c.bankAngle;
+		magBank = c.magBank;
+		pwmOutput1 = pitch = desAlt = desPitch  = -1000;
+		return *this;
+	}
+};
+
+typedef LogItemC LogItem;	
 
 
 #ifdef UBUNTU
 void ESP32sim_convertLogOldToNew(ifstream &i, ofstream &o) {
-	LogItemOld l; 
+	LogItemB l; 
 	while (i.read((char *)&l, sizeof(l))) {
-		LogItemNew l2;
+		LogItemC l2;
 		bzero(&l2, sizeof(l2));
 		l2 = l;
 		o.write((char *)&l2, sizeof(l2));

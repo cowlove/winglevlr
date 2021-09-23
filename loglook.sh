@@ -75,31 +75,39 @@ while (( $# > 0 )); do
 	if [ "$1" == "-g5tas" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($24) ax x1y2 w l  tit "G5 TAS", '; fi
 	if [ "$1" == "-g5palt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($25) ax x1y2 w l  tit "G5 PALT", '; fi
 	if [ "$1" == "-g5ts" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($26) ax x1y2 w l  tit "G5 Timestamp", '; fi
-	if [ "$1" == "-servo0" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($27) ax x1y2 w l tit "Servo 0", '; fi
-	if [ "$1" == "-servo1" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($28) ax x1y2 w l tit "Servo 1", '; fi
-	if [ "$1" == "-flag" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($29) w l ax x1y2 tit "flags", '; fi	
-	if [ "$1" == "-desroll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($30) w l tit "Desired Roll", ' ; fi
-	if [ "$1" == "-roll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($31) w l  tit "Logged Roll", '; fi
-	if [ "$1" == "-maghdg" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($32) w l ax x1y2 tit "magHdg", '; fi
-	if [ "$1" == "-ba" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($33) w l ax x1y1 tit "bank angle", '; fi
-	if [ "$1" == "-magBank" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($34) w l ax x1y1 tit "magBank", '; fi
-	if [ "$1" == "-pitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35) w l ax x1y1 tit "logged pitch", '; fi
-	if [ "$1" == "-dalt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($36) w l ax x1y1 tit "des alt", '; fi
-	if [ "$1" == "-dpitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($37) w l ax x1y1 tit "des pitch", '; fi
-	if [ "$1" == "-aax" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($38) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-aay" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($39) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-aaz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($40) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-agx" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($41) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-agy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($42) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-agz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($43) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-amx" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($44) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-amy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($45) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-amz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($46) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-simlat" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($47) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-simlon" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($48) w l ax x1y1 tit "'$1'", '; fi
-	if [ "$1" == "-stickX" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($49) w l ax x1y2 tit "'$1'", '; fi
-	if [ "$1" == "-stickY" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($50) w l ax x1y2 tit "'$1'", '; fi
-	if [ "$1" == "-map" ]; then PS=$PS\ \"$F2\"' u 48:47 ax x2y2 w l tit "Ground Track", '; fi
+	
+	if [ "$1" == "-ubloxhdg" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($27) ax x1y2 w l  tit "G5 Timestamp", '; fi
+	if [ "$1" == "-ubloxha" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($28) ax x1y2 w l  tit "G5 Timestamp", '; fi
+	if [ "$1" == "-ubloxalt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($29) ax x1y2 w l  tit "G5 Timestamp", '; fi
+	if [ "$1" == "-ubloxgs" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($30) ax x1y2 w l  tit "G5 Timestamp", '; fi
+	
+	
+	
+	if [ "$1" == "-servo0" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($31) ax x1y2 w l tit "Servo 0", '; fi
+	if [ "$1" == "-servo1" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($32) ax x1y2 w l tit "Servo 1", '; fi
+	if [ "$1" == "-flag" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($33) w l ax x1y2 tit "flags", '; fi	
+	if [ "$1" == "-desroll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($34) w l tit "Desired Roll", ' ; fi
+	if [ "$1" == "-roll" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35) w l  tit "Logged Roll", '; fi
+	if [ "$1" == "-maghdg" ]; then PS=$PS\ \"$F2\"' u  ($1-F2_min_x):($36) w l ax x1y2 tit "magHdg", '; fi
+	if [ "$1" == "-ba" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($37) w l ax x1y1 tit "bank angle", '; fi
+	if [ "$1" == "-magBank" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($38) w l ax x1y1 tit "magBank", '; fi
+	if [ "$1" == "-pitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($39) w l ax x1y1 tit "logged pitch", '; fi
+	if [ "$1" == "-dalt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($40) w l ax x1y1 tit "des alt", '; fi
+	if [ "$1" == "-dpitch" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($41) w l ax x1y1 tit "des pitch", '; fi
+	if [ "$1" == "-aax" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($42) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-aay" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($43) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-aaz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($44) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-agx" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($45) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-agy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($46) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-agz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($47) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-amx" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($48) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-amy" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($49) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-amz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($50) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-simlat" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($51) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-simlon" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($52) w l ax x1y1 tit "'$1'", '; fi
+	if [ "$1" == "-stickX" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($53) w l ax x1y2 tit "'$1'", '; fi
+	if [ "$1" == "-stickY" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($54) w l ax x1y2 tit "'$1'", '; fi
+	if [ "$1" == "-map" ]; then PS=$PS\ \"$F2\"' u 52:51 ax x2y2 w l tit "Ground Track", '; fi
 	if [ "$1" == "-magplot" ]; then PS=$PS\ \"$F2\"' u 13:14 w p tit "Mag Plot", '; fi
 	if [ "$1" == "-pitcherr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($35-$20) w l ax x1y1 tit "Pitch Error", '; fi
 	if [ "$1" == "-rollerr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($31-$21) w l ax x1y1 tit "Roll Error", '; fi
