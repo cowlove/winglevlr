@@ -1174,7 +1174,6 @@ void loop() {
 				stick.first, stick.second) << endl;
 		}
 #endif
-		logItem.flags = 0;
 		lastAhrsInput = ahrsInput;
 	}
 
@@ -1218,10 +1217,7 @@ void loop() {
 	if (logFile != NULL) {
 		sdLog();
 	}
-	
-	// Use onboard LED to indicate active logging 
-	//pinMode(pins.led, OUTPUT);
-	//digitalWrite(pins.led, logFile == NULL);
+	logItem.flags = 0;
 	firstLoop = false;
 }
 
@@ -1368,7 +1364,7 @@ public:
 			if ((l.flags & LogFlags::g5Ins) || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch) { 
 				ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
 			}
-			if (l.flags & LogFlags::ublox) { 
+			if ((l.flags & LogFlags::ublox) || (l.ai.ubloxHdg != ahrsInput.ubloxHdg)) { 
 				ublox.myGNSS.hdg = l.ai.ubloxHdg * 100000.0;
 				ublox.myGNSS.hac = l.ai.ubloxHdgAcc * 100000.0;
 				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0;
