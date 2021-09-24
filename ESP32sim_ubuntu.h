@@ -501,7 +501,7 @@ struct RTC_DS3231 {
 };
 
 #define COM_TYPE_UBX 0
-class SFE_UBLOX_GNSS {
+class SFE_UBLOX_GPS {
 public:
 	float lat, lon, hdg, hac, gs, siv, alt;
 	bool fresh = false; 

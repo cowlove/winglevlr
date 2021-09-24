@@ -11,7 +11,8 @@
 #include <soc/rtc_cntl_reg.h>
 #include <rom/rtc.h>
 #include <MPU9250_asukiaaa.h>
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h> 
+//#include <SparkFun_u-blox_GNSS_Arduino_Library.h> 
+#include <SparkFun_Ublox_Arduino_Library.h>
 #endif // #else // UBUNTU
 
 #include <TinyGPS++.h>
@@ -90,7 +91,7 @@ MPU9250_asukiaaa *imu = NULL;
 
 class UbloxGPS {
 public: 
-	SFE_UBLOX_GNSS myGNSS;
+	SFE_UBLOX_GPS myGNSS;
 	int gpsGood = 0;
 	void init() {
 		Serial.printf("Trying 115K BPS...\n");
@@ -483,8 +484,8 @@ void setup() {
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
 	ed.maxb.setValue(12);
-	ed.tttt.setValue(20); // seconds to make each test turn 
-	ed.ttlt.setValue(15); // seconds betweeen test turn, ordegrees per turn   
+	ed.tttt.setValue(60); // seconds to make each test turn 
+	ed.ttlt.setValue(75); // seconds betweeen test turn, ordegrees per turn   
 	//ed.tzer.setValue(1000);
 	ed.pidsel.setValue(1);
 	ed.dtrk.setValue(desiredTrk);
