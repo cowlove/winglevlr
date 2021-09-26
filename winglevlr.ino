@@ -1375,11 +1375,14 @@ public:
 				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0;
 				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 0.51444 * 1000;
 				
+#ifdef UBUNTU
 				// TMP hack: make up for incorrectly logged ublox grounspeed
 				// *********************************************************
 				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 1000;
+				assert(l.ai.ubloxGroundSpeed < 75);
 				// *********************************************************
-				
+#endif
+
 				ublox.myGNSS.fresh = true;
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 

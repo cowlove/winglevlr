@@ -264,9 +264,9 @@ public:
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 1.10;
 	float debugVar = 1.0;
-	float gXdecelCorrelation = 0.85;
-	float compRatioPitch = 0.00152;
-	float pitchOffset = -1.2;
+	float gXdecelCorrelation = 2.0;
+	float compRatioPitch = 0.010;
+	float pitchOffset = -2.85; 	
 	float pitchRaw =0;
 	
 	RollAHRS() { 
@@ -298,7 +298,7 @@ public:
 	RollingLeastSquares // all at about 200 HZ */
 		gyroDriftFit = RollingLeastSquares(300), // 10HZ 
 		magHdgFit = RollingLeastSquares(50), // 10Hz
-		gSpeedFit = RollingLeastSquares(50); // 10Hz
+		gSpeedFit = RollingLeastSquares(25); // 50Hz
 
 	RollingAverage<float,200> magStabFit;
 	RollingAverage<float,50> avgRoll;
@@ -345,6 +345,7 @@ public:
 			dt = min((float).1, l.sec - prev.sec);
 		
 		bool tick10HZ = (floor(l.sec / .1) != floor(prev.sec / .1));
+		bool tick50HZ = (floor(l.sec / .02) != floor(prev.sec / .02));
 
 		zeroAverages.ax.add(l.ax);
 		zeroAverages.ay.add(l.ay);
@@ -410,7 +411,7 @@ public:
 				}
 			}
 		}
-		if (tick10HZ) { 
+		if (tick50HZ) { 
 			gyroZeroCount.add(zeroSampleCount);
 			gSpeedFit.add(l.sec, l.ubloxGroundSpeed);
 			zeroSampleCount = 0;
@@ -505,8 +506,12 @@ public:
 		accelPitch = -RAD2DEG(atan2(cos(rollRad) * avgAY.average() - sin(rollRad) * avgAX.average(), avgAZ.average()));
 		//accelPitch = 0;
 		//accelRoll = 0;
-
-		float pG = cos(rollRad) * l.gx - debugVar * sin(rollRad) * l.gz  - speedDelta * gXdecelCorrelation;
+		
+		double decelAng = RAD2DEG(atan2(speedDelta * 0.51444, 9.8)) * gXdecelCorrelation;
+		decelAng = min(8.0, max(-8.0, decelAng));
+		accelPitch -= decelAng; 
+		
+		float pG = cos(rollRad) * l.gx - debugVar * sin(rollRad) * l.gz;//  - speedDelta * gXdecelCorrelation;
 		pitchRaw = (pitchRaw + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioPitch) + (accelPitch * compRatioPitch);
 
 		pitch = pitchRaw + pitchOffset - /*HACK*/(sin(abs(2.2 * rollRad)) * pitchRaw);

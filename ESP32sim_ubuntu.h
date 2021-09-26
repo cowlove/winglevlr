@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string>
 #include <stdio.h>
+#include <assert.h>
 #include <math.h>
 #include <stdarg.h>
 #include <iostream>

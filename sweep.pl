@@ -2,7 +2,7 @@
 
 # time ./sweep.pl NUM=107 sweep.txt 
 $exhaustive = 1;
-$zoom = 2;
+$zoom = 10;
 $goal = 0.001;
 if ( $ARGV[0] =~ /(\d+)/i ) {
 	$num = $1;  # Allow NUM= to be overriden on the command line
@@ -80,9 +80,10 @@ sub process {
 }
 
 $round = 1;	
+$bestCmd = "";
+
 while(1) { 
 	if ($exhaustive) { 
-		$bestCmd = "";
 		process("", 0);
 		foreach $p (@params) {
 			$mid{$p} = $bestParamValues{$p};
@@ -91,6 +92,7 @@ while(1) {
 
 		if (abs($bestScore - $lastRoundBest) < $goal) { 
 			print "Met goal, quitting.\n";
+			print "Result: $bestScore\tTotal simulations: $totalRuns\n$bestCmd\n\n";
 			last;
 		}
 		$lastRoundBest = $bestScore;
