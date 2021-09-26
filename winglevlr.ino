@@ -125,7 +125,7 @@ public:
 			lat = myGNSS.getLatitude() / 10000000.0;
 			alt = myGNSS.getAltitudeMSL() / 1000.0;
 			hac = myGNSS.getHeadingAccEst() / 100000.0;
-			gs = myGNSS.getGroundSpeed() / 1000.0;
+			gs = myGNSS.getGroundSpeed() / 1000.0 / 0.51444;
 			siv = myGNSS.getSIV();
 			//Serial.printf("GPS: %+09.4f, %+09.4f %+05.1f %02d\n", lat, lon, hdg, siv);
 			return true;
@@ -1245,7 +1245,7 @@ public:
 	RollingAverage<float,30> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
-	float speed = 105;
+	float speed = 80;
 	WaypointNav::LatLonAlt curPos;
 	std::queue<float> gxDelay, pitchDelay;
 	
@@ -1257,6 +1257,7 @@ public:
 		// main loop code to make sure things work. 
 		hdgPID.finalGain = 0.5;
 		stickTrimY = stickTrimX = 0;
+		ahrs.gyrOffZ = 1;
 
 		_micros = (_micros + 5000);
 		_micros -= (_micros % 5000);
@@ -1285,7 +1286,7 @@ public:
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm[0], track, desRoll, bank, imu->gy);
 		}		
-		imu->gz = ahrs.gyrOffZ + tan(bank * M_PI/180) / 100 * 1091;
+		imu->gz = ahrs.gyrOffZ + tan(bank * M_PI/180) / speed * 1091;
 		imu->gz *= -1;
 
 		uint64_t now = millis();
@@ -1372,7 +1373,7 @@ public:
 				ublox.myGNSS.hdg = magToTrue(l.ai.ubloxHdg) * 100000.0;
 				ublox.myGNSS.hac = l.ai.ubloxHdgAcc * 100000.0;
 				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0;
-				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 1000.0;
+				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 0.51444 * 1000;
 				ublox.myGNSS.fresh = true;
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
@@ -1427,13 +1428,13 @@ public:
 			s.alt = curPos.alt;
 			s.track = t1;
 			s.vvel = 0;
-			s.hvel = 105;
+			s.hvel = speed;
 			s.palt = (s.alt + 1000) / 25;
 
 			ublox.myGNSS.hdg = t1 * 100000.0;
 			ublox.myGNSS.hac = 5;
 			ublox.myGNSS.alt = curPos.alt * 1000.0;
-			ublox.myGNSS.gs =  53 * 1000.0;
+			ublox.myGNSS.gs =  s.hvel * 0.51444 * 1000.0;
 			ublox.myGNSS.fresh = true;
 
 
@@ -1590,7 +1591,6 @@ public:
 				apMode = 3;
 				hdgSelect = 0;
 			}
-
 		} else {
 			if (firstLoop == true) { 
 				ifile = ifstream(replayFile, ios_base::in | ios::binary);
