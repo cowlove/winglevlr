@@ -189,7 +189,7 @@ namespace WaypointNav {
     public: 
         LatLonAlt curPos;
         int wayPointCount = 0;
-        LatLonAlt activeWaypoint, startWaypoint;
+        LatLonAlt startWaypoint, activeWaypoint, nextWaypoint;
         bool waypointPassed;
         float speed; // knots 
         float vvel;  // fpm
@@ -209,6 +209,7 @@ namespace WaypointNav {
             lastVd = vd;
         }
 
+        float nextTurnLead = 0;
         void run(float sec) { 
             float distToWaypoint = 0;
             if (!curPos.valid)
@@ -217,15 +218,12 @@ namespace WaypointNav {
             if (activeWaypoint.valid && !waypointPassed) {
                 steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
                 distToWaypoint = abs(distance(curPos.loc, activeWaypoint.loc));
-                float turnRad = speed * speed / 11.26 / tan(DEG2RAD(12)) / 3.328;
-                //turnRad = 500;
-                if (distToWaypoint < turnRad) { 
+                if (distToWaypoint < nextTurnLead) { 
                     waypointPassed = true;
                 }
                 lastDistToWaypoint = distToWaypoint;
                 float legDist = abs(distance(activeWaypoint.loc, startWaypoint.loc));
                 commandAlt = (activeWaypoint.alt - startWaypoint.alt) * (1 - distToWaypoint / legDist) + startWaypoint.alt;
-
             }
             float distTravelled = speed * .51444 * sec;
             
@@ -243,19 +241,34 @@ namespace WaypointNav {
 
         std::function<float(float)> onSteer = [](float steer){ return steer; };
 
+        // Set *next* waypoint. 
         void setWaypoint(const LatLonAlt &p) {
             if (activeWaypoint.valid) {
                 startWaypoint = activeWaypoint;
             } else { 
                 startWaypoint = curPos;
             }
-            activeWaypoint = p;
+            activeWaypoint = nextWaypoint;
+            nextWaypoint = p;
             waypointPassed = false;
             wayPointCount++;
             if (wayPointCount == 1 && curPos.valid == false) { // first waypoint, initial position
                 curPos = activeWaypoint;
                 waypointPassed = true;
             } 
+            if (activeWaypoint.valid == false) {
+                waypointPassed = true;
+            }
+
+            if (startWaypoint.valid && activeWaypoint.valid && nextWaypoint.valid) { 
+                float turnRad = speed * speed / 11.26 / tan(DEG2RAD(12/*bank angle*/)) / 3.328;
+                nextTurnLead = turnRad * tan(DEG2RAD(bearing(startWaypoint.loc, activeWaypoint.loc)  
+                    - bearing(activeWaypoint.loc, nextWaypoint.loc)) * 2);
+                nextTurnLead = max((float)1000.0, nextTurnLead);
+            } else { 
+                nextTurnLead = 100;
+            }
+
             corrV = corrH = 0;
         }
     };
@@ -315,7 +328,7 @@ namespace WaypointNav {
                 } else if (sscanf(s.c_str(), "%lf, %lf %lf", &lat, &lon, &alt) == 3) 
                     wptTracker.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
                 else if (sscanf(s.c_str(), "%lf, %lf", &lat, &lon) == 2) 
-                    wptTracker.setWaypoint(LatLonAlt(lat, lon, wptTracker.activeWaypoint.alt));
+                    wptTracker.setWaypoint(LatLonAlt(lat, lon, wptTracker.nextWaypoint.alt));
             }	
         }
     };
