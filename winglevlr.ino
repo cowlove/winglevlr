@@ -135,7 +135,7 @@ public:
 } ublox; 
 
 
-float stickTrimY = 0.20, stickTrimX = 0.10;
+float stickTrimY = 0.00, stickTrimX = 0.10;
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
@@ -155,9 +155,10 @@ void halInit() {
 		}
 		Serial.println("Older TTGO-TS board, changing pin assignments, IMU likely oriented wrong");
 		pins.sda = 19;
-		pins.scl = 22;
+		pins.scl = 18;
 		pins.midButton = 34;
 		pins.topButton = 35;
+		//pins.knobButton = 32;
 		//pins.servo_enable = 36;
 		//pins.led = 21; // dont know 
 		// TODO: IMU is inverted on these boards 
@@ -558,7 +559,7 @@ static EggTimer serialReportTimer(200), hz5(200), loopTimer(5), buttonCheckTimer
 static int armServo = 0;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 0; //  0 use fusion magHdg 
+static int hdgSelect = 3; //  0 use fusion magHdg 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 struct {
@@ -1158,8 +1159,8 @@ void loop() {
 
 		totalError.roll += abs(roll + ahrsInput.g5Roll);
 		totalError.rollSum += roll + ahrsInput.g5Roll;
-		totalError.hdg += abs(angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
-		totalError.hdgSum += (angularDiff(ahrs.magHdg - ahrsInput.g5Hdg));
+		totalError.hdg += abs(angularDiff(ahrs.magHdg - ahrsInput.ubloxHdg));
+		totalError.hdgSum += (angularDiff(ahrs.magHdg - ahrsInput.ubloxHdg));
 		totalError.pitch += abs(pitch - ahrsInput.g5Pitch);
 		totalError.pitchSum += (pitch - ahrsInput.g5Pitch);
 	
@@ -1429,6 +1430,13 @@ public:
 			s.hvel = 105;
 			s.palt = (s.alt + 1000) / 25;
 
+			ublox.myGNSS.hdg = t1 * 100000.0;
+			ublox.myGNSS.hac = 5;
+			ublox.myGNSS.alt = curPos.alt * 1000.0;
+			ublox.myGNSS.gs =  53 * 1000.0;
+			ublox.myGNSS.fresh = true;
+
+
 			WiFiUDP::InputData buf;
 			buf.resize(128);
 			int n = gdl90.packMsg11(buf.data(), buf.size(), s);
@@ -1464,6 +1472,20 @@ public:
 			sscanf(*(++a), "%lf,%lf,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track); 
 			gdl90State.lat = curPos.loc.lat; gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data 
 
+		} else if (strcmp(*a, "--plotcourse") == 0) {
+			float hdg, dist, alt, repeat;
+			sscanf(*(++a), "%f", &repeat);
+			char **fa = a;
+			while(repeat-- > 0) {
+				a = fa;
+				while(sscanf(*(++a), "%f,%f,%f", &hdg, &dist, &alt) == 3) {
+					track += hdg;
+					curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, track, dist);
+					curPos.alt += alt;
+					printf("%+011.8f, %+011.8f %05f\n", curPos.loc.lat, curPos.loc.lon, curPos.alt);		
+				} 
+			}
+			exit(0);
 		} else if (strcmp(*a, "--tracksim") == 0) {
 				wpFile = *(++a);
 		} else if (strcmp(*a, "--button") == 0) {
@@ -1566,6 +1588,7 @@ public:
 			if (at(5.0) && wpFile.length()) {
 				wpNav = new WaypointsSequencerFile(wpFile.c_str());
 				apMode = 3;
+				hdgSelect = 0;
 			}
 
 		} else {

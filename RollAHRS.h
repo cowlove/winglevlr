@@ -238,9 +238,9 @@ public:
 	}
 	MultiCompFilter mComp;
 	
-	float magOffX = 0;
-	float magOffY = 55;
-	float magOffZ = -30;
+	float magOffX = 35.6;
+	float magOffY = 40.12;
+	float magOffZ = -50;
 
 	
 	float magScaleX = 1.0;
@@ -249,24 +249,24 @@ public:
 	
 	float gyrOffX = -1.147; 
 	float gyrOffY = -0.189; 
-	float gyrOffZ = +0.989;
+	float gyrOffZ = -0.208;
 		  
 	float accOffX = +0,
 		  accOffY = -0,
 		  accOffZ = -0;
 
 	float compRatio1 = 0.00072;  // roll comp filter ratio 
-	float compRatioPitch = 0.01428;
-	float pitchOffset = -1.47;
 	float rollOffset = +3.8;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
-	float hdgCompRatio = .000472;  // composite filter ratio for hdg 
+	float hdgCompRatio = .0000720;  // composite filter ratio for hdg 
 	float magDipConstant = 2.11; // unexplained correction factor for bank angle in dip calcs
 	float magBankTrimCr = 0.00005;
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 0.92;
 	float debugVar = 1.0;
-	float gXdecelCorrelation = 1.08;
+	float gXdecelCorrelation = 1.737;
+	float compRatioPitch = 0.00153;
+	float pitchOffset = -1.252;
 	float pitchRaw =0;
 	
 	RollAHRS() { 
@@ -412,7 +412,7 @@ public:
 		}
 		if (tick10HZ) { 
 			gyroZeroCount.add(zeroSampleCount);
-			gSpeedFit.add(l.sec, l.gspeed);
+			gSpeedFit.add(l.sec, l.ubloxGroundSpeed);
 			zeroSampleCount = 0;
 		}
 					
