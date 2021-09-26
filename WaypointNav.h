@@ -57,6 +57,13 @@ namespace WaypointNav {
         return c * R;
     }
 
+    double crossTrackErr(LatLon start, LatLon end, LatLon pos) { 
+        double a = bearing(start, end);
+        double b = bearing(start, pos);
+        return sin(DEG2RAD(a - b)) * distance(start, pos);
+    }
+
+
     LatLon locationBearingDistance(LatLon p, double brng, double d) { 
         p = p.toRadians();
         brng *= M_PI/180;
@@ -191,6 +198,7 @@ namespace WaypointNav {
         float corrH = 0, corrV = 0;
         float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
         float lastDistToWaypoint;
+        float xte = 0;
 
         void setCDI(float hd, float vd, float decisionHeight) {
             float gain = min(1.0, curPos.alt / 200.0);
@@ -209,8 +217,11 @@ namespace WaypointNav {
             if (activeWaypoint.valid && !waypointPassed) {
                 steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
                 distToWaypoint = abs(distance(curPos.loc, activeWaypoint.loc));
-                if (distToWaypoint < 2000 && distToWaypoint > lastDistToWaypoint) 
+                float turnRad = speed * speed / 11.26 / tan(DEG2RAD(12)) / 3.328;
+                //turnRad = 500;
+                if (distToWaypoint < turnRad) { 
                     waypointPassed = true;
+                }
                 lastDistToWaypoint = distToWaypoint;
                 float legDist = abs(distance(activeWaypoint.loc, startWaypoint.loc));
                 commandAlt = (activeWaypoint.alt - startWaypoint.alt) * (1 - distToWaypoint / legDist) + startWaypoint.alt;
@@ -224,21 +235,27 @@ namespace WaypointNav {
             commandTrack = onSteer(steerHdg);
             LatLon newPos = locationBearingDistance(curPos.loc, commandTrack, distTravelled);
             curPos = LatLonAlt(newPos, commandAlt);
-            if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90)
+            xte = crossTrackErr(startWaypoint.loc, activeWaypoint.loc, curPos.loc);
+            if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90) {
                 waypointPassed = true;
+            }
         }	
 
         std::function<float(float)> onSteer = [](float steer){ return steer; };
 
         void setWaypoint(const LatLonAlt &p) {
+            if (activeWaypoint.valid) {
+                startWaypoint = activeWaypoint;
+            } else { 
+                startWaypoint = curPos;
+            }
             activeWaypoint = p;
             waypointPassed = false;
             wayPointCount++;
             if (wayPointCount == 1 && curPos.valid == false) { // first waypoint, initial position
                 curPos = activeWaypoint;
                 waypointPassed = true;
-            }
-            startWaypoint = curPos;
+            } 
             corrV = corrH = 0;
         }
     };

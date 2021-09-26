@@ -263,9 +263,9 @@ public:
 	float magBankTrimCr = 0.00005;
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 1.10;
-	float debugVar = 1.0;
-	float gXdecelCorrelation = 2.0;
-	float compRatioPitch = 0.010;
+	float debugVar = 0.3;
+	float gXdecelCorrelation = 1.95;
+	float compRatioPitch = 0.012;
 	float pitchOffset = -2.85; 	
 	float pitchRaw =0;
 	
@@ -500,7 +500,6 @@ public:
 		prev = l;
 		
 		speedDelta = gSpeedFit.slope() * 0.51444;
-
 		accelRoll = RAD2DEG(atan2(avgAX.average(), avgAZ.average()));
 		rollRad = DEG2RAD(avgRoll.average() + accelRoll);
 		accelPitch = -RAD2DEG(atan2(cos(rollRad) * avgAY.average() - sin(rollRad) * avgAX.average(), avgAZ.average()));
@@ -511,10 +510,10 @@ public:
 		decelAng = min(8.0, max(-8.0, decelAng));
 		accelPitch -= decelAng; 
 		
-		float pG = cos(rollRad) * l.gx - debugVar * sin(rollRad) * l.gz;//  - speedDelta * gXdecelCorrelation;
+		float pG = cos(rollRad) * l.gx - sin(rollRad) * l.gz;//  - speedDelta * gXdecelCorrelation;
 		pitchRaw = (pitchRaw + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioPitch) + (accelPitch * compRatioPitch);
 
-		pitch = pitchRaw + pitchOffset - /*HACK*/(sin(abs(2.2 * rollRad)) * pitchRaw);
+		pitch = pitchRaw + pitchOffset - /*HACK*/debugVar * (sin(abs(2.2 * rollRad)) * pitchRaw);
 	 	pitch = isnan(pitch) ? 0 : pitch;
 	 	pitch = isinf(pitch) ? 0 : pitch;
 

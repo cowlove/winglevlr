@@ -1031,14 +1031,28 @@ void loop() {
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
 
 		if (apMode == 3 && wpNav != NULL) {
-			wpNav->wptTracker.curPos.loc.lat = gdl90State.lat;
-			wpNav->wptTracker.curPos.loc.lon = gdl90State.lon;
-			wpNav->wptTracker.curPos.alt = gdl90State.alt;
-			wpNav->wptTracker.speed = ahrsInput.gspeed;
+			wpNav->wptTracker.curPos.loc.lat = ublox.lat;
+			wpNav->wptTracker.curPos.loc.lon = ublox.lon;
+			wpNav->wptTracker.curPos.alt = ublox.alt;
+			wpNav->wptTracker.speed = ublox.gs;
 			wpNav->wptTracker.curPos.valid = true;
 			wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
-			setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack));
+			if (tick1HZ) {
+				crossTrackError.add(wpNav->wptTracker.xte * .0005);
+			}
+			xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+			xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+			setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
 			ed.desAlt.value = wpNav->wptTracker.commandAlt * 3.2808;
+			ahrsInput.dtk = desiredTrk;
+
+		} else if (apMode == 4) {
+			xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+			xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+			setDesiredTrk(navDTK + xteCorrection);
+			ahrsInput.dtk = desiredTrk;
+		} else { 
+			xteCorrection = 0;
 		}
 		
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
@@ -1075,16 +1089,9 @@ void loop() {
 		else if (hdgSelect == 2) ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
 		else if (hdgSelect == 3) ahrsInput.selTrack = ahrs.magHdg;
 		
+		// TODO:  it seems hdgPID was tuned for 20Hz.   Accidently moved into 5hz loop? 
 		if (hz5.tick()) {
 			if (ahrsInput.dtk != -1) { 
-				if (apMode == 4) {
-					xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
-					xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
-					setDesiredTrk(navDTK + xteCorrection);
-					ahrsInput.dtk = desiredTrk;
-				} else { 
-					xteCorrection = 0;
-				}
 				double hdgErr = 0;
 				if (ahrs.valid() != false && ahrsInput.selTrack != -1) { 
 					hdgErr = angularDiff(ahrsInput.selTrack - ahrsInput.dtk);
@@ -1101,12 +1108,16 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 	float altErr = (apMode == 3 && ed.desAlt.value != -1000) ? ed.desAlt.value - ahrsInput.alt: 0;	
-			altPID.add(altErr, altErr, ahrsInput.sec);
+		 	if ((apMode == 3 && ed.desAlt.value != -1000)) { 
+				float altErr = ed.desAlt.value - ahrsInput.alt;	
+				altPID.add(altErr, altErr, ahrsInput.sec);
+			} else { 
+				altPID.reset();
+			}
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		float altCorr = max(min(altPID.corr * 0.01, 5.0), -5.0);
+		float altCorr = max(min(altPID.corr * 0.01, 2.0), -2.0);
 		desPitch = ed.pitchTrim.value + altCorr;
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
@@ -1292,7 +1303,7 @@ public:
 		uint64_t now = millis();
 		const float bper = .04;
 		if (floor(lastMillis * bper) != floor(now * bper)) { // 10hz
-			track += (tan((bank + ahrs.rollOffset) * M_PI / 180) * 9.8 / 40 * 25) * bper * 1.0;
+			track += (tan(((bank + ahrs.rollOffset)) * M_PI / 180) * 9.8 / 40 * 25) * bper * 2.5;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
 			set_gpsTrack(track);
@@ -1443,6 +1454,8 @@ public:
 			ublox.myGNSS.hdg = t1 * 100000.0;
 			ublox.myGNSS.hac = 5;
 			ublox.myGNSS.alt = curPos.alt * 1000.0;
+			ublox.myGNSS.lat = curPos.loc.lat * 10000000;
+			ublox.myGNSS.lon = curPos.loc.lon * 10000000;
 			ublox.myGNSS.gs =  s.hvel * 0.51444 * 1000.0;
 			ublox.myGNSS.fresh = true;
 
@@ -1479,7 +1492,7 @@ public:
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));
 		} else if (strcmp(*a, "--startpos") == 0) {
-			sscanf(*(++a), "%lf,%lf,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track); 
+			sscanf(*(++a), "%lf,%lf,%f,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track, &speed); 
 			gdl90State.lat = curPos.loc.lat; gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data 
 
 		} else if (strcmp(*a, "--plotcourse") == 0) {
