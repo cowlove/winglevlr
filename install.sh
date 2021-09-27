@@ -1,4 +1,11 @@
 #!/bin/bash
+# on host machine:
+# sudo apt-get install vagrant apt-cacher-ng
+# vagrant init hashicorp/bionic64
+# vagrant up
+# vagrant ssh -c "curl -fsSL https://raw.githubusercontent.com/cowlove/winglevlr/master/install.sh | sh -x"
+
+# TODO: check if proxy is up/exists
 echo 'Acquire::http { Proxy "http://10.0.2.2:3142"; };' | sudo tee /etc/apt/apt.conf.d/01proxy
 
 sudo apt-get update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade
@@ -7,7 +14,7 @@ sudo apt-get install -y arduino git build-essential python-serial bash-completio
 mkdir -p ~/bin
 curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 
-export PATH=$PATH:~/bin
+export PATH=$PATH:${HOME}/bin
 
 arduino-cli config init 
 sed -i 's|additional_urls: \[\]|additional_urls: \[https://dl.espressif.com/dl/package_esp32_index.json,http://arduino.esp8266.com/stable/package_esp8266com_index.json\]|' ~/.arduino15/arduino-cli.yaml 
