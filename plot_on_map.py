@@ -5,6 +5,12 @@
 
 import gmplot
 import re 
+import sys
+
+filePlog = "./out.plog" if len(sys.argv) < 2 else sys.argv[1]
+fileWpts = "./wpts.txt" if len(sys.argv) < 3 else sys.argv[2]
+
+
 
 apikey = 'AIzaSyC4_GZpzLJsbb_XgHka26mQQTa-QaO9d3w'
 gmap = gmplot.GoogleMapPlotter(47.456185024831434, -122.4923591060998, 13, apikey=apikey)
@@ -13,10 +19,9 @@ track = []
 waypoints = []
 lcount = 0
 
-with open('./out.plog') as f:
+with open(filePlog) as f:
     line = f.readline()
     while line:
-        line = f.readline()
         lcount += 1
         if (lcount % 100 == 0):           
             words = re.split("\s+", line)
@@ -24,17 +29,19 @@ with open('./out.plog') as f:
                 lat = float(words[50])
                 lon = float(words[51])
                 track.append((lat, lon))
+        line = f.readline()
 
 
-with open('./wpts.txt') as f:
+with open(fileWpts) as f:
     line = f.readline()
     while line:
-        line = f.readline()
         m = re.match("\s*([\d.+-]+)\s*,\s*([\d.+-]+)", line)            
         if (m):
             waypoints.append((float(m.group(1)), float(m.group(2))))
-
-waypoints.append(waypoints[0])
+        line = f.readline()
+    
+if (len(waypoints) > 0):
+    waypoints.append(waypoints[0])
 
 gmap.plot(*zip(*waypoints), edge_width=8, color='green')
 gmap.plot(*zip(*track), edge_width=2, color='red')
