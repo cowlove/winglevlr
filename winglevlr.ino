@@ -1017,12 +1017,12 @@ void loop() {
 
 	if (ublox.check()) { 
 		logItem.flags |= LogFlags::ublox;
-		ahrsInput.ubloxHdg = ublox.hdg;
+		ahrsInput.ubloxHdg = trueToMag(ublox.hdg);
 		ahrsInput.ubloxHdgAcc = ublox.hac;
 		ahrsInput.ubloxAlt = ublox.alt;
 		ahrsInput.ubloxGroundSpeed = ublox.gs;
 		if (ublox.hac < 7) {
-			ahrs.mComp.addAux(ublox.hdg, 10, ubloxHdgCr);
+			ahrs.mComp.addAux(ahrsInput.ubloxHdg, 10, ubloxHdgCr);
 		}
 	}
 
@@ -1381,7 +1381,7 @@ public:
 				ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
 			}
 			if ((l.flags & LogFlags::ublox) || (l.ai.ubloxHdg != ahrsInput.ubloxHdg)) { 
-				ublox.myGNSS.hdg = l.ai.ubloxHdg * 100000.0;
+				ublox.myGNSS.hdg = magToTrue(l.ai.ubloxHdg) * 100000.0;
 				ublox.myGNSS.hac = l.ai.ubloxHdgAcc * 100000.0;
 				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0;
 				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 0.51444 * 1000;
