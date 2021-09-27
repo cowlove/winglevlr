@@ -1,13 +1,10 @@
 #!/bin/bash
-vagrant ssh apt-get update
-vagrant ssh apt-get install -y git
-vagrant ssh git clone https://github.com/cowlove/winglevlr.git
-vagrant ssh ~/winglevlr/setupVag.sh
-
+echo 'Acquire::http { Proxy "http://10.0.2.2:3142"; };' | sudo tee /etc/apt/apt.conf.d/01proxy
 
 sudo apt-get update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade
 sudo apt-get install -y arduino git build-essential python-serial bash-completion gnuplot
 
+mkdir -p ~/bin
 curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 
 export PATH=$PATH:~/bin
@@ -21,6 +18,7 @@ arduino-cli lib install "Adafruit GFX Library"
 arduino-cli lib install "Adafruit ST7735 and ST7789 Library"
 arduino-cli lib install OneWireNg
 arduino-cli lib uninstall SD
+mkdir -p ~/Arduino/libraries
 cd ~/Arduino/libraries 
 git clone https://github.com/plerup/makeEspArduino.git
 git clone https://github.com/nhatuan84/esp32-micro-sdcard.git
