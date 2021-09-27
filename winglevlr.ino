@@ -201,7 +201,7 @@ void halInit() {
 	ublox.init();
 }
 
-
+float ubloxHdgCr = 0.0023;
 
 DigitalButton buttonTop(pins.topButton); // top
 DigitalButton buttonMid(pins.midButton); // middle
@@ -1022,7 +1022,7 @@ void loop() {
 		ahrsInput.ubloxAlt = ublox.alt;
 		ahrsInput.ubloxGroundSpeed = ublox.gs;
 		if (ublox.hac < 7) {
-			ahrs.mComp.addAux(ublox.hdg, 1, .02);
+			ahrs.mComp.addAux(ublox.hdg, 10, ubloxHdgCr);
 		}
 	}
 
@@ -1559,6 +1559,7 @@ public:
 				else if (sscanf(it->c_str(), "ahrs.useauxmpu=%f", &v) == 1) { ESP32csim_useAuxMpu = v; } 
 				else if (sscanf(it->c_str(), "ahrs.gxdecel=%f", &v) == 1) { ahrs.gXdecelCorrelation = v; } 
 				else if (sscanf(it->c_str(), "ahrs.bankanglescale=%f", &v) == 1) { ahrs.bankAngleScale = v; }
+				else if (sscanf(it->c_str(), "ubloxcr=%f", &v) == 1) { ubloxHdgCr = v; }
 				else if (strlen(it->c_str()) > 0) { 
 					printf("Unknown debug parameter '%s'\n", it->c_str()); 
 					exit(-1);

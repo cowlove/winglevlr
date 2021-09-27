@@ -2,7 +2,7 @@
 
 # time ./sweep.pl NUM=107 sweep.txt 
 $exhaustive = 1;
-$zoom = 10;
+$zoom = 2;
 $goal = 0.001;
 if ( $ARGV[0] =~ /(\d+)/i ) {
 	$num = $1;  # Allow NUM= to be overriden on the command line
