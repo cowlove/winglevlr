@@ -264,7 +264,7 @@ public:
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 1.10;
 	float debugVar = 0.3;
-	float gXdecelCorrelation = 1.95;
+	float gXdecelCorrelation = 1.003;
 	float compRatioPitch = 0.012;
 	float pitchOffset = -2.85; 	
 	float pitchRaw =0;
@@ -472,7 +472,7 @@ public:
 		//accelPitch = 0;
 		//accelRoll = 0;
 		
-		double decelAng = RAD2DEG(atan2(speedDelta * 0.51444, 9.8)) * gXdecelCorrelation;
+		double decelAng = RAD2DEG(atan2(speedDelta, 9.8)) * gXdecelCorrelation;
 		decelAng = min(8.0, max(-8.0, decelAng));
 		accelPitch -= decelAng; 
 		
