@@ -197,7 +197,6 @@ namespace WaypointNav {
         float lastHd, lastVd;
         float corrH = 0, corrV = 0;
         float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
-        float lastDistToWaypoint;
         float xte = 0;
 
         void setCDI(float hd, float vd, float decisionHeight) {
@@ -214,30 +213,36 @@ namespace WaypointNav {
             float distToWaypoint = 0;
             if (!curPos.valid)
                 return;
-            commandAlt = curPos.alt;
             if (activeWaypoint.valid && !waypointPassed) {
                 steerHdg = bearing(curPos.loc, activeWaypoint.loc) + hWiggle;
                 distToWaypoint = abs(distance(curPos.loc, activeWaypoint.loc));
                 if (distToWaypoint < nextTurnLead) { 
                     waypointPassed = true;
                 }
-                lastDistToWaypoint = distToWaypoint;
                 float legDist = abs(distance(activeWaypoint.loc, startWaypoint.loc));
-                commandAlt = (activeWaypoint.alt - startWaypoint.alt) * (1 - distToWaypoint / legDist) + startWaypoint.alt;
+                // TODO - implement gradual alt transitions 
+                //commandAlt = (activeWaypoint.alt - startWaypoint.alt) * min((float)1.0, max((float)0.0,(1 - distToWaypoint / legDist))) + startWaypoint.alt;
+                commandAlt = activeWaypoint.alt;
+            } else { 
+                //commandAlt = curPos.alt;                
             }
             float distTravelled = speed * .51444 * sec;
             
-            commandAlt += corrV;//distToWaypoint / 1000;
-            steerHdg += corrH;//distToWaypoint / 1000;
+            //commandAlt += corrV;//distToWaypoint / 1000;
+            //steerHdg += corrH;//distToWaypoint / 1000;
             vvel = (commandAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
             commandTrack = onSteer(steerHdg);
-            LatLon newPos = locationBearingDistance(curPos.loc, commandTrack, distTravelled);
-            curPos = LatLonAlt(newPos, commandAlt);
             xte = crossTrackErr(startWaypoint.loc, activeWaypoint.loc, curPos.loc);
             if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90) {
                 waypointPassed = true;
             }
         }	
+
+        void sim(float sec) { 
+            float distTravelled = speed * .51444 * sec;
+            LatLon newPos = locationBearingDistance(curPos.loc, commandTrack, distTravelled);
+            curPos.loc = newPos;
+        }
 
         std::function<float(float)> onSteer = [](float steer){ return steer; };
 
@@ -248,6 +253,7 @@ namespace WaypointNav {
             } else { 
                 startWaypoint = curPos;
             }
+            //startWaypoint.alt = curPos.alt;
             activeWaypoint = nextWaypoint;
             nextWaypoint = p;
             waypointPassed = false;
@@ -260,8 +266,9 @@ namespace WaypointNav {
                 waypointPassed = true;
             }
 
-            if (startWaypoint.valid && activeWaypoint.valid && nextWaypoint.valid) { 
-                float turnRad = speed * speed / 11.26 / tan(DEG2RAD(12/*bank angle*/)) / 3.328;
+            // TODO: implement flyby waypoints 
+            if (0 && startWaypoint.valid && activeWaypoint.valid && nextWaypoint.valid) { 
+                float turnRad = speed * speed / 11.26 / tan(DEG2RAD(12/*bank angle*/)) / FEET_PER_METER;
                 nextTurnLead = turnRad * tan(DEG2RAD(bearing(startWaypoint.loc, activeWaypoint.loc)  
                     - bearing(activeWaypoint.loc, nextWaypoint.loc)) * 2);
                 nextTurnLead = max((float)1000.0, nextTurnLead);

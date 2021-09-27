@@ -76,10 +76,10 @@ while (( $# > 0 )); do
 	if [ "$1" == "-g5palt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($25) ax x1y2 w l  tit "G5 PALT", '; fi
 	if [ "$1" == "-g5ts" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($26) ax x1y2 w l  tit "G5 Timestamp", '; fi
 	
-	if [ "$1" == "-ubloxhdg" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($27) ax x1y2 w l  tit "G5 Timestamp", '; fi
-	if [ "$1" == "-ubloxha" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($28) ax x1y2 w l  tit "G5 Timestamp", '; fi
-	if [ "$1" == "-ubloxalt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($29) ax x1y2 w l  tit "G5 Timestamp", '; fi
-	if [ "$1" == "-ubloxgs" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($30) ax x1y2 w l  tit "G5 Timestamp", '; fi
+	if [ "$1" == "-ubloxhdg" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($27) ax x1y2 w l  tit "UBLOX hdg", '; fi
+	if [ "$1" == "-ubloxha" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($28) ax x1y2 w l  tit "UBLOX hdg acc", '; fi
+	if [ "$1" == "-ubloxalt" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($29) ax x1y1 w l  tit "UBLOX Altitude", '; fi
+	if [ "$1" == "-ubloxgs" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($30) ax x1y2 w l  tit "UBLOX groundspeed", '; fi
 	
 	
 	

@@ -274,6 +274,8 @@ namespace Display {
     //JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 }
 
+
+float lastDesAlt = 0.0;
 class MyEditor : public JDisplayEditor {
 public:
 	JDisplayEditableItem dtrk = JDisplayEditableItem(&Display::dtk, 1, 0, 359, true);
@@ -467,14 +469,15 @@ void setup() {
 
 	xtePID.setGains(8.0, 0.00, 0.05);
 	xtePID.maxerr.i = 1.0;
-	xtePID.finalGain = 10.0;
+	xtePID.finalGain = 15.0;
 	
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
 	pitchPID.finalGain = 5.0;
 	pitchPID.maxerr.i = .5;
 
-	altPID.setGains(1.0, 0.0, 3.0);
+	altPID.setGains(1.0, 0.01, 3.0);
 	altPID.finalGain = -.5;
+	pitchPID.maxerr.i = 100;
 
     // make PID select knob display text from array instead of 0-3	
 	Display::pidsel.toString = [](float v){ return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 4) ? (int)v : 0]); 
@@ -491,7 +494,7 @@ void setup() {
 	ed.pidsel.setValue(1);
 	ed.dtrk.setValue(desiredTrk);
 	ed.desAlt.setValue(1000);
-	ed.pitchTrim.setValue(-3);
+	ed.pitchTrim.setValue(0);
 	setKnobPid(ed.pidsel.value);
 	ed.update();
 	
@@ -804,8 +807,18 @@ void loop() {
 
 			}
 			if (butFilt3.wasCount == 3) {
-				std::string s = ahrs.zeroSensors();
-				serialOutput(String(s.c_str()));
+				if (wpNav != NULL) {
+					delete wpNav;
+					wpNav = NULL;
+				} else {
+					waypointList = "REPEAT 1\n"
+						"47.47329740698361, -122.58949120308448 2000\n"
+						"47.4331127570086, -122.62209866008706  2100\n"
+						"47.42959741100363, -122.53173591135885 2150\n";
+
+					wpNav = new WaypointsSequencerString(waypointList);
+					apMode = 3;	
+				}
 			}
 		}
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
@@ -1019,7 +1032,7 @@ void loop() {
 		logItem.flags |= LogFlags::ublox;
 		ahrsInput.ubloxHdg = trueToMag(ublox.hdg);
 		ahrsInput.ubloxHdgAcc = ublox.hac;
-		ahrsInput.ubloxAlt = ublox.alt;
+		ahrsInput.ubloxAlt = ublox.alt * FEET_PER_METER;
 		ahrsInput.ubloxGroundSpeed = ublox.gs;
 		if (ublox.hac < 7) {
 			ahrs.mComp.addAux(ahrsInput.ubloxHdg, 10, ubloxHdgCr);
@@ -1033,8 +1046,8 @@ void loop() {
 		if (apMode == 3 && wpNav != NULL) {
 			wpNav->wptTracker.curPos.loc.lat = ublox.lat;
 			wpNav->wptTracker.curPos.loc.lon = ublox.lon;
-			wpNav->wptTracker.curPos.alt = ublox.alt;
-			wpNav->wptTracker.speed = ublox.gs;
+			wpNav->wptTracker.curPos.alt = ahrsInput.ubloxAlt / FEET_PER_METER;
+			wpNav->wptTracker.speed = ahrsInput.ubloxGroundSpeed;
 			wpNav->wptTracker.curPos.valid = true;
 			wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
 			if (tick1HZ) {
@@ -1109,15 +1122,18 @@ void loop() {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
 		 	if ((apMode == 3 && ed.desAlt.value != -1000)) { 
-				float altErr = ed.desAlt.value - ahrsInput.alt;	
-				altPID.add(altErr, altErr, ahrsInput.sec);
+				float altErr = ed.desAlt.value - ahrsInput.ubloxAlt;
+				if (abs(altErr) > 500) {
+					altPID.resetI();					
+				}	
+				altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
 			} else { 
 				altPID.reset();
 			}
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		float altCorr = max(min(altPID.corr * 0.01, 2.0), -2.0);
+		float altCorr = max(min(altPID.corr * 0.01, 3.0), -3.0);
 		desPitch = ed.pitchTrim.value + altCorr;
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
@@ -1306,7 +1322,7 @@ public:
 			track += (tan(((bank + ahrs.rollOffset)) * M_PI / 180) * 9.8 / 40 * 25) * bper * 2.5;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
-			set_gpsTrack(track);
+			set_gpsTrack(trueToMag(track));
 		}
 
 		hdg = track - 35.555; // simluate mag var and arbitrary WCA 
@@ -1316,7 +1332,7 @@ public:
 			printf("SIM %08.3f (%+04.1f,%+04.1f) %+05.2f %+05.2f %+05.2f %+05.2f\n", 
 				(float)(millis()/1000.0), stickX, stickY, imu->gx, cmdPitch, pitch, logItem.pitch);
 		}
-		const float simPitchOffset = 5.5;
+		const float simPitchOffset = 0.0;
 		imu->az = cos((this->pitch + simPitchOffset) * M_PI / 180) * 1.0;
 		imu->ay = sin((this->pitch + simPitchOffset)* M_PI / 180) * 1.0;
 		imu->ax = 0;
@@ -1383,7 +1399,7 @@ public:
 			if ((l.flags & LogFlags::ublox) || (l.ai.ubloxHdg != ahrsInput.ubloxHdg)) { 
 				ublox.myGNSS.hdg = magToTrue(l.ai.ubloxHdg) * 100000.0;
 				ublox.myGNSS.hac = l.ai.ubloxHdgAcc * 100000.0;
-				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0;
+				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0 / FEET_PER_METER;
 				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 0.51444 * 1000;
 				
 #ifdef UBUNTU
@@ -1410,7 +1426,7 @@ public:
 					s.track = magToTrue(l.ai.gpsTrackGDL90);
 					s.hvel = l.ai.gspeed;
 					s.palt = l.ai.palt;
-					s.alt = l.ai.alt / 3.328;
+					s.alt = l.ai.alt / FEET_PER_METER;
 					s.lat = curPos.loc.lat;
 					s.lon = curPos.loc.lon;
 					int len = gdl90.packMsg10(buf, sizeof(buf), s);
@@ -1492,7 +1508,8 @@ public:
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));
 		} else if (strcmp(*a, "--startpos") == 0) {
-			sscanf(*(++a), "%lf,%lf,%f,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track, &speed); 
+			sscanf(*(++a), "%lf,%lf,%f,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track, &speed);
+			curPos.alt /= FEET_PER_METER; 
 			gdl90State.lat = curPos.loc.lat; gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data 
 
 		} else if (strcmp(*a, "--plotcourse") == 0) {
