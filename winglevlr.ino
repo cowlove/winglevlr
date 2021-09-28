@@ -1405,8 +1405,8 @@ public:
 #ifdef UBUNTU
 				// TMP hack: make up for incorrectly logged ublox grounspeed
 				// *********************************************************
-				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 1000;
-				assert(l.ai.ubloxGroundSpeed < 75);
+				//ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 1000;
+				//assert(l.ai.ubloxGroundSpeed < 75);
 				// *********************************************************
 #endif
 
