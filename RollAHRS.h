@@ -70,27 +70,27 @@ struct AhrsInputB {
 };
 
 struct AhrsInputC { 
-	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt; 
-	float ax, ay, az;  
-	float gx, gy, gz, mx, my, mz, dtk, g5Track;
-	float palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
-	float ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed;
+	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt;  // 1-6 
+	float ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track; // 1-17
+	float palt, gspeed, g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt; // 19-25
+	float ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed; // 26-29
+	double lat, lon; // 30,31
 	String toString() const { 
 		static char buf[512];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f " /* 1 - 10 */
-			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 11 - 20 */
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
+			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 9-18 */
 			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f "  /* 21 - 27 */ 
-			"%.1f %.1f %.1f %.1f",
+			"%.1f %.1f %+12.8lf %+12.8lf", 						// 28-31
 		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
-		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp,
-		ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed);
+		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt,
+		ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed, lat, lon);
 		return String(buf);	
 	 }
 	 AhrsInputC fromString(const char *s) { 
-		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %lf %lf", 
 		&sec, &selTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
-		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt, &g5TimeStamp,
-		&ubloxHdg, &ubloxHdgAcc, &ubloxAlt, &ubloxGroundSpeed);
+		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt,
+		&ubloxHdg, &ubloxHdgAcc, &ubloxAlt, &ubloxGroundSpeed, &lat, &lon);
 		return *this;
 	}
 	AhrsInputC &operator =(const AhrsInputB &a) { 
@@ -99,12 +99,12 @@ struct AhrsInputC {
 		gpsTrackGDL90 = a.gpsTrackGDL90;
 		gpsTrackVTG = a.gpsTrackVTG;
 		gpsTrackRMC = a.gpsTrackRMC;
-		alt = a.alt;
 		ax = a.ax; ay = a.ay; az = a.az;
 		gx = a.gx; gy = a.gy; gz = a.gz;
 		mx = a.mx; my = a.my; mz = a.mz;
 		palt = a.palt; gspeed = a.gspeed; g5Pitch = a.g5Pitch; g5Roll = a.g5Roll; g5Hdg = a.g5Hdg; g5Ias = a.g5Ias; g5Tas = a.g5Tas;
-		g5Palt = a.g5Palt; g5TimeStamp = a.g5TimeStamp;
+		g5Palt = a.g5Palt; 
+		lat = lon =	ubloxHdg = ubloxHdgAcc = ubloxAlt = ubloxGroundSpeed = 0;
 		return *this;
 	}
 		
@@ -599,16 +599,17 @@ struct LogItemB {
 
 struct LogItemC {
 	short pwmOutput0, pwmOutput1, flags;  
-	float desRoll, roll, magHdg, bankAngle, magBank, pitch, desAlt, desPitch;
-	struct AuxMpuData auxMpu;
+	float desRoll, roll, magHdg, bankAngle, xte, pitch, desAlt, desPitch;
+	//struct AuxMpuData auxMpu;
 	AhrsInputC ai;
 	String toString() const {
 		char buf[200];
-		const AuxMpuData &a = auxMpu;
-		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f %f "
-		" %f %f %f %f %f %f %f %f %f ",
-		(int)pwmOutput0, (int)pwmOutput1, (int)flags, desRoll, roll, magHdg,  bankAngle, magBank, pitch, desAlt, desPitch,
-		 a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz);
+		//const AuxMpuData &a = auxMpu;
+		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f "
+		//" %f %f %f %f %f %f %f %f %f "
+		,(int)pwmOutput0, (int)pwmOutput1, (int)flags, desRoll, roll, magHdg, xte, pitch, desAlt, desPitch
+		// ,a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz
+		);
 		return ai.toString() + String(buf);
 	} 
 	LogItemC fromString(const char *s) { 
@@ -623,7 +624,7 @@ struct LogItemC {
 		roll = c.roll;
 		magHdg = c.magHdg;
 		bankAngle = c.bankAngle;
-		magBank = c.magBank;
+		//magBank = c.magBank;
 		pwmOutput1 = pitch = desAlt = desPitch  = -1000;
 		return *this;
 	}

@@ -558,7 +558,7 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int,40,40> loopTime;
-static EggTimer serialReportTimer(200), hz5(200), loopTimer(5), buttonCheckTimer(10);
+static EggTimer serialReportTimer(200), loopTimer(5), buttonCheckTimer(10);
 static int armServo = 0;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
@@ -811,10 +811,13 @@ void loop() {
 					delete wpNav;
 					wpNav = NULL;
 				} else {
-					waypointList = "REPEAT 1\n"
-						"47.47329740698361, -122.58949120308448 2000\n"
-						"47.4331127570086, -122.62209866008706  2100\n"
-						"47.42959741100363, -122.53173591135885 2150\n";
+					waypointList = 
+"REPEAT 1\n"
+"47.47329740698361, -122.60949120308448 1800\n"
+"47.42959741100363, -122.53173591135885 1700\n" 
+"47.4331127570086, -122.64209866008706  1800\n" 
+"47.47560332145362, -122.49804894088612 1900\n"
+;
 
 					wpNav = new WaypointsSequencerString(waypointList);
 					apMode = 3;	
@@ -848,8 +851,9 @@ void loop() {
 		}
 		if (butFilt2.newEvent()) { // BOTTOM or LfffEFT button
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
-				ed.desAlt.value = floor(ahrsInput.alt / 20) * 20;
-				apMode = 3;
+				armServo = !armServo;
+				servoSetupMode = 0;
+				//rollPID.reset();
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	
 				setDesiredTrk(constrain360(desiredTrk + 10));
@@ -987,7 +991,7 @@ void loop() {
 				ahrsInput.g5Palt = palt / 3.2808;
 				ahrsInput.g5Ias = ias / 0.5144;
 				ahrsInput.g5Tas = tas / 0.5144;
-				ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
+				//ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
 				apMode = mode;
 				ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
 				logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
@@ -1034,6 +1038,8 @@ void loop() {
 		ahrsInput.ubloxHdgAcc = ublox.hac;
 		ahrsInput.ubloxAlt = ublox.alt * FEET_PER_METER;
 		ahrsInput.ubloxGroundSpeed = ublox.gs;
+		ahrsInput.lat = ublox.lat;
+		ahrsInput.lon = ublox.lon;
 		if (ublox.hac < 7) {
 			ahrs.mComp.addAux(ahrsInput.ubloxHdg, 10, ubloxHdgCr);
 		}
@@ -1042,30 +1048,43 @@ void loop() {
 	//printMag();
 	if (imuRead()) { 
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
+		bool tick20HZ = floor(ahrsInput.sec * 20.0) != floor(lastAhrsInput.sec * 20.0);
+		bool tick5HZ = floor(ahrsInput.sec * 5.0) != floor(lastAhrsInput.sec * 5.0);
 
-		if (apMode == 3 && wpNav != NULL) {
-			wpNav->wptTracker.curPos.loc.lat = ublox.lat;
-			wpNav->wptTracker.curPos.loc.lon = ublox.lon;
-			wpNav->wptTracker.curPos.alt = ahrsInput.ubloxAlt / FEET_PER_METER;
-			wpNav->wptTracker.speed = ahrsInput.ubloxGroundSpeed;
-			wpNav->wptTracker.curPos.valid = true;
-			wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
-			if (tick1HZ) {
-				crossTrackError.add(wpNav->wptTracker.xte * .0005);
+		if (tick5HZ) { 
+			if (apMode == 3 && wpNav != NULL) {
+				wpNav->wptTracker.curPos.loc.lat = ublox.lat;
+				wpNav->wptTracker.curPos.loc.lon = ublox.lon;
+				wpNav->wptTracker.curPos.alt = ahrsInput.ubloxAlt / FEET_PER_METER;
+				wpNav->wptTracker.speed = ahrsInput.ubloxGroundSpeed;
+				wpNav->wptTracker.curPos.valid = true;
+				wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
+				if (tick1HZ) {
+					crossTrackError.add(wpNav->wptTracker.xte * .0005);
+				}
+				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+				setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
+				ed.desAlt.value = wpNav->wptTracker.commandAlt * 3.2808;
+				ahrsInput.dtk = desiredTrk;
+
+			} else if (apMode == 4) {
+				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+				setDesiredTrk(navDTK + xteCorrection);
+				ahrsInput.dtk = desiredTrk;
+			} else { 
+				xteCorrection = 0;
 			}
-			xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
-			xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
-			setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
-			ed.desAlt.value = wpNav->wptTracker.commandAlt * 3.2808;
-			ahrsInput.dtk = desiredTrk;
-
-		} else if (apMode == 4) {
-			xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
-			xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
-			setDesiredTrk(navDTK + xteCorrection);
-			ahrsInput.dtk = desiredTrk;
-		} else { 
-			xteCorrection = 0;
+			if ((apMode == 3 && ed.desAlt.value != -1000)) { 
+				float altErr = ed.desAlt.value - ahrsInput.ubloxAlt;
+				if (abs(altErr) > 500) {
+					altPID.resetI();					
+				}	
+				altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
+			} else { 
+				altPID.reset();
+			}
 		}
 		
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
@@ -1103,7 +1122,7 @@ void loop() {
 		else if (hdgSelect == 3) ahrsInput.selTrack = ahrs.magHdg;
 		
 		// TODO:  it seems hdgPID was tuned for 20Hz.   Accidently moved into 5hz loop? 
-		if (hz5.tick()) {
+		if (tick20HZ) {
 			if (ahrsInput.dtk != -1) { 
 				double hdgErr = 0;
 				if (ahrs.valid() != false && ahrsInput.selTrack != -1) { 
@@ -1121,15 +1140,6 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 	if ((apMode == 3 && ed.desAlt.value != -1000)) { 
-				float altErr = ed.desAlt.value - ahrsInput.ubloxAlt;
-				if (abs(altErr) > 500) {
-					altPID.resetI();					
-				}	
-				altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
-			} else { 
-				altPID.reset();
-			}
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
@@ -1178,11 +1188,12 @@ void loop() {
 		logItem.desRoll = desRoll;
 		logItem.roll = roll;
 		logItem.magHdg = ahrs.magHdg;
-		logItem.bankAngle = ahrs.bankAngle;
-		logItem.magBank = ahrs.magBank;
+		logItem.xte = crossTrackError.average();
+		//logItem.bankAngle = ahrs.bankAngle;
+		//logItem.magBank = ahrs.magBank;
 		logItem.pitch = ahrs.pitch; 
 		logItem.ai = ahrsInput;
-		logItem.auxMpu = auxMPU;
+		//logItem.auxMpu = auxMPU;
 
 		totalError.roll += abs(roll + ahrsInput.g5Roll);
 		totalError.rollSum += roll + ahrsInput.g5Roll;
@@ -1371,7 +1382,7 @@ public:
 			imu->mx = l.ai.mx;
 			imu->my = l.ai.my;
 			imu->mz = l.ai.mz;
-			auxMPU = l.auxMpu;
+			//auxMPU = l.auxMpu;
 
 			if (ESP32csim_useAuxMpu) { 
 				float cksum = abs(auxMPU.ax) + abs(auxMPU.ay) + abs(auxMPU.az) +
@@ -1509,9 +1520,10 @@ public:
 			logFilename = (*(++a));
 		} else if (strcmp(*a, "--startpos") == 0) {
 			sscanf(*(++a), "%lf,%lf,%f,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track, &speed);
-			curPos.alt /= FEET_PER_METER; 
-			gdl90State.lat = curPos.loc.lat; gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data 
-
+			curPos.alt /= FEET_PER_METER;
+			gdl90State.lat = curPos.loc.lat; 
+			gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data 
+			set_gpsTrack(track);
 		} else if (strcmp(*a, "--plotcourse") == 0) {
 			float hdg, dist, alt, repeat;
 			sscanf(*(++a), "%f", &repeat);

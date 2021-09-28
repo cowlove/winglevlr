@@ -25,9 +25,9 @@ with open(filePlog) as f:
         lcount += 1
         if (lcount % 100 == 0):           
             words = re.split("\s+", line)
-            if (len(words) > 51):
-                lat = float(words[50])
-                lon = float(words[51])
+            if (len(words) > 30):
+                lat = float(words[29])
+                lon = float(words[30])
                 track.append((lat, lon))
         line = f.readline()
 
