@@ -558,7 +558,7 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int,40,40> loopTime;
-static EggTimer serialReportTimer(200), hz5(200), loopTimer(5), buttonCheckTimer(10);
+static EggTimer serialReportTimer(200), loopTimer(5), buttonCheckTimer(10);
 static int armServo = 0;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
@@ -1042,30 +1042,43 @@ void loop() {
 	//printMag();
 	if (imuRead()) { 
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
+		bool tick20HZ = floor(ahrsInput.sec / 20) != floor(lastAhrsInput.sec / 20);
+		bool tick5HZ = floor(ahrsInput.sec / 5) != floor(lastAhrsInput.sec / 5);
 
-		if (apMode == 3 && wpNav != NULL) {
-			wpNav->wptTracker.curPos.loc.lat = ublox.lat;
-			wpNav->wptTracker.curPos.loc.lon = ublox.lon;
-			wpNav->wptTracker.curPos.alt = ahrsInput.ubloxAlt / FEET_PER_METER;
-			wpNav->wptTracker.speed = ahrsInput.ubloxGroundSpeed;
-			wpNav->wptTracker.curPos.valid = true;
-			wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
-			if (tick1HZ) {
-				crossTrackError.add(wpNav->wptTracker.xte * .0005);
+		if (tick5HZ) { 
+			if (apMode == 3 && wpNav != NULL) {
+				wpNav->wptTracker.curPos.loc.lat = ublox.lat;
+				wpNav->wptTracker.curPos.loc.lon = ublox.lon;
+				wpNav->wptTracker.curPos.alt = ahrsInput.ubloxAlt / FEET_PER_METER;
+				wpNav->wptTracker.speed = ahrsInput.ubloxGroundSpeed;
+				wpNav->wptTracker.curPos.valid = true;
+				wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
+				if (tick1HZ) {
+					crossTrackError.add(wpNav->wptTracker.xte * .0005);
+				}
+				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+				setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
+				ed.desAlt.value = wpNav->wptTracker.commandAlt * 3.2808;
+				ahrsInput.dtk = desiredTrk;
+
+			} else if (apMode == 4) {
+				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+				setDesiredTrk(navDTK + xteCorrection);
+				ahrsInput.dtk = desiredTrk;
+			} else { 
+				xteCorrection = 0;
 			}
-			xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
-			xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
-			setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
-			ed.desAlt.value = wpNav->wptTracker.commandAlt * 3.2808;
-			ahrsInput.dtk = desiredTrk;
-
-		} else if (apMode == 4) {
-			xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
-			xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
-			setDesiredTrk(navDTK + xteCorrection);
-			ahrsInput.dtk = desiredTrk;
-		} else { 
-			xteCorrection = 0;
+			if ((apMode == 3 && ed.desAlt.value != -1000)) { 
+				float altErr = ed.desAlt.value - ahrsInput.ubloxAlt;
+				if (abs(altErr) > 500) {
+					altPID.resetI();					
+				}	
+				altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
+			} else { 
+				altPID.reset();
+			}
 		}
 		
 		ahrsInput.gpsTrackGDL90 = gpsTrackGDL90;
@@ -1103,7 +1116,7 @@ void loop() {
 		else if (hdgSelect == 3) ahrsInput.selTrack = ahrs.magHdg;
 		
 		// TODO:  it seems hdgPID was tuned for 20Hz.   Accidently moved into 5hz loop? 
-		if (hz5.tick()) {
+		if (tick20HZ) {
 			if (ahrsInput.dtk != -1) { 
 				double hdgErr = 0;
 				if (ahrs.valid() != false && ahrsInput.selTrack != -1) { 
@@ -1121,15 +1134,6 @@ void loop() {
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
-		 	if ((apMode == 3 && ed.desAlt.value != -1000)) { 
-				float altErr = ed.desAlt.value - ahrsInput.ubloxAlt;
-				if (abs(altErr) > 500) {
-					altPID.resetI();					
-				}	
-				altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
-			} else { 
-				altPID.reset();
-			}
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
