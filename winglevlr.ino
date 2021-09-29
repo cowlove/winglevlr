@@ -625,18 +625,20 @@ void parseSerialCommandInput(const char *buf, int n) {
 
 void setObsKnob(float knobSel, float v) { 
 	if (knobSel == 2) {
-		ed.desAlt.value = v * 3.2808;
+		ed.desAlt.value = v * FEET_PER_METER;
 	}
 	if (knobSel == 1 /*|| knobSel == 4*/) {
 		obs = v * 180.0 / M_PI;
 		if (obs <= 0) obs += 360;
-		if (apMode != 4 && obs != lastObs) {
+		if (obs != lastObs) {
 			setDesiredTrk(obs);
 			crossTrackError.reset();
 			testTurnActive = false;
-		}
-		if (apMode == 4 && obs != lastObs) { 
 			xtePID.reset();
+			if (wpNav != NULL) { 
+				delete wpNav;
+				wpNav = NULL;
+			}
 		}
 		lastObs = obs;
 	}	
@@ -820,7 +822,6 @@ void loop() {
 ;
 
 					wpNav = new WaypointsSequencerString(waypointList);
-					apMode = 3;	
 				}
 			}
 		}
@@ -1052,7 +1053,8 @@ void loop() {
 		bool tick5HZ = floor(ahrsInput.sec * 5.0) != floor(lastAhrsInput.sec * 5.0);
 
 		if (tick5HZ) { 
-			if (apMode == 3 && wpNav != NULL) {
+			if (wpNav != NULL) {
+				apMode = 3;
 				wpNav->wptTracker.curPos.loc.lat = ublox.lat;
 				wpNav->wptTracker.curPos.loc.lon = ublox.lon;
 				wpNav->wptTracker.curPos.alt = ahrsInput.ubloxAlt / FEET_PER_METER;
@@ -1640,8 +1642,7 @@ public:
 
 			if (at(5.0) && wpFile.length()) {
 				wpNav = new WaypointsSequencerFile(wpFile.c_str());
-				apMode = 3;
-				hdgSelect = 0;
+				hdgSelect = 3;
 			}
 		} else {
 			if (firstLoop == true) { 
