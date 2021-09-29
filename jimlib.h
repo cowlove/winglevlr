@@ -1618,6 +1618,7 @@ public:
 };
 
 static const float FEET_PER_METER = 3.3208;
+static const float MPS_PER_KNOT = 0.51444;
 
 float random01() { 	return rand() / (RAND_MAX + 1.0); }
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))

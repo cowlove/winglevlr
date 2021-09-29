@@ -117,7 +117,9 @@ public:
 		gpsGood = 1;
 		Serial.printf("Found GPS\n");
 	}
-	float lat, lon, hdg, hac, gs, siv, alt;
+	double lat, lon;
+	float hdg, hac, gs, siv, alt;
+	int count = 0;
 	bool check() { 
 		if (gpsGood && myGNSS.getPVT(220)) {
 			lon = myGNSS.getLongitude() / 10000000.0;
@@ -125,13 +127,26 @@ public:
 			lat = myGNSS.getLatitude() / 10000000.0;
 			alt = myGNSS.getAltitudeMSL() / 1000.0;
 			hac = myGNSS.getHeadingAccEst() / 100000.0;
-			gs = myGNSS.getGroundSpeed() / 1000.0 / 0.51444;
+			gs = myGNSS.getGroundSpeed() / 1000.0 / MPS_PER_KNOT;
 			siv = myGNSS.getSIV();
+			count++;
 			//Serial.printf("GPS: %+09.4f, %+09.4f %+05.1f %02d\n", lat, lon, hdg, siv);
 			return true;
 		}
 		return false;
 	}
+#ifdef UBUNTU
+	void fakeValues(double lat, double lon, float hdg, float hac, float gs, float alt, float siv) {
+		myGNSS.lon = lon * 10000000.0;
+		myGNSS.lat = lat * 10000000.0;
+		myGNSS.hdg = hdg * 100000;
+		myGNSS.alt = alt * 1000;
+		myGNSS.hac = hac * 100000;
+		myGNSS.gs = gs * 1000.0 * MPS_PER_KNOT;
+		myGNSS.siv = siv;
+		myGNSS.fresh = 1;
+	}
+#endif
 } ublox; 
 
 
@@ -467,9 +482,9 @@ void setup() {
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 1.0;
 
-	xtePID.setGains(8.0, 0.00, 0.10);
+	xtePID.setGains(8.0, 0.05, 0.20);
 	xtePID.maxerr.i = 1.0;
-	xtePID.finalGain = 15.0;
+	xtePID.finalGain = 20.0;
 	
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
 	pitchPID.finalGain = 5.0;
@@ -487,7 +502,7 @@ void setup() {
 #ifndef UBUNTU
 	ed.re.begin([ed]()->void{ ed.re.ISR(); });
 #endif
-	ed.maxb.setValue(12);
+	ed.maxb.setValue(20);
 	ed.tttt.setValue(60); // seconds to make each test turn 
 	ed.ttlt.setValue(75); // seconds betweeen test turn, ordegrees per turn   
 	//ed.tzer.setValue(1000);
@@ -815,10 +830,10 @@ void loop() {
 				} else {
 					waypointList = 
 "REPEAT 1\n"
-"47.47329740698361, -122.60949120308448 1800\n"
-"47.42959741100363, -122.53173591135885 1700\n" 
-"47.4331127570086, -122.64209866008706  1800\n" 
-"47.47560332145362, -122.49804894088612 1900\n"
+"47.47329740698361, -122.60949120308448 2100\n"
+"47.42959741100363, -122.53173591135885 2200\n" 
+"47.4331127570086, -122.64209866008706  2100\n" 
+"47.47560332145362, -122.49804894088612 2300\n"
 ;
 
 					wpNav = new WaypointsSequencerString(waypointList);
@@ -1064,10 +1079,13 @@ void loop() {
 				if (tick1HZ) {
 					crossTrackError.add(wpNav->wptTracker.xte * .0005);
 				}
+				if (abs(crossTrackError.average()) > 0.2) {
+					xtePID.resetI();
+				}				
 				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
 				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
 				setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
-				ed.desAlt.value = wpNav->wptTracker.commandAlt * 3.2808;
+				ed.desAlt.value = wpNav->wptTracker.commandAlt * FEET_PER_METER;
 				ahrsInput.dtk = desiredTrk;
 
 			} else if (apMode == 4) {
@@ -1245,7 +1263,8 @@ void loop() {
 		Display::obs = obs; 
 		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
 		Display::gdl = (float)gpsTrackGDL90;
-		Display::g5hdg = ublox.hdg;
+		Display::g5hdg = ahrsInput.ubloxHdg;
+		Display::g5hdg.setInverse(false, ((ublox.count / 10) % 2) == 0);
 		//Display::g5hdg = (float)ahrsInput.g5Hdg;
 		//Display::zsc = ahrs.getGyroQuality(); 
 		Display::roll = roll; 
@@ -1281,11 +1300,11 @@ public:
 	const char *replayFile = NULL;
 	int logSkip = 0;
 	int logEntries = 0;
-	float bank = 0, track = 0, pitch = 0, roll = 0, yaw = 0, simPitch = 0, hdg = 0;
+	float bank = 0, track = 0, pitch = 0, roll = 0, yaw = 0, simPitch = 0;
 	RollingAverage<float,30> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
-	float speed = 80;
+	float speed = 80, windDir = 200, windVel = 20;
 	WaypointNav::LatLonAlt curPos;
 	std::queue<float> gxDelay, pitchDelay;
 	
@@ -1298,6 +1317,7 @@ public:
 		hdgPID.finalGain = 0.5;
 		stickTrimY = stickTrimX = 0;
 		ahrs.gyrOffZ = 1;
+		ahrs.rollOffset = 0	;
 
 		_micros = (_micros + 5000);
 		_micros -= (_micros % 5000);
@@ -1338,8 +1358,8 @@ public:
 			set_gpsTrack(trueToMag(track));
 		}
 
-		hdg = track - 35.555; // simluate mag var and arbitrary WCA 
-		if (hdg < 0) hdg += 360;	
+		//hdg = track - 35.555; // simluate mag var and arbitrary WCA 
+		//if (hdg < 0) hdg += 360;	
 
 		if (0) { 
 			printf("SIM %08.3f (%+04.1f,%+04.1f) %+05.2f %+05.2f %+05.2f %+05.2f\n", 
@@ -1350,6 +1370,7 @@ public:
 		imu->ay = sin((this->pitch + simPitchOffset)* M_PI / 180) * 1.0;
 		imu->ax = 0;
 
+		float hdg = track;
 		// simulate meaningless mag readings that stabilize when bank == 0 
 		imu->mx = cos(hdg * M_PI/180) * 50;
 		imu->my = sin(hdg * M_PI/180) * 50 + 50;
@@ -1358,8 +1379,10 @@ public:
 		ahrs.magBankTrim = 0; // TODO simulate mag so this doesn't oscillate
 		//ahrs.magHdg = hdg;
 		
-		float dist = speed * 0.51444 * (now - lastMillis) / 1000.0; 
+		float dist = speed * MPS_PER_KNOT * (now - lastMillis) / 1000.0; 
 		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(track), dist);
+		dist = windVel * MPS_PER_KNOT * (now - lastMillis) / 1000.0; 
+		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(windDir + 180), dist);
 		curPos.alt += sin((pitch + simPitchOffset) * M_PI/180) * dist; 
 
 		lastMillis = now;
@@ -1520,6 +1543,8 @@ public:
 		else if (strcmp(*a, "--log") == 0) { 
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));
+		} else if (strcmp(*a, "--wind") == 0) {
+			sscanf(*(++a), "%f@%f", &windDir, &windVel);
 		} else if (strcmp(*a, "--startpos") == 0) {
 			sscanf(*(++a), "%lf,%lf,%f,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track, &speed);
 			curPos.alt /= FEET_PER_METER;
@@ -1627,12 +1652,11 @@ public:
 				}
 		}       
 
-
 		if (replayFile == NULL) { 
 			if (floor(now / .1) != floor(lastTime / .1)) {
-				float g5hdg = hdg * M_PI / 180;
-				float g5roll = -bank * M_PI / 180;
-				float g5pitch = pitch * M_PI / 180;
+				float g5hdg = DEG2RAD(track); // TODO mag/true
+				float g5roll = DEG2RAD(-bank);
+				float g5pitch = DEG2RAD(pitch);
 				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", 90, 100, 1000));
 				ESP32sim_udpInput(7891, strfmt("P=%f R=%f\n", g5pitch, g5roll));
 				// now handled by onNavigate();

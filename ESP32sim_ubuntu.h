@@ -504,14 +504,15 @@ struct RTC_DS3231 {
 #define COM_TYPE_UBX 0
 class SFE_UBLOX_GPS {
 public:
-	float lat, lon, hdg, hac, gs, siv, alt;
+	double lat, lon;
+	float hdg, hac, gs, siv, alt;
 	bool fresh = false; 
 	bool begin(FakeSerial &) { return true; } 
 	bool setUART1Output(int) { return true; } 
 	float getHeading() { return hdg; }
 	float getHeadingAccEst() { return hac; }
-	float getLatitude() { return lat; }
-	float getLongitude() { return lon; }
+	double getLatitude() { return lat; }
+	double getLongitude() { return lon; }
 	float getAltitudeMSL() { return alt; }
 	float getGroundSpeed() { return gs; }
 	float getSIV() { return siv; }

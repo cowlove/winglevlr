@@ -187,7 +187,7 @@ namespace WaypointNav {
     using namespace std;
     class WaypointTracker {
     public: 
-        LatLonAlt curPos;
+        LatLonAlt curPos, prevPos;
         int wayPointCount = 0;
         LatLonAlt startWaypoint, activeWaypoint, nextWaypoint;
         bool waypointPassed;
@@ -233,9 +233,12 @@ namespace WaypointNav {
             vvel = (commandAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
             commandTrack = onSteer(steerHdg);
             xte = crossTrackErr(startWaypoint.loc, activeWaypoint.loc, curPos.loc);
-            if (abs(angularDiff(steerHdg, bearing(curPos.loc, activeWaypoint.loc))) >= 90) {
+            // under 1000m and heading away from waypoint?  probably passed it 
+            if (prevPos.valid && distToWaypoint < 1000  
+                && abs(angularDiff(bearing(prevPos.loc, curPos.loc), bearing(curPos.loc, activeWaypoint.loc))) >= 90 ) {
                 waypointPassed = true;
             }
+            prevPos = curPos;
         }	
 
         void sim(float sec) { 
