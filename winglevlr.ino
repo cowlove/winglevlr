@@ -467,7 +467,7 @@ void setup() {
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 1.0;
 
-	xtePID.setGains(8.0, 0.00, 0.05);
+	xtePID.setGains(8.0, 0.00, 0.10);
 	xtePID.maxerr.i = 1.0;
 	xtePID.finalGain = 15.0;
 	
