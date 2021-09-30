@@ -385,7 +385,7 @@ float desRoll = 0, /*pitchTrim = -8,*/ pitchToStick = 0.15, desPitch = 0;//, des
 static int serialLogFlags = 0;
 
 void setDesiredTrk(float f) { 
-	desiredTrk = round(f);
+	desiredTrk = f;//round(f);
 	ed.dtrk.setValue(desiredTrk);
 }
 
@@ -476,13 +476,13 @@ void setup() {
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
 
-	hdgPID.setGains(0.25, 0.07, 0.02);
+	hdgPID.setGains(0.5, 0.005, 0.05);
 	hdgPID.hiGain.p = 10;
 	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 1.0;
 
-	xtePID.setGains(8.0, 0.05, 0.20);
+	xtePID.setGains(8.0, 0.009, 0.20);
 	xtePID.maxerr.i = 1.0;
 	xtePID.finalGain = 20.0;
 	
@@ -531,7 +531,7 @@ void setup() {
 
 void udpSendString(const char *b) { 
 	for (int repeat = 0; repeat < 3; repeat++) { 
-		udpG90.beginPacket("255.255.255.255", 7892);
+		udpG90.beginPacket("255.255.255.5", 7892);
 		udpG90.write((uint8_t *)b, strlen(b));
 		udpG90.endPacket();
 		for (int n = 100; n < 103; n++) { 
@@ -577,7 +577,7 @@ static EggTimer serialReportTimer(200), loopTimer(5), buttonCheckTimer(10);
 static int armServo = 0;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 3; //  0 use fusion magHdg 
+static int hdgSelect = 2; //  0 use fusion magHdg 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 struct {
@@ -830,10 +830,10 @@ void loop() {
 				} else {
 					waypointList = 
 "REPEAT 1\n"
-"47.47329740698361, -122.60949120308448 2100\n"
-"47.42959741100363, -122.53173591135885 2200\n" 
-"47.4331127570086, -122.64209866008706  2100\n" 
-"47.47560332145362, -122.49804894088612 2300\n"
+"47.47329740698361, -122.60949120308448 1700\n"
+"47.42959741100363, -122.53173591135885 1800\n" 
+"47.4331127570086, -122.64209866008706  1700\n" 
+"47.47560332145362, -122.49804894088612 1800\n"
 ;
 
 					wpNav = new WaypointsSequencerString(waypointList);
@@ -1138,7 +1138,7 @@ void loop() {
 				ahrsInput.selTrack = -1;
 			}
 		}
-		else if (hdgSelect == 2) ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
+		else if (hdgSelect == 2) ahrsInput.selTrack = ahrsInput.ubloxHdg;
 		else if (hdgSelect == 3) ahrsInput.selTrack = ahrs.magHdg;
 		
 		// TODO:  it seems hdgPID was tuned for 20Hz.   Accidently moved into 5hz loop? 
@@ -1152,8 +1152,9 @@ void loop() {
 					// lost course guidance, just keep wings level by leaving currentHdg unchanged and no error 
 					hdgErr = 0;
 				}
-				if (abs(hdgErr) > 10.0) {
+				if (abs(hdgErr) > 15.0) {
 					hdgPID.resetI();
+					xtePID.resetI();
 				}
 				desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
 				desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
@@ -1183,7 +1184,7 @@ void loop() {
 				break;
 			case 1: 
 				stickX = stickTrimX;
-				stickY = stickTrimY;  
+				stickY = stickTrimY - .3;  
 				stickX += cos(millis() / 100.0) * .04;
 				stickY += sin(millis() / 100.0) * .04;
 				setServos(stickX, stickY); 
@@ -1301,7 +1302,6 @@ public:
 	int logSkip = 0;
 	int logEntries = 0;
 	float bank = 0, track = 0, pitch = 0, roll = 0, yaw = 0, simPitch = 0;
-	RollingAverage<float,30> rollCmd;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
 	float speed = 80, windDir = 200, windVel = 20;
@@ -1311,12 +1311,15 @@ public:
 	uint64_t lastMicros = 0;
 
 
+	RollingAverage<float,120> delayRoll;
+	RollingAverage<float,40> delayBank; 
+
 	void flightSim(MPU9250_DMP *imu) { 
 		//TODO: flightSim is very fragile/unstable.  Poke values into the
 		// main loop code to make sure things work. 
-		hdgPID.finalGain = 0.5;
+		//hdgPID.finalGain = 0.5;
 		stickTrimY = stickTrimX = 0;
-		ahrs.gyrOffZ = 1;
+		ahrs.gyrOffZ = ahrs.gyrOffX  = ahrs.gyrOffY = 0;
 		ahrs.rollOffset = 0	;
 
 		_micros = (_micros + 5000);
@@ -1337,11 +1340,11 @@ public:
 		simPitch += (cmdPitch - simPitch) * 0.15;
 		this->pitch = simPitch;
 
-		rollCmd.add(stickX);
-		imu->gy = ahrs.gyrOffY + rollCmd.average() * 2;
+		delayRoll.add(stickX);
+		imu->gy = ahrs.gyrOffY + delayRoll.average() * 4.5;
 		imu->gy *= -1;
-		bank += imu->gy * (3500.0 / 1000000.0) * 2.2;
-		bank = max(-15.0, min(15.0 , (double)bank));
+		bank += imu->gy * (5000.0 / 1000000.0);
+		bank = max(-20.0, min(20.0 , (double)bank));
 		if (1 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis()/1000.0, 
 			ESP32sim_currentPwm[0], track, desRoll, bank, imu->gy);
@@ -1350,12 +1353,13 @@ public:
 		imu->gz *= -1;
 
 		uint64_t now = millis();
-		const float bper = .04;
-		if (floor(lastMillis * bper) != floor(now * bper)) { // 10hz
-			track += (tan(((bank + ahrs.rollOffset)) * M_PI / 180) * 9.8 / 40 * 25) * bper * 2.5;
+		if (floor(lastMillis / 100) != floor(now / 100)) { // 10hz
+			delayBank.add(max(-0.5, abs(bank - 2.3)) * bank/abs(bank));
+			float dbank = delayBank.average();
+			track += tan(((dbank + ahrs.rollOffset)) * M_PI / 180) * 9.8 * 0.14;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
-			set_gpsTrack(trueToMag(track));
+			set_gpsTrack(track);
 		}
 
 		//hdg = track - 35.555; // simluate mag var and arbitrary WCA 
@@ -1486,7 +1490,7 @@ public:
 
 	float gpsTrackFuzz = 0.00;
 	void set_gpsTrack(float t) { 
-		hdgSelect = 0;
+		//hdgSelect = 2;
 		float t1 = -1, t2 = -1;
 		if (t != -1) {
 			t1 = random01() < gpsTrackFuzz ? -1 : constrain360(t + 0.1 * random01());
@@ -1511,7 +1515,6 @@ public:
 			ublox.myGNSS.gs =  s.hvel * 0.51444 * 1000.0;
 			ublox.myGNSS.fresh = true;
 
-
 			WiFiUDP::InputData buf;
 			buf.resize(128);
 			int n = gdl90.packMsg11(buf.data(), buf.size(), s);
@@ -1521,7 +1524,7 @@ public:
 			n = gdl90.packMsg10(buf.data(), buf.size(), s);
 			buf.resize(n);
 			ESP32sim_udpInput(4000, buf);;
-			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", t2, t2)); 
+			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", trueToMag(t2), trueToMag(t2))); 
 		} else {
 			// TODO needs both set?  Breaks with only GDL90 
 			gpsTrackGDL90 = t1;

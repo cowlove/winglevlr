@@ -231,7 +231,10 @@ namespace WaypointNav {
             //commandAlt += corrV;//distToWaypoint / 1000;
             //steerHdg += corrH;//distToWaypoint / 1000;
             vvel = (commandAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
-            commandTrack = onSteer(steerHdg);
+            float brg = onSteer(steerHdg);
+            if (distToWaypoint > 250) { 
+                commandTrack = brg;
+            }
             xte = crossTrackErr(startWaypoint.loc, activeWaypoint.loc, curPos.loc);
             // under 1000m and heading away from waypoint?  probably passed it 
             if (prevPos.valid && distToWaypoint < 1000  
@@ -274,7 +277,7 @@ namespace WaypointNav {
                 float turnRad = speed * speed / 11.26 / tan(DEG2RAD(12/*bank angle*/)) / FEET_PER_METER;
                 nextTurnLead = turnRad * tan(DEG2RAD(bearing(startWaypoint.loc, activeWaypoint.loc)  
                     - bearing(activeWaypoint.loc, nextWaypoint.loc)) * 2);
-                nextTurnLead = max((float)1000.0, nextTurnLead);
+                nextTurnLead = min((float)2000.0, nextTurnLead);
             } else { 
                 nextTurnLead = 100;
             }
