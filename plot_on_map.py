@@ -43,7 +43,7 @@ with open(fileWpts) as f:
 if (len(waypoints) > 0):
     waypoints.append(waypoints[0])
 
-gmap.plot(*zip(*waypoints), edge_width=8, color='green')
-gmap.plot(*zip(*track), edge_width=2, color='red')
+gmap.scatter(*zip(*waypoints), color='yellow')
+gmap.plot(*zip(*track), edge_width=3, color='red')
 gmap.draw('map.html')
 
