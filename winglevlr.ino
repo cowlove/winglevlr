@@ -476,13 +476,13 @@ void setup() {
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
 
-	hdgPID.setGains(0.5, 0.005, 0.05);
+	hdgPID.setGains(0.5, 0.000, 0.05);
 	hdgPID.hiGain.p = 10;
 	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 1.0;
 
-	xtePID.setGains(8.0, 0.009, 0.20);
+	xtePID.setGains(8.0, 0.000, 0.20);
 	xtePID.maxerr.i = 1.0;
 	xtePID.finalGain = 20.0;
 	
@@ -830,10 +830,10 @@ void loop() {
 				} else {
 					waypointList = 
 "REPEAT 1\n"
-"47.47329740698361, -122.60949120308448 1700\n"
-"47.42959741100363, -122.53173591135885 1800\n" 
-"47.4331127570086, -122.64209866008706  1700\n" 
-"47.47560332145362, -122.49804894088612 1800\n"
+"47.47329740698361, -122.60949120308448 1600\n"
+"47.42959741100363, -122.53173591135885 1700\n" 
+"47.4331127570086, -122.64209866008706  1600\n" 
+"47.47560332145362, -122.49804894088612 1700\n"
 ;
 
 					wpNav = new WaypointsSequencerString(waypointList);
