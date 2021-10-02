@@ -7,9 +7,6 @@ using namespace std;
 
 #define USE_ACCEL
 
-#define DEG2RAD(x) ((x)*M_PI/180)
-#define RAD2DEG(x) ((x)*180/M_PI)
-
 struct AhrsInputA { 
 	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y;
 	float ax, ay, az;  
@@ -69,6 +66,9 @@ struct AhrsInputB {
 		
 };
 
+
+
+
 struct AhrsInputC { 
 	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt;  // 1-6 
 	float ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track; // 1-17
@@ -110,6 +110,39 @@ struct AhrsInputC {
 		
 };
 
+
+// idea for compact logItem
+template <class T, int V> 
+class ScaledStorage {
+	public:
+		T v;
+		ScaledStorage() {}
+		ScaledStorage &operator =(double x) { v = x * V; return *this; }
+		operator T() { return v * 1.0 / V; }
+};
+
+struct AhrsInputPacked { 
+	typedef ScaledStorage<uint16_t, 100> Heading;
+	typedef ScaledStorage<int16_t, 1000> MagResult;
+	typedef ScaledStorage<int32_t, 10000000> LatLon;
+	typedef ScaledStorage<int32_t, 100000> Time;
+	typedef ScaledStorage<int16_t, 1000> GyroResult;
+	Time sec;
+	Heading dtrk;  
+	LatLon lat, lon;
+	MagResult mx, my, mz;
+	GyroResult gx, gy, gz;
+
+	void pack(const AhrsInputC &a) { sec = a.sec; lat = a.lat; lon = a.lon; }
+	void unpack(AhrsInputC &a) { a.sec = sec; a.lat = lat; a.lon = lon; }
+};
+
+inline void testPack() { 
+	AhrsInputPacked p;
+	AhrsInputC a;
+	p.pack(a);
+	p.unpack(a);
+}
 
 typedef AhrsInputC AhrsInput; 
 

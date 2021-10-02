@@ -14,7 +14,7 @@ fileWpts = "./wpts.txt" if len(sys.argv) < 4 else sys.argv[3]
 
 
 apikey = 'AIzaSyC4_GZpzLJsbb_XgHka26mQQTa-QaO9d3w'
-gmap = gmplot.GoogleMapPlotter(47.45, -122.50, 13, apikey=apikey)
+gmap = gmplot.GoogleMapPlotter(47.45804489362055, -122.59075938584017, 13, apikey=apikey)
 
 track1 = []
 track2 = []

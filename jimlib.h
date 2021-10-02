@@ -31,6 +31,8 @@
 #endif // !UBUNTU
 
 #include <stdarg.h>
+#define DEG2RAD(x) ((x)*M_PI/180)
+#define RAD2DEG(x) ((x)*180/M_PI)
 
 std::string strfmt(const char *format, ...) { 
     va_list args;

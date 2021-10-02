@@ -232,8 +232,11 @@ namespace WaypointNav {
             //steerHdg += corrH;//distToWaypoint / 1000;
             vvel = (commandAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
             float brg = onSteer(steerHdg);
-            if (distToWaypoint > 250) { 
+            const float proximity = 500;
+            if (distToWaypoint > proximity) { 
                 commandTrack = brg;
+            } else {
+                commandTrack += angularDiff(brg, commandTrack) * distToWaypoint * distToWaypoint / proximity / proximity;
             }
             xte = crossTrackErr(startWaypoint.loc, activeWaypoint.loc, curPos.loc);
             // under 1000m and heading away from waypoint?  probably passed it 
@@ -279,7 +282,7 @@ namespace WaypointNav {
                     - bearing(activeWaypoint.loc, nextWaypoint.loc)) * 2);
                 nextTurnLead = min((float)2000.0, nextTurnLead);
             } else { 
-                nextTurnLead = 100;
+                nextTurnLead = 250;
             }
 
             corrV = corrH = 0;
