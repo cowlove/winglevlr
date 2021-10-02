@@ -102,9 +102,9 @@ struct AhrsInputC {
 		ax = a.ax; ay = a.ay; az = a.az;
 		gx = a.gx; gy = a.gy; gz = a.gz;
 		mx = a.mx; my = a.my; mz = a.mz;
-		palt = a.palt; gspeed = a.gspeed; g5Pitch = a.g5Pitch; g5Roll = a.g5Roll; g5Hdg = a.g5Hdg; g5Ias = a.g5Ias; g5Tas = a.g5Tas;
-		g5Palt = a.g5Palt; 
-		lat = lon =	ubloxHdg = ubloxHdgAcc = ubloxAlt = ubloxGroundSpeed = 0;
+		palt = a.palt; gspeed = a.gspeed; g5Pitch = a.g5Pitch; g5Roll = a.g5Roll; 
+		g5Hdg = a.g5Hdg; g5Ias = a.g5Ias; g5Tas = a.g5Tas; g5Palt = a.g5Palt; 
+		lat  = lon =	ubloxHdg = ubloxHdgAcc = ubloxAlt = ubloxGroundSpeed = 0;
 		return *this;
 	}
 		
@@ -633,17 +633,6 @@ struct LogItemC {
 
 
 
-#ifdef UBUNTU
-void ESP32sim_convertLogOldToNew(ifstream &i, ofstream &o) {
-	LogItemB l; 
-	while (i.read((char *)&l, sizeof(l))) {
-		LogItemC l2;
-		bzero(&l2, sizeof(l2));
-		l2 = l;
-		o.write((char *)&l2, sizeof(l2));
-	}
-}
-#endif
 
 // idea for compact logItem
 template <class T, int V> 
@@ -678,24 +667,26 @@ struct AhrsInputPacked : public AhrsPackedStructure {
 	MagResult mx, my, mz;
 	Altitude alt, palt, g5Palt, ubloxAlt; 
 	Knots gspeed, g5Ias, g5Tas, ubloxGroundSpeed;
-	SmallAngle g5Pitch, g5Roll;
+	SmallAngle g5Pitch, g5Roll, g5Slip /*placeholder, not currently in AHRSInput */;
 
 	void pack(const AhrsInputC &a) { 
 		AhrsInputPacked &b = *this;
-		b.sec = a.sec; b.lat = a.lat; b.lon = a.lon; 
+		b.sec = a.sec;
+		b.selTrack = a.selTrack; b.gpsTrackGDL90 = a.gpsTrackGDL90; b.gpsTrackVTG = a.gpsTrackVTG;
+		b.gpsTrackRMC = a.gpsTrackRMC; b.dtk = a.dtk; b.g5Track = a.g5Track; b.g5Hdg = a.g5Hdg;
+		  
 		b.ax = a.ax; b.ay = a.ay; b.az = a.az;
 		b.gx = a.gx; b.gy = a.gy; b.gz = a.gz;
 		b.mx = a.mx; b.my = a.my; b.mz = a.gz;
-		b.alt = a.alt;
+		b.alt = a.alt; palt = a.palt; g5Palt = a.g5Palt; 
+		b.gspeed = a.gspeed; b.g5Ias = a.g5Ias; b.g5Tas = a.g5Tas;
+		b.g5Pitch = a.g5Pitch; b.g5Roll = a.g5Roll; b.g5Slip = 0/*TODO*/; 
+		b.lat = a.lat; b.lon = a.lon; b.ubloxHdg = a.ubloxHdg; b.ubloxHdgAcc = a.ubloxHdgAcc;
+		b.ubloxAlt = a.ubloxAlt; b.ubloxGroundSpeed = a.ubloxGroundSpeed;
 	}
-	void unpack(AhrsInputC &b) { 
-		AhrsInputPacked &a = *this;
-		b.sec = a.sec; b.lat = a.lat; b.lon = a.lon; 
-		b.ax = a.ax; b.ay = a.ay; b.az = a.az;
-		b.gx = a.gx; b.gy = a.gy; b.gz = a.gz;
-		b.mx = a.mx; b.my = a.my; b.mz = a.gz;
-		b.alt = a.alt;
-	}
+	//void unpack(AhrsInputC &b) { 
+	//	AhrsInputPacked &a = *this;
+	//}
 	AhrsInputPacked &operator =(const AhrsInputC &a) { 
 		pack(a);
 		return *this;
@@ -722,6 +713,16 @@ struct LogItemPacked : public AhrsPackedStructure {
 	Heading magHdg;
 	SmallDistance xte;
 	AhrsInputPacked ai;
+	LogItemPacked &operator=(const LogItemC &l) { 
+		ai = l.ai;
+		pwmOutput0 = l.pwmOutput0;
+		pwmOutput1 = l.pwmOutput1;
+		flags = l.flags;
+		//desRoll, roll, bankAngle, pitch, desPitch;
+		desRoll = l.desRoll; roll = l.roll; bankAngle = l.bankAngle; pitch = l.pitch; desPitch = l.desPitch;
+		desAlt = l.desAlt; magHdg = l.magHdg; xte = l.xte; 
+		return *this;
+	}
 
 	String toString() const { 
 		char buf[200];
@@ -737,15 +738,26 @@ struct LogItemPacked : public AhrsPackedStructure {
 	} 
 };
 
-//typedef LogItemPacked LogItem;	
-typedef LogItemC LogItem;	
+typedef LogItemPacked LogItem;	
+//typedef LogItemC LogItem;	
 
 
 inline void testPack() { 
 	AhrsInputPacked p, q;
 	AhrsInputC a;
 	p.pack(a);
-	p.unpack(a);
+	//p.unpack(a);
 	q = p;
 }
 
+#ifdef UBUNTU
+void ESP32sim_convertLogOldToNew(ifstream &i, ofstream &o) {
+	LogItemC l; 
+	while (i.read((char *)&l, sizeof(l))) {
+		LogItemPacked l2;
+		bzero(&l2, sizeof(l2));
+		l2 = l;
+		o.write((char *)&l2, sizeof(l2));
+	}
+}
+#endif

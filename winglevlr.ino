@@ -1233,8 +1233,7 @@ void loop() {
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) {
 			pair<float,float> stick = ServoControl::servoToStick(servoOutput[0], servoOutput[1]); 
-			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf %06.3f %f	LOG U", gdl90State.lat, gdl90State.lon,
-				stick.first, stick.second) << endl;
+			cout << logItem.toString().c_str() << strfmt("%f %f	LOG U",	stick.first, stick.second) << endl;
 		}
 #endif
 		lastAhrsInput = ahrsInput;
@@ -1427,29 +1426,22 @@ public:
 			l.ai.g5Pitch = min(max(-30.0, (double)l.ai.g5Pitch), 30.0);
 			l.ai.g5Roll = min(max(-30.0, (double)l.ai.g5Roll), 30.0);
 			// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
-			if ((l.flags & LogFlags::g5Ps) || l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt) { 
+			if ((l.flags & LogFlags::g5Ps) /*|| l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt*/) { 
 				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt)); 
 			}
-			if ((l.flags & LogFlags::g5Nav) || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track) { 
+			if ((l.flags & LogFlags::g5Nav)/* || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track*/) { 
 				ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", l.ai.g5Hdg, l.ai.g5Track)); 
 			}
-			if ((l.flags & LogFlags::g5Ins) || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch) { 
+			if ((l.flags & LogFlags::g5Ins)/* || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch*/) { 
 				ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
 			}
-			if ((l.flags & LogFlags::ublox) || (l.ai.ubloxHdg != ahrsInput.ubloxHdg)) { 
+			if ((l.flags & LogFlags::ublox) || abs(l.ai.ubloxHdg != ahrsInput.ubloxHdg) < .01) { 
 				ublox.myGNSS.hdg = magToTrue(l.ai.ubloxHdg) * 100000.0;
 				ublox.myGNSS.hac = l.ai.ubloxHdgAcc * 100000.0;
 				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0 / FEET_PER_METER;
 				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 0.51444 * 1000;
-				
-#ifdef UBUNTU
-				// TMP hack: make up for incorrectly logged ublox grounspeed
-				// *********************************************************
-				//ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 1000;
-				//assert(l.ai.ubloxGroundSpeed < 75);
-				// *********************************************************
-#endif
-
+				ublox.myGNSS.lat = l.ai.lat * 10000000.0;
+				ublox.myGNSS.lon = l.ai.lon * 10000000.0;
 				ublox.myGNSS.fresh = true;
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
@@ -1458,7 +1450,7 @@ public:
 					magToTrue(l.ai.gpsTrackRMC));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
-			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || ahrsInput.gspeed != l.ai.gspeed ||
+			if (//abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || ahrsInput.gspeed != l.ai.gspeed ||
 				(l.flags & LogFlags::HdgGDL) != 0) { 
 				unsigned char buf[64];
 				GDL90Parser::State s;
