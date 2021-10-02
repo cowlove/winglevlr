@@ -1367,7 +1367,7 @@ public:
 
 		if (0) { 
 			printf("SIM %08.3f (%+04.1f,%+04.1f) %+05.2f %+05.2f %+05.2f %+05.2f\n", 
-				(float)(millis()/1000.0), stickX, stickY, imu->gx, cmdPitch, pitch, logItem.pitch);
+				(float)(millis()/1000.0), stickX, stickY, imu->gx, cmdPitch, pitch, (double)logItem.pitch);
 		}
 		const float simPitchOffset = 0.0;
 		imu->az = cos((this->pitch + simPitchOffset) * M_PI / 180) * 1.0;

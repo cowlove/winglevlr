@@ -111,38 +111,6 @@ struct AhrsInputC {
 };
 
 
-// idea for compact logItem
-template <class T, int V> 
-class ScaledStorage {
-	public:
-		T v;
-		ScaledStorage() {}
-		ScaledStorage &operator =(double x) { v = x * V; return *this; }
-		operator T() { return v * 1.0 / V; }
-};
-
-struct AhrsInputPacked { 
-	typedef ScaledStorage<uint16_t, 100> Heading;
-	typedef ScaledStorage<int16_t, 1000> MagResult;
-	typedef ScaledStorage<int32_t, 10000000> LatLon;
-	typedef ScaledStorage<int32_t, 100000> Time;
-	typedef ScaledStorage<int16_t, 1000> GyroResult;
-	Time sec;
-	Heading dtrk;  
-	LatLon lat, lon;
-	MagResult mx, my, mz;
-	GyroResult gx, gy, gz;
-
-	void pack(const AhrsInputC &a) { sec = a.sec; lat = a.lat; lon = a.lon; }
-	void unpack(AhrsInputC &a) { a.sec = sec; a.lat = lat; a.lon = lon; }
-};
-
-inline void testPack() { 
-	AhrsInputPacked p;
-	AhrsInputC a;
-	p.pack(a);
-	p.unpack(a);
-}
 
 typedef AhrsInputC AhrsInput; 
 
@@ -663,7 +631,6 @@ struct LogItemC {
 	}
 };
 
-typedef LogItemC LogItem;	
 
 
 #ifdef UBUNTU
@@ -677,4 +644,108 @@ void ESP32sim_convertLogOldToNew(ifstream &i, ofstream &o) {
 	}
 }
 #endif
+
+// idea for compact logItem
+template <class T, int V> 
+class ScaledStorage {
+	public:
+		T v;
+		ScaledStorage() {}
+		ScaledStorage &operator =(double x) { v = x * V; return *this; }
+		operator double() const { return v * 1.0 / V; }
+		//operator float() { return v * 1.0 / V; }
+};
+
+struct AhrsPackedStructure { 
+	typedef ScaledStorage<uint16_t, 100> Heading;
+	typedef ScaledStorage<int16_t, 100> MagResult; 
+	typedef ScaledStorage<int32_t, 10000000> LatLon;
+	typedef ScaledStorage<int32_t, 100000> Time;
+	typedef ScaledStorage<int16_t, 1000> GyroResult;
+	typedef ScaledStorage<int16_t, 1000> AccResult;
+	typedef ScaledStorage<int16_t, 1000> Altitude;
+	typedef ScaledStorage<int16_t, 100> Knots;
+	typedef ScaledStorage<int16_t, 1000> SmallAngle; 
+	typedef ScaledStorage<int16_t, 1000> SmallDistance; 
+};
+
+struct AhrsInputPacked : public AhrsPackedStructure { 
+	Time sec;
+	Heading selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, ubloxHdg, ubloxHdgAcc, dtk, g5Track, g5Hdg;
+	LatLon lat, lon;
+	AccResult ax, ay, az;
+	GyroResult gx, gy, gz;
+	MagResult mx, my, mz;
+	Altitude alt, palt, g5Palt, ubloxAlt; 
+	Knots gspeed, g5Ias, g5Tas, ubloxGroundSpeed;
+	SmallAngle g5Pitch, g5Roll;
+
+	void pack(const AhrsInputC &a) { 
+		AhrsInputPacked &b = *this;
+		b.sec = a.sec; b.lat = a.lat; b.lon = a.lon; 
+		b.ax = a.ax; b.ay = a.ay; b.az = a.az;
+		b.gx = a.gx; b.gy = a.gy; b.gz = a.gz;
+		b.mx = a.mx; b.my = a.my; b.mz = a.gz;
+		b.alt = a.alt;
+	}
+	void unpack(AhrsInputC &b) { 
+		AhrsInputPacked &a = *this;
+		b.sec = a.sec; b.lat = a.lat; b.lon = a.lon; 
+		b.ax = a.ax; b.ay = a.ay; b.az = a.az;
+		b.gx = a.gx; b.gy = a.gy; b.gz = a.gz;
+		b.mx = a.mx; b.my = a.my; b.mz = a.gz;
+		b.alt = a.alt;
+	}
+	AhrsInputPacked &operator =(const AhrsInputC &a) { 
+		pack(a);
+		return *this;
+	}
+	String toString() const { 
+		static char buf[512];
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
+			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 9-18 */
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f "  /* 21 - 27 */ 
+			"%.1f %.1f %+12.8lf %+12.8lf", 						// 28-31
+		(double)sec, (double)selTrack, (double)gpsTrackGDL90, (double) gpsTrackVTG, (double) gpsTrackRMC,
+		(double) alt, (double)ax,(double) ay,(double) az, (double)gx,(double) gy, (double)gz,(double) mx, 
+		(double)my, (double)mz, (double)dtk, (double)g5Track, (double)palt, (double)gspeed, 
+		(double)g5Pitch, (double)g5Roll, (double)g5Hdg, (double)g5Ias, (double)g5Tas, (double)g5Palt,
+		(double)ubloxHdg, (double)ubloxHdgAcc, (double)ubloxAlt, (double)ubloxGroundSpeed, (double)lat, (double)lon);
+		return String(buf);	
+	}
+};
+
+struct LogItemPacked : public AhrsPackedStructure { 
+	uint16_t pwmOutput0, pwmOutput1, flags;
+	SmallAngle desRoll, roll, bankAngle, pitch, desPitch;
+	Altitude desAlt; 
+	Heading magHdg;
+	SmallDistance xte;
+	AhrsInputPacked ai;
+
+	String toString() const { 
+		char buf[200];
+		//const AuxMpuData &a = auxMpu;
+		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f "
+		//" %f %f %f %f %f %f %f %f %f "
+		,(int)pwmOutput0, (int)pwmOutput1, (int)flags, (double)desRoll, (double)roll, (double)magHdg, 
+		(double)xte, (double)pitch, (double)desAlt, (double)desPitch
+		// ,a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz
+		);
+		return ai.toString() + String(buf);
+		
+	} 
+};
+
+//typedef LogItemPacked LogItem;	
+typedef LogItemC LogItem;	
+
+
+inline void testPack() { 
+	AhrsInputPacked p, q;
+	AhrsInputC a;
+	p.pack(a);
+	p.unpack(a);
+	q = p;
+}
 
