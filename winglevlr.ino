@@ -1308,6 +1308,7 @@ public:
 	std::queue<float> gxDelay, pitchDelay;
 	
 	uint64_t lastMicros = 0;
+	int replayReduce = 0;
 
 
 	RollingAverage<float,120> delayRoll;
@@ -1396,8 +1397,14 @@ public:
 	bool ESP32sim_replayLogItem(ifstream &i) {
 		LogItem l; 
 		static uint64_t logfileMicrosOffset = 0;
-		
+		int logFlags = 0;
+		for (int n = 0; n <= replayReduce; n++) { 
+			i.read((char *)&l, sizeof(l));
+			logFlags |= l.flags;
+		}
+
 		if (i.read((char *)&l, sizeof(l))) {
+			l.flags |= logFlags;
 			if (logfileMicrosOffset == 0) 
 				logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
 			_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
@@ -1535,6 +1542,7 @@ public:
 	void parseArg(char **&a, char **la) override {
 		if (strcmp(*a, "--replay") == 0) replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0) logSkip = atoi(*(++a));
+		else if (strcmp(*a, "--replayReduce") == 0) replayReduce = atoi(*(++a));
 		else if (strcmp(*a, "--log") == 0) { 
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));

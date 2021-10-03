@@ -137,7 +137,7 @@ while (( $# > 0 )); do
 		shift
 	fi
 	if [ "$1" == "-replay" ]; then
-		F2="./logs/AHRSD$NUM-R${GIT}${DARGS}${ARGS}.plog";
+		F2="./logs/AHRSD$NUM-R${GIT}${DARGS}${MARGS}.plog";
 		IN="./logs/AHRSD$NUM.DAT"
 		echo "Replay $F2"
 		if [ "$PROG" -nt "$F2" ] || [ ! -f "$F2" ]; then

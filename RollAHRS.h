@@ -645,17 +645,27 @@ class ScaledStorage {
 		//operator float() { return v * 1.0 / V; }
 };
 
+
+/* Invesitgate changes in new packed structure with: 
+  make winglevlr_ubuntu  && 
+  	./winglevlr_ubuntu --logConvert logs.OLD/AHRSD015.DAT logs/AHRSD015.DAT && 
+	./winglevlr_ubuntu --replay logs/AHRSD015.DAT --log + | grep LOG > logs/015-N.plog && 
+	./loglook.sh XX -file logs/015-O.plog -roll -pitch -maghdg -file logs/015-N.plog -roll -pitch -maghdg
+
+	Packed log structure 60% size of full logItem  
+*/
+
 struct AhrsPackedStructure { 
-	typedef ScaledStorage<uint16_t, 100> Heading;
+	typedef ScaledStorage<int16_t, 90> Heading;
 	typedef ScaledStorage<int16_t, 100> MagResult; 
 	typedef ScaledStorage<int32_t, 10000000> LatLon;
-	typedef ScaledStorage<int32_t, 100000> Time;
-	typedef ScaledStorage<int16_t, 1000> GyroResult;
-	typedef ScaledStorage<int16_t, 1000> AccResult;
-	typedef ScaledStorage<int16_t, 1000> Altitude;
+	typedef ScaledStorage<uint32_t, 10000> Time;
+	typedef ScaledStorage<int32_t, 50000> GyroResult;
+	typedef ScaledStorage<int16_t, 500> AccResult;
+	typedef ScaledStorage<int16_t, 100> Altitude;
 	typedef ScaledStorage<int16_t, 100> Knots;
-	typedef ScaledStorage<int16_t, 1000> SmallAngle; 
-	typedef ScaledStorage<int16_t, 1000> SmallDistance; 
+	typedef ScaledStorage<int16_t, 100> SmallAngle; 
+	typedef ScaledStorage<int16_t, 100> SmallDistance; 
 };
 
 struct AhrsInputPacked : public AhrsPackedStructure { 
@@ -739,7 +749,7 @@ struct LogItemPacked : public AhrsPackedStructure {
 };
 
 typedef LogItemPacked LogItem;	
-//typedef LogItemC LogItem;	
+//	typedef LogItemC LogItem;	
 
 
 inline void testPack() { 
