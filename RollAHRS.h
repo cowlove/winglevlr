@@ -4,6 +4,12 @@
 
 using namespace std;
 
+#ifndef AHRS_RATE
+#define AHRS_RATE 200
+#endif
+#define AHRS_RATE_SCALE(x) ((x) * AHRS_RATE / 200.0)
+#define AHRS_RATE_INV_SCALE(x) ((x) * 200.0 / AHRS_RATE)
+#define AHRS_RATE_CR_SCALE(x) (1 - pow(1 - x, 200.0 / AHRS_RATE))
 
 #define USE_ACCEL
 
@@ -72,9 +78,9 @@ struct AhrsInputB {
 struct AhrsInputC { 
 	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt;  // 1-6 
 	float ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track; // 1-17
-	float palt, gspeed, g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt; // 19-25
-	float ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed; // 26-29
-	double lat, lon; // 30,31
+	float palt, gspeed, g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5Slip; // 19-26
+	float ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed; // 27-30
+	double lat, lon; // 31,32
 	String toString() const { 
 		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
@@ -190,7 +196,7 @@ inline static float windup360(float now, float prev) {
 	
 class MultiCompFilter { 
 	bool first = true;
-	float defaultCr = 0.03;
+	float defaultCr = AHRS_RATE_CR_SCALE(0.03);
 	float age = 10.0;
 public:
 	float value, prevMainValue, bestCr, bestAux, bestAuxPri, expires, priority;
@@ -256,17 +262,17 @@ public:
 		  accOffY = -0,
 		  accOffZ = -0;
 
-	float compRatio1 = 0.00072;  // roll comp filter ratio 
+	float compRatio1 = AHRS_RATE_CR_SCALE(0.00072);  // roll comp filter ratio 
 	float rollOffset = +2.63;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
-	float hdgCompRatio = .00025;  // composite filter ratio for hdg 
+	float hdgCompRatio = AHRS_RATE_CR_SCALE(.00025);  // composite filter ratio for hdg 
 	float magDipConstant = 2.11; // unexplained correction factor for bank angle in dip calcs
-	float magBankTrimCr = 0.00005;
+	float magBankTrimCr = AHRS_RATE_CR_SCALE(0.00005);
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 1.10;
 	float debugVar = 0.3;
 	float gXdecelCorrelation = 1.003;
-	float compRatioPitch = 0.012;
+	float compRatioPitch = AHRS_RATE_CR_SCALE(0.012);
 	float pitchOffset = -2.85; 	
 	float pitchRaw =0;
 	
@@ -279,10 +285,10 @@ public:
 	int zeroSampleCount = 0; 
 	float g5LastTimeStamp = 0; 
 	struct { 
-		TwoStageRollingAverage<float,20,20> ax,ay,az,gx,gy,gz;
+		TwoStageRollingAverage<float,20,(int)AHRS_RATE_SCALE(20)> ax,ay,az,gx,gy,gz;
 	} zeroAverages;
 
-	TwoStageRollingAverage<float,20,150>
+	TwoStageRollingAverage<float,20,(int)AHRS_RATE_SCALE(150)>
 		gyrZOffsetFit,
 		gyrXOffsetFit,
 		gyrYOffsetFit;
@@ -296,23 +302,22 @@ public:
 	bool hdgInitialized = false;
 
 	typedef TwoStageRollingLeastSquares<float> TwoStageRLS;
-	RollingLeastSquares // all at about 200 HZ */
+	RollingLeastSquares 
 		gyroDriftFit = RollingLeastSquares(300), // 10HZ 
 		magHdgFit = RollingLeastSquares(50), // 10Hz
 		gSpeedFit = RollingLeastSquares(25); // 50Hz
 
-	RollingAverage<float,200> magStabFit;
-	RollingAverage<float,50> avgRoll;
-	RollingAverage<float,100> avgPitch;
-	RollingAverage<float,20> avgMagHdg;
-	RollingAverage<float,200> avgGZ, avgGX, avgAX, avgAZ, avgAY;
-	RollingAverage<float,200> gyroZeroCount;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(200)> magStabFit;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(50)> avgRoll;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(100)> avgPitch;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(20)> avgMagHdg;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(200)> avgGZ, avgGX, avgAX, avgAZ, avgAY;
+	RollingAverage<float, 200> gyroZeroCount;
 	
 	TwoStageRLS 
-		magZFit = TwoStageRLS(20, 20),
-		magXFit = TwoStageRLS(20, 20),
-		magYFit = TwoStageRLS(20, 20),
-		magHdgAvg = TwoStageRLS(20,20);
+		magZFit = TwoStageRLS(20, (int)AHRS_RATE_SCALE(20)),
+		magXFit = TwoStageRLS(20, (int)AHRS_RATE_SCALE(20)),
+		magYFit = TwoStageRLS(20, (int)AHRS_RATE_SCALE(20));
 		
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
 	int count = 0;
@@ -348,7 +353,7 @@ public:
 		bool tick10HZ = (floor(l.sec / .1) != floor(prev.sec / .1));
 		bool tick50HZ = (floor(l.sec / .02) != floor(prev.sec / .02));
 
-		zeroAverages.ax.add(l.ax);
+		zeroAverages.ax.add(l.ax); // FULL RATE
 		zeroAverages.ay.add(l.ay);
 		zeroAverages.az.add(l.az);
 		zeroAverages.gx.add(l.gx);
@@ -385,7 +390,7 @@ public:
 			l.gy -= gyrOffY;
 		}
 
-		avgGX.add(l.gx);
+		avgGX.add(l.gx); // FULL RATE
 		avgGZ.add(l.gz);
 		avgAX.add(l.ax);
 		avgAY.add(l.ay);
@@ -394,7 +399,7 @@ public:
 		magHdg = atan2(l.my, l.mx) * 180 / M_PI;
 
 		//magMagnitudeFit.add(l.sec, magTotalMagnitude);
-		magZFit.add(l.sec, l.mz);
+		magZFit.add(l.sec, l.mz); // FULL RATE 
 		magXFit.add(l.sec, l.mx);
 		magYFit.add(l.sec, l.my);
 
@@ -405,7 +410,7 @@ public:
 				const float stabThreshold = 0.0;
 				if (magStability < stabThreshold) { 
 					//gyrZOffsetFit.add(l.sec, magZFit.stage1.averageY(), max(stabThreshold/2, (stabThreshold/2 - magStability)*100));
-					gyrZOffsetFit.add(zeroAverages.gz.average());
+					gyrZOffsetFit.add(zeroAverages.gz.average()); // FULL RATE
 					gyrXOffsetFit.add(zeroAverages.gx.average());
 					gyrYOffsetFit.add(zeroAverages.gy.average());
 					zeroSampleCount++;
@@ -546,7 +551,6 @@ public:
 		magZFit.reset();
 		magXFit.reset();
 		magYFit.reset();
-		magHdgAvg.reset();
 	}
 };
 
@@ -677,8 +681,8 @@ struct AhrsInputPacked : public AhrsPackedStructure {
 	MagResult mx, my, mz;
 	Altitude alt, palt, g5Palt, ubloxAlt; 
 	Knots gspeed, g5Ias, g5Tas, ubloxGroundSpeed;
-	SmallAngle g5Pitch, g5Roll, g5Slip /*placeholder, not currently in AHRSInput */;
-
+	SmallAngle g5Pitch, g5Roll, g5Slip;
+	int32_t spare1, spare2; 
 	void pack(const AhrsInputC &a) { 
 		AhrsInputPacked &b = *this;
 		b.sec = a.sec;
@@ -690,9 +694,10 @@ struct AhrsInputPacked : public AhrsPackedStructure {
 		b.mx = a.mx; b.my = a.my; b.mz = a.gz;
 		b.alt = a.alt; palt = a.palt; g5Palt = a.g5Palt; 
 		b.gspeed = a.gspeed; b.g5Ias = a.g5Ias; b.g5Tas = a.g5Tas;
-		b.g5Pitch = a.g5Pitch; b.g5Roll = a.g5Roll; b.g5Slip = 0/*TODO*/; 
+		b.g5Pitch = a.g5Pitch; b.g5Roll = a.g5Roll; b.g5Slip = a.g5Slip; 
 		b.lat = a.lat; b.lon = a.lon; b.ubloxHdg = a.ubloxHdg; b.ubloxHdgAcc = a.ubloxHdgAcc;
 		b.ubloxAlt = a.ubloxAlt; b.ubloxGroundSpeed = a.ubloxGroundSpeed;
+		spare1 = spare2 = 0;
 	}
 	//void unpack(AhrsInputC &b) { 
 	//	AhrsInputPacked &a = *this;
@@ -749,7 +754,7 @@ struct LogItemPacked : public AhrsPackedStructure {
 };
 
 typedef LogItemPacked LogItem;	
-//	typedef LogItemC LogItem;	
+//typedef LogItemC LogItem;	
 
 
 inline void testPack() { 
