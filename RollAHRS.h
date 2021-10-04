@@ -267,7 +267,7 @@ public:
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = AHRS_RATE_CR_SCALE(.00025);  // composite filter ratio for hdg 
 	float magDipConstant = 2.11; // unexplained correction factor for bank angle in dip calcs
-	float magBankTrimCr = AHRS_RATE_CR_SCALE(0.00005);
+	float magBankTrimCr = AHRS_RATE_INV_SCALE(0.00005);
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 1.10;
 	float debugVar = 0.3;
@@ -682,7 +682,7 @@ struct AhrsInputPacked : public AhrsPackedStructure {
 	Altitude alt, palt, g5Palt, ubloxAlt; 
 	Knots gspeed, g5Ias, g5Tas, ubloxGroundSpeed;
 	SmallAngle g5Pitch, g5Roll, g5Slip;
-	int32_t spare1, spare2; 
+	//int32_t spare1, spare2; 
 	void pack(const AhrsInputC &a) { 
 		AhrsInputPacked &b = *this;
 		b.sec = a.sec;
@@ -697,7 +697,7 @@ struct AhrsInputPacked : public AhrsPackedStructure {
 		b.g5Pitch = a.g5Pitch; b.g5Roll = a.g5Roll; b.g5Slip = a.g5Slip; 
 		b.lat = a.lat; b.lon = a.lon; b.ubloxHdg = a.ubloxHdg; b.ubloxHdgAcc = a.ubloxHdgAcc;
 		b.ubloxAlt = a.ubloxAlt; b.ubloxGroundSpeed = a.ubloxGroundSpeed;
-		spare1 = spare2 = 0;
+		//spare1 = spare2 = 0;
 	}
 	//void unpack(AhrsInputC &b) { 
 	//	AhrsInputPacked &a = *this;
