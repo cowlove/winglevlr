@@ -794,7 +794,7 @@ class JDisplay {
 	std::vector<JDisplayItemBase *> items;
 	Semaphore changeSem;
 public:
-	int textSize, xoffset, yoffset;
+	int textSize, xoffset, yoffset, lastUpdatedItemIndex = 0;
 	bool autoupdate;
 	static JDisplay *instanceP;
 	JDisplay(int tsize = 1, int x = 0, int y = 0, bool au = false) : textSize(tsize), xoffset(x), yoffset(y), autoupdate(au) {
@@ -944,12 +944,15 @@ public:
 };
 
 inline bool JDisplay::update(bool force, bool onlyOne) { 
-	for (std::vector<JDisplayItemBase *>::iterator it = items.begin(); it != items.end(); it++) { 
+	for (std::vector<JDisplayItemBase *>::iterator it = items.begin() + lastUpdatedItemIndex; it != items.end(); it++) { 
 		if ((*it)->update(force)) {
-			if (onlyOne) 
+			if (onlyOne) {
+				lastUpdatedItemIndex = it - items.begin();
 				return true;
+			}
 		}
 	}
+	lastUpdatedItemIndex = 0;
 	return false;
 }
 
