@@ -28,9 +28,14 @@ arduino-cli lib uninstall SD
 mkdir -p ~/Arduino/libraries
 cd ~/Arduino/libraries 
 git clone https://github.com/plerup/makeEspArduino.git
+cd makeEspArduino
+git checkout 190e073
+cd ..
 git clone https://github.com/nhatuan84/esp32-micro-sdcard.git
 git clone https://github.com/mikalhart/TinyGPSPlus.git
 git clone https://github.com/sparkfun/SparkFun_Ublox_Arduino_Library.git
+
+pip install gmplot
    
 cd ~
 git clone https://github.com/cowlove/winglevlr.git
