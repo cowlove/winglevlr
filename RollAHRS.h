@@ -5,7 +5,7 @@
 using namespace std;
 
 #ifndef AHRS_RATE
-#define AHRS_RATE 200
+#define AHRS_RATE 50
 #endif
 #define AHRS_RATE_SCALE(x) ((x) * AHRS_RATE / 200.0)
 #define AHRS_RATE_INV_SCALE(x) ((x) * 200.0 / AHRS_RATE)
@@ -753,8 +753,8 @@ struct LogItemPacked : public AhrsPackedStructure {
 	} 
 };
 
-typedef LogItemPacked LogItem;	
-//typedef LogItemC LogItem;	
+//typedef LogItemPacked LogItem;	
+typedef LogItemC LogItem;	
 
 
 inline void testPack() { 
