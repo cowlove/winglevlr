@@ -8,13 +8,15 @@
 # TODO: check if proxy is up/exists
 echo 'Acquire::http { Proxy "http://10.0.2.2:3142"; };' | sudo tee /etc/apt/apt.conf.d/01proxy
 
-sudo apt-get update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade
-sudo apt-get install -y arduino git build-essential python-serial bash-completion gnuplot
+sudo apt-get update
+#sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade
+sudo apt-get install -y arduino git build-essential python-serial bash-completion gnuplot python3-pip
 
-mkdir -p ~/bin
-curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-
+mkdir -p ${HOME}/bin
+export BINDIR=${HOME}/bin
 export PATH=$PATH:${HOME}/bin
+
+arduino-cli version || curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 
 arduino-cli config init 
 sed -i 's|additional_urls: \[\]|additional_urls: \[https://dl.espressif.com/dl/package_esp32_index.json,http://arduino.esp8266.com/stable/package_esp8266com_index.json\]|' ~/.arduino15/arduino-cli.yaml 
@@ -25,8 +27,8 @@ arduino-cli lib install "Adafruit GFX Library"
 arduino-cli lib install "Adafruit ST7735 and ST7789 Library"
 arduino-cli lib install OneWireNg
 arduino-cli lib uninstall SD
-mkdir -p ~/Arduino/libraries
-cd ~/Arduino/libraries 
+mkdir -p ${HOME}/Arduino/libraries
+cd ${HOME}/Arduino/libraries 
 git clone https://github.com/plerup/makeEspArduino.git
 cd makeEspArduino
 git checkout 190e073
@@ -35,10 +37,9 @@ git clone https://github.com/nhatuan84/esp32-micro-sdcard.git
 git clone https://github.com/mikalhart/TinyGPSPlus.git
 git clone https://github.com/sparkfun/SparkFun_Ublox_Arduino_Library.git
 
-pip install gmplot
+pip3 install gmplot
+
+# makeEspArduino needs needs a preferences.txt file 
+echo sketchbook.path=${HOME}/Arduino >> ~/.arduino15/preferences.txt
    
-cd ~
-git clone https://github.com/cowlove/winglevlr.git
-cd winglevlr/
-make && make simplot
  
