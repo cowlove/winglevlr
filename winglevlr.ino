@@ -44,7 +44,11 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(30) /*200Hz*/, pitchPID(10,6), hdgPID(50)/*20Hz*/, xtePID(100)/*5hz*/, altPID(25); /*5Hz*/
+PidControl rollPID(AHRS_RATE_SCALE(30)) /*200Hz*/, 
+	pitchPID(AHRS_RATE_SCALE(10),6), 
+	hdgPID(50)/*20Hz*/, 
+	xtePID(100)/*5hz*/, 
+	altPID(25); /*5Hz*/
 PidControl *knobPID = &altPID;
 
 WiFiUDP udpSL30;
@@ -573,7 +577,7 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int,40,40> loopTime;
-static EggTimer serialReportTimer(200), loopTimer(5), buttonCheckTimer(10);
+static EggTimer serialReportTimer(200), loopTimer(AHRS_RATE_INV_SCALE(5)), buttonCheckTimer(10);
 static int armServo = 0;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
@@ -830,10 +834,10 @@ void loop() {
 				} else {
 					waypointList = 
 "REPEAT 1\n"
-"47.46781184528505, -122.62479628528624 3600\n"
-"47.42959741100363, -122.55173591135885 3600\n" 
-"47.4331127570086, -122.66209866008706  3600\n" 
-"47.476968122716066, -122.54582666728088 3600\n"
+"47.46781184528505, -122.62479628528624 2300\n"
+"47.42959741100363, -122.55173591135885 2300\n" 
+"47.4331127570086, -122.66209866008706  2300\n" 
+"47.476968122716066, -122.54582666728088 2300\n"
 ;
 
 					wpNav = new WaypointsSequencerString(waypointList);
@@ -979,6 +983,7 @@ void loop() {
 			for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
 				if      (sscanf(it->c_str(), "P=%f",   &v) == 1) { ahrsInput.g5Pitch = v; canMsgCount = canMsgCount + 1; logItem.flags |= LogFlags::g5Ins; }  
 				else if (sscanf(it->c_str(), "R=%f",   &v) == 1) { ahrsInput.g5Roll = v; logItem.flags |= LogFlags::g5Ins; } 
+				else if (sscanf(it->c_str(), "SL=%f",   &v) == 1) { ahrsInput.g5Slip = v; logItem.flags |= LogFlags::g5Ins; } 
 				else if (sscanf(it->c_str(), "IAS=%f", &v) == 1) { ahrsInput.g5Ias = v; logItem.flags |= LogFlags::g5Ps;} 
 				else if (sscanf(it->c_str(), "TAS=%f", &v) == 1) { ahrsInput.g5Tas = v; logItem.flags |= LogFlags::g5Ps;} 
 				else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) { ahrsInput.g5Palt = v; logItem.flags |= LogFlags::g5Ps;} 
@@ -1233,8 +1238,7 @@ void loop() {
 		// special logfile name "+", write out log with computed values from the current simulation 			
 		if (strcmp(logFilename.c_str(), "+") == 0) {
 			pair<float,float> stick = ServoControl::servoToStick(servoOutput[0], servoOutput[1]); 
-			cout << logItem.toString().c_str() << strfmt("%+011.5lf %+011.5lf %06.3f %f	LOG U", gdl90State.lat, gdl90State.lon,
-				stick.first, stick.second) << endl;
+			cout << logItem.toString().c_str() << strfmt("%f %f	LOG U",	stick.first, stick.second) << endl;
 		}
 #endif
 		lastAhrsInput = ahrsInput;
@@ -1309,10 +1313,11 @@ public:
 	std::queue<float> gxDelay, pitchDelay;
 	
 	uint64_t lastMicros = 0;
+	int replayReduce = 0;
 
 
-	RollingAverage<float,120> delayRoll;
-	RollingAverage<float,40> delayBank; 
+	RollingAverage<float,(int)AHRS_RATE_SCALE(120)> delayRoll;
+	RollingAverage<float,(int)AHRS_RATE_SCALE(40)> delayBank; 
 
 	void flightSim(MPU9250_DMP *imu) { 
 		//TODO: flightSim is very fragile/unstable.  Poke values into the
@@ -1322,8 +1327,9 @@ public:
 		ahrs.gyrOffZ = ahrs.gyrOffX  = ahrs.gyrOffY = 0;
 		ahrs.rollOffset = 0	;
 
-		_micros = (_micros + 5000);
-		_micros -= (_micros % 5000);
+		int period = AHRS_RATE_INV_SCALE(5000);
+		_micros = (_micros + period);
+		_micros -= (_micros % period);
 		//const float servoTrim = 4915.0;
 
 		// Simulate simple airplane roll/bank/track turn response to 
@@ -1343,7 +1349,7 @@ public:
 		delayRoll.add(stickX);
 		imu->gy = ahrs.gyrOffY + delayRoll.average() * 4.5;
 		imu->gy *= -1;
-		bank += imu->gy * (5000.0 / 1000000.0);
+		bank += imu->gy * (AHRS_RATE_INV_SCALE(5000.0) / 1000000.0);
 		bank = max(-20.0, min(20.0 , (double)bank));
 		if (1 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
 			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis()/1000.0, 
@@ -1367,7 +1373,7 @@ public:
 
 		if (0) { 
 			printf("SIM %08.3f (%+04.1f,%+04.1f) %+05.2f %+05.2f %+05.2f %+05.2f\n", 
-				(float)(millis()/1000.0), stickX, stickY, imu->gx, cmdPitch, pitch, logItem.pitch);
+				(float)(millis()/1000.0), stickX, stickY, imu->gx, cmdPitch, pitch, (double)logItem.pitch);
 		}
 		const float simPitchOffset = 0.0;
 		imu->az = cos((this->pitch + simPitchOffset) * M_PI / 180) * 1.0;
@@ -1397,8 +1403,14 @@ public:
 	bool ESP32sim_replayLogItem(ifstream &i) {
 		LogItem l; 
 		static uint64_t logfileMicrosOffset = 0;
-		
+		int logFlags = 0;
+		for (int n = 0; n <= replayReduce; n++) { 
+			i.read((char *)&l, sizeof(l));
+			logFlags |= l.flags;
+		}
+
 		if (i.read((char *)&l, sizeof(l))) {
+			l.flags |= logFlags;
 			if (logfileMicrosOffset == 0) 
 				logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
 			_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
@@ -1427,29 +1439,22 @@ public:
 			l.ai.g5Pitch = min(max(-30.0, (double)l.ai.g5Pitch), 30.0);
 			l.ai.g5Roll = min(max(-30.0, (double)l.ai.g5Roll), 30.0);
 			// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
-			if ((l.flags & LogFlags::g5Ps) || l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt) { 
-				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", l.ai.g5Ias, l.ai.g5Tas, l.ai.g5Palt)); 
+			if ((l.flags & LogFlags::g5Ps) /*|| l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt*/) { 
+				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", (double)l.ai.g5Ias, (double)l.ai.g5Tas, (double)l.ai.g5Palt)); 
 			}
-			if ((l.flags & LogFlags::g5Nav) || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track) { 
-				ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", l.ai.g5Hdg, l.ai.g5Track)); 
+			if ((l.flags & LogFlags::g5Nav)/* || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track*/) { 
+				ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", (double)l.ai.g5Hdg, (double)l.ai.g5Track)); 
 			}
-			if ((l.flags & LogFlags::g5Ins) || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch) { 
-				ESP32sim_udpInput(7891, strfmt("R=%f P=%f\n", l.ai.g5Roll, l.ai.g5Pitch)); 
+			if ((l.flags & LogFlags::g5Ins)/* || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch*/) { 
+				ESP32sim_udpInput(7891, strfmt("R=%f P=%f SL=%f\n", (double)l.ai.g5Roll, (double)l.ai.g5Pitch, (double)l.ai.g5Slip)); 
 			}
-			if ((l.flags & LogFlags::ublox) || (l.ai.ubloxHdg != ahrsInput.ubloxHdg)) { 
+			if ((l.flags & LogFlags::ublox) || abs(l.ai.ubloxHdg != ahrsInput.ubloxHdg) < .01) { 
 				ublox.myGNSS.hdg = magToTrue(l.ai.ubloxHdg) * 100000.0;
 				ublox.myGNSS.hac = l.ai.ubloxHdgAcc * 100000.0;
 				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0 / FEET_PER_METER;
 				ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 0.51444 * 1000;
-				
-#ifdef UBUNTU
-				// TMP hack: make up for incorrectly logged ublox grounspeed
-				// *********************************************************
-				//ublox.myGNSS.gs = l.ai.ubloxGroundSpeed * 1000;
-				//assert(l.ai.ubloxGroundSpeed < 75);
-				// *********************************************************
-#endif
-
+				ublox.myGNSS.lat = l.ai.lat * 10000000.0;
+				ublox.myGNSS.lon = l.ai.lon * 10000000.0;
 				ublox.myGNSS.fresh = true;
 			}
 			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) { 
@@ -1458,7 +1463,7 @@ public:
 					magToTrue(l.ai.gpsTrackRMC));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
-			if (abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || ahrsInput.gspeed != l.ai.gspeed ||
+			if (//abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || ahrsInput.gspeed != l.ai.gspeed ||
 				(l.flags & LogFlags::HdgGDL) != 0) { 
 				unsigned char buf[64];
 				GDL90Parser::State s;
@@ -1543,6 +1548,7 @@ public:
 	void parseArg(char **&a, char **la) override {
 		if (strcmp(*a, "--replay") == 0) replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0) logSkip = atoi(*(++a));
+		else if (strcmp(*a, "--replayReduce") == 0) replayReduce = atoi(*(++a));
 		else if (strcmp(*a, "--log") == 0) { 
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));

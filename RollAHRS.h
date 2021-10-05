@@ -4,6 +4,12 @@
 
 using namespace std;
 
+#ifndef AHRS_RATE
+#define AHRS_RATE 50
+#endif
+#define AHRS_RATE_SCALE(x) ((x) * AHRS_RATE / 200.0)
+#define AHRS_RATE_INV_SCALE(x) ((x) * 200.0 / AHRS_RATE)
+#define AHRS_RATE_CR_SCALE(x) (1 - pow(1 - x, 200.0 / AHRS_RATE))
 
 #define USE_ACCEL
 
@@ -72,17 +78,17 @@ struct AhrsInputB {
 struct AhrsInputC { 
 	float sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt;  // 1-6 
 	float ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track; // 1-17
-	float palt, gspeed, g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt; // 19-25
-	float ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed; // 26-29
-	double lat, lon; // 30,31
+	float palt, gspeed, g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5Slip; // 19-26
+	float ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed; // 27-30
+	double lat, lon; // 31,32
 	String toString() const { 
 		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 9-18 */
-			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f "  /* 21 - 27 */ 
-			"%.1f %.1f %+12.8lf %+12.8lf", 						// 28-31
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f %.3f"  /* 21 - 28 */ 
+			"%.1f %.1f %+12.8lf %+12.8lf", 						// 29-32
 		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
-		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt,
+		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5Slip, 
 		ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed, lat, lon);
 		return String(buf);	
 	 }
@@ -102,47 +108,15 @@ struct AhrsInputC {
 		ax = a.ax; ay = a.ay; az = a.az;
 		gx = a.gx; gy = a.gy; gz = a.gz;
 		mx = a.mx; my = a.my; mz = a.mz;
-		palt = a.palt; gspeed = a.gspeed; g5Pitch = a.g5Pitch; g5Roll = a.g5Roll; g5Hdg = a.g5Hdg; g5Ias = a.g5Ias; g5Tas = a.g5Tas;
-		g5Palt = a.g5Palt; 
-		lat = lon =	ubloxHdg = ubloxHdgAcc = ubloxAlt = ubloxGroundSpeed = 0;
+		palt = a.palt; gspeed = a.gspeed; g5Pitch = a.g5Pitch; g5Roll = a.g5Roll; 
+		g5Hdg = a.g5Hdg; g5Ias = a.g5Ias; g5Tas = a.g5Tas; g5Palt = a.g5Palt; 
+		lat  = lon =	ubloxHdg = ubloxHdgAcc = ubloxAlt = ubloxGroundSpeed = 0;
 		return *this;
 	}
 		
 };
 
 
-// idea for compact logItem
-template <class T, int V> 
-class ScaledStorage {
-	public:
-		T v;
-		ScaledStorage() {}
-		ScaledStorage &operator =(double x) { v = x * V; return *this; }
-		operator T() { return v * 1.0 / V; }
-};
-
-struct AhrsInputPacked { 
-	typedef ScaledStorage<uint16_t, 100> Heading;
-	typedef ScaledStorage<int16_t, 1000> MagResult;
-	typedef ScaledStorage<int32_t, 10000000> LatLon;
-	typedef ScaledStorage<int32_t, 100000> Time;
-	typedef ScaledStorage<int16_t, 1000> GyroResult;
-	Time sec;
-	Heading dtrk;  
-	LatLon lat, lon;
-	MagResult mx, my, mz;
-	GyroResult gx, gy, gz;
-
-	void pack(const AhrsInputC &a) { sec = a.sec; lat = a.lat; lon = a.lon; }
-	void unpack(AhrsInputC &a) { a.sec = sec; a.lat = lat; a.lon = lon; }
-};
-
-inline void testPack() { 
-	AhrsInputPacked p;
-	AhrsInputC a;
-	p.pack(a);
-	p.unpack(a);
-}
 
 typedef AhrsInputC AhrsInput; 
 
@@ -222,7 +196,7 @@ inline static float windup360(float now, float prev) {
 	
 class MultiCompFilter { 
 	bool first = true;
-	float defaultCr = 0.03;
+	float defaultCr = AHRS_RATE_CR_SCALE(0.03);
 	float age = 10.0;
 public:
 	float value, prevMainValue, bestCr, bestAux, bestAuxPri, expires, priority;
@@ -288,17 +262,17 @@ public:
 		  accOffY = -0,
 		  accOffZ = -0;
 
-	float compRatio1 = 0.00072;  // roll comp filter ratio 
+	float compRatio1 = AHRS_RATE_CR_SCALE(0.00072);  // roll comp filter ratio 
 	float rollOffset = +2.63;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
-	float hdgCompRatio = .00025;  // composite filter ratio for hdg 
+	float hdgCompRatio = AHRS_RATE_CR_SCALE(.00025);  // composite filter ratio for hdg 
 	float magDipConstant = 2.11; // unexplained correction factor for bank angle in dip calcs
-	float magBankTrimCr = 0.00005;
+	float magBankTrimCr = AHRS_RATE_INV_SCALE(0.00005);
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 1.10;
 	float debugVar = 0.3;
 	float gXdecelCorrelation = 1.003;
-	float compRatioPitch = 0.012;
+	float compRatioPitch = AHRS_RATE_CR_SCALE(0.012);
 	float pitchOffset = -2.85; 	
 	float pitchRaw =0;
 	
@@ -311,10 +285,10 @@ public:
 	int zeroSampleCount = 0; 
 	float g5LastTimeStamp = 0; 
 	struct { 
-		TwoStageRollingAverage<float,20,20> ax,ay,az,gx,gy,gz;
+		TwoStageRollingAverage<float,20,(int)AHRS_RATE_SCALE(20)> ax,ay,az,gx,gy,gz;
 	} zeroAverages;
 
-	TwoStageRollingAverage<float,20,150>
+	TwoStageRollingAverage<float,20,(int)AHRS_RATE_SCALE(150)>
 		gyrZOffsetFit,
 		gyrXOffsetFit,
 		gyrYOffsetFit;
@@ -328,23 +302,22 @@ public:
 	bool hdgInitialized = false;
 
 	typedef TwoStageRollingLeastSquares<float> TwoStageRLS;
-	RollingLeastSquares // all at about 200 HZ */
+	RollingLeastSquares 
 		gyroDriftFit = RollingLeastSquares(300), // 10HZ 
 		magHdgFit = RollingLeastSquares(50), // 10Hz
 		gSpeedFit = RollingLeastSquares(25); // 50Hz
 
-	RollingAverage<float,200> magStabFit;
-	RollingAverage<float,50> avgRoll;
-	RollingAverage<float,100> avgPitch;
-	RollingAverage<float,20> avgMagHdg;
-	RollingAverage<float,200> avgGZ, avgGX, avgAX, avgAZ, avgAY;
-	RollingAverage<float,200> gyroZeroCount;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(200)> magStabFit;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(50)> avgRoll;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(100)> avgPitch;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(20)> avgMagHdg;
+	RollingAverage<float, (int)AHRS_RATE_SCALE(200)> avgGZ, avgGX, avgAX, avgAZ, avgAY;
+	RollingAverage<float, 200> gyroZeroCount;
 	
 	TwoStageRLS 
-		magZFit = TwoStageRLS(20, 20),
-		magXFit = TwoStageRLS(20, 20),
-		magYFit = TwoStageRLS(20, 20),
-		magHdgAvg = TwoStageRLS(20,20);
+		magZFit = TwoStageRLS(20, (int)AHRS_RATE_SCALE(20)),
+		magXFit = TwoStageRLS(20, (int)AHRS_RATE_SCALE(20)),
+		magYFit = TwoStageRLS(20, (int)AHRS_RATE_SCALE(20));
 		
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
 	int count = 0;
@@ -380,7 +353,7 @@ public:
 		bool tick10HZ = (floor(l.sec / .1) != floor(prev.sec / .1));
 		bool tick50HZ = (floor(l.sec / .02) != floor(prev.sec / .02));
 
-		zeroAverages.ax.add(l.ax);
+		zeroAverages.ax.add(l.ax); // FULL RATE
 		zeroAverages.ay.add(l.ay);
 		zeroAverages.az.add(l.az);
 		zeroAverages.gx.add(l.gx);
@@ -417,7 +390,7 @@ public:
 			l.gy -= gyrOffY;
 		}
 
-		avgGX.add(l.gx);
+		avgGX.add(l.gx); // FULL RATE
 		avgGZ.add(l.gz);
 		avgAX.add(l.ax);
 		avgAY.add(l.ay);
@@ -426,7 +399,7 @@ public:
 		magHdg = atan2(l.my, l.mx) * 180 / M_PI;
 
 		//magMagnitudeFit.add(l.sec, magTotalMagnitude);
-		magZFit.add(l.sec, l.mz);
+		magZFit.add(l.sec, l.mz); // FULL RATE 
 		magXFit.add(l.sec, l.mx);
 		magYFit.add(l.sec, l.my);
 
@@ -437,7 +410,7 @@ public:
 				const float stabThreshold = 0.0;
 				if (magStability < stabThreshold) { 
 					//gyrZOffsetFit.add(l.sec, magZFit.stage1.averageY(), max(stabThreshold/2, (stabThreshold/2 - magStability)*100));
-					gyrZOffsetFit.add(zeroAverages.gz.average());
+					gyrZOffsetFit.add(zeroAverages.gz.average()); // FULL RATE
 					gyrXOffsetFit.add(zeroAverages.gx.average());
 					gyrYOffsetFit.add(zeroAverages.gy.average());
 					zeroSampleCount++;
@@ -578,7 +551,6 @@ public:
 		magZFit.reset();
 		magXFit.reset();
 		magYFit.reset();
-		magHdgAvg.reset();
 	}
 };
 
@@ -663,18 +635,144 @@ struct LogItemC {
 	}
 };
 
+
+
+
+// idea for compact logItem
+template <class T, int V> 
+class ScaledStorage {
+	public:
+		T v;
+		ScaledStorage() {}
+		ScaledStorage &operator =(double x) { v = x * V; return *this; }
+		operator double() const { return v * 1.0 / V; }
+		//operator float() { return v * 1.0 / V; }
+};
+
+
+/* Invesitgate changes in new packed structure with: 
+  make winglevlr_ubuntu  && 
+  	./winglevlr_ubuntu --logConvert logs.OLD/AHRSD015.DAT logs/AHRSD015.DAT && 
+	./winglevlr_ubuntu --replay logs/AHRSD015.DAT --log + | grep LOG > logs/015-N.plog && 
+	./loglook.sh XX -file logs/015-O.plog -roll -pitch -maghdg -file logs/015-N.plog -roll -pitch -maghdg
+
+	Packed log structure 60% size of full logItem  
+*/
+
+struct AhrsPackedStructure { 
+	typedef ScaledStorage<int16_t, 90> Heading;
+	typedef ScaledStorage<int16_t, 100> MagResult; 
+	typedef ScaledStorage<int32_t, 10000000> LatLon;
+	typedef ScaledStorage<uint32_t, 10000> Time;
+	typedef ScaledStorage<int32_t, 50000> GyroResult;
+	typedef ScaledStorage<int16_t, 500> AccResult;
+	typedef ScaledStorage<int16_t, 100> Altitude;
+	typedef ScaledStorage<int16_t, 100> Knots;
+	typedef ScaledStorage<int16_t, 100> SmallAngle; 
+	typedef ScaledStorage<int16_t, 100> SmallDistance; 
+};
+
+struct AhrsInputPacked : public AhrsPackedStructure { 
+	Time sec;
+	Heading selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, ubloxHdg, ubloxHdgAcc, dtk, g5Track, g5Hdg;
+	LatLon lat, lon;
+	AccResult ax, ay, az;
+	GyroResult gx, gy, gz;
+	MagResult mx, my, mz;
+	Altitude alt, palt, g5Palt, ubloxAlt; 
+	Knots gspeed, g5Ias, g5Tas, ubloxGroundSpeed;
+	SmallAngle g5Pitch, g5Roll, g5Slip;
+	//int32_t spare1, spare2; 
+	void pack(const AhrsInputC &a) { 
+		AhrsInputPacked &b = *this;
+		b.sec = a.sec;
+		b.selTrack = a.selTrack; b.gpsTrackGDL90 = a.gpsTrackGDL90; b.gpsTrackVTG = a.gpsTrackVTG;
+		b.gpsTrackRMC = a.gpsTrackRMC; b.dtk = a.dtk; b.g5Track = a.g5Track; b.g5Hdg = a.g5Hdg;
+		  
+		b.ax = a.ax; b.ay = a.ay; b.az = a.az;
+		b.gx = a.gx; b.gy = a.gy; b.gz = a.gz;
+		b.mx = a.mx; b.my = a.my; b.mz = a.mz;
+		b.alt = a.alt; b.palt = a.palt; b.g5Palt = a.g5Palt; 
+		b.gspeed = a.gspeed; b.g5Ias = a.g5Ias; b.g5Tas = a.g5Tas;
+		b.g5Pitch = a.g5Pitch; b.g5Roll = a.g5Roll; b.g5Slip = a.g5Slip; 
+		b.lat = a.lat; b.lon = a.lon; b.ubloxHdg = a.ubloxHdg; b.ubloxHdgAcc = a.ubloxHdgAcc;
+		b.ubloxAlt = a.ubloxAlt; b.ubloxGroundSpeed = a.ubloxGroundSpeed;
+		//spare1 = spare2 = 0;
+	}
+	//void unpack(AhrsInputC &b) { 
+	//	AhrsInputPacked &a = *this;
+	//}
+	AhrsInputPacked &operator =(const AhrsInputC &a) { 
+		pack(a);
+		return *this;
+	}
+	String toString() const { 
+		static char buf[512];
+		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
+			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 9-18 */
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f %.3f "  /* 21 - 29 */ 
+			"%.1f %.1f %+12.8lf %+12.8lf", 						// 29-32
+		(double)sec, (double)selTrack, (double)gpsTrackGDL90, (double) gpsTrackVTG, (double) gpsTrackRMC,
+		(double) alt, (double)ax,(double) ay,(double) az, (double)gx,(double) gy, (double)gz,(double) mx, 
+		(double)my, (double)mz, (double)dtk, (double)g5Track, (double)palt, (double)gspeed, 
+		(double)g5Pitch, (double)g5Roll, (double)g5Hdg, (double)g5Ias, (double)g5Tas, (double)g5Palt, (double)g5Slip,
+		(double)ubloxHdg, (double)ubloxHdgAcc, (double)ubloxAlt, (double)ubloxGroundSpeed, (double)lat, (double)lon);
+		return String(buf);	
+	}
+};
+
+struct LogItemPacked : public AhrsPackedStructure { 
+	uint16_t pwmOutput0, pwmOutput1, flags;
+	SmallAngle desRoll, roll, bankAngle, pitch, desPitch;
+	Altitude desAlt; 
+	Heading magHdg;
+	SmallDistance xte;
+	AhrsInputPacked ai;
+	LogItemPacked &operator=(const LogItemC &l) { 
+		ai = l.ai;
+		pwmOutput0 = l.pwmOutput0;
+		pwmOutput1 = l.pwmOutput1;
+		flags = l.flags;
+		//desRoll, roll, bankAngle, pitch, desPitch;
+		desRoll = l.desRoll; roll = l.roll; bankAngle = l.bankAngle; pitch = l.pitch; desPitch = l.desPitch;
+		desAlt = l.desAlt; magHdg = l.magHdg; xte = l.xte; 
+		return *this;
+	}
+
+	String toString() const { 
+		char buf[200];
+		//const AuxMpuData &a = auxMpu;
+		snprintf(buf, sizeof(buf), " %d %d %d %f %f %f %f %f %f %f "
+		//" %f %f %f %f %f %f %f %f %f "
+		,(int)pwmOutput0, (int)pwmOutput1, (int)flags, (double)desRoll, (double)roll, (double)magHdg, 
+		(double)xte, (double)pitch, (double)desAlt, (double)desPitch
+		// ,a.ax, a.ay, a.az, a.gx, a.gy, a.gz, a.mx, a.my, a.mz
+		);
+		return ai.toString() + String(buf);
+		
+	} 
+};
+
+//typedef LogItemPacked LogItem;	
 typedef LogItemC LogItem;	
 
 
+inline void testPack() { 
+	AhrsInputPacked p, q;
+	AhrsInputC a;
+	p.pack(a);
+	//p.unpack(a);
+	q = p;
+}
+
 #ifdef UBUNTU
 void ESP32sim_convertLogOldToNew(ifstream &i, ofstream &o) {
-	LogItemB l; 
+	LogItemC l; 
 	while (i.read((char *)&l, sizeof(l))) {
-		LogItemC l2;
+		LogItemPacked l2;
 		bzero(&l2, sizeof(l2));
 		l2 = l;
 		o.write((char *)&l2, sizeof(l2));
 	}
 }
 #endif
-
