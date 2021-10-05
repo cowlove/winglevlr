@@ -28,8 +28,8 @@ with open(filePlog1) as f:
         if (lcount % 100 == 0):           
             words = re.split("\s+", line)
             if (len(words) > 30):
-                lat = float(words[29])
-                lon = float(words[30])
+                lat = float(words[30])
+                lon = float(words[31])
                 track1.append((lat, lon))
         line = f.readline()
 
@@ -40,8 +40,8 @@ with open(filePlog2) as f:
         if (lcount % 100 == 0):           
             words = re.split("\s+", line)
             if (len(words) > 30):
-                lat = float(words[29])
-                lon = float(words[30])
+                lat = float(words[30])
+                lon = float(words[31])
                 track2.append((lat, lon))
         line = f.readline()
 

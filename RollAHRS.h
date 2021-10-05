@@ -85,10 +85,10 @@ struct AhrsInputC {
 		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 9-18 */
-			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f "  /* 21 - 27 */ 
-			"%.1f %.1f %+12.8lf %+12.8lf", 						// 28-31
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f %.3f"  /* 21 - 28 */ 
+			"%.1f %.1f %+12.8lf %+12.8lf", 						// 29-32
 		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
-		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt,
+		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5Slip, 
 		ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed, lat, lon);
 		return String(buf);	
 	 }
@@ -691,8 +691,8 @@ struct AhrsInputPacked : public AhrsPackedStructure {
 		  
 		b.ax = a.ax; b.ay = a.ay; b.az = a.az;
 		b.gx = a.gx; b.gy = a.gy; b.gz = a.gz;
-		b.mx = a.mx; b.my = a.my; b.mz = a.gz;
-		b.alt = a.alt; palt = a.palt; g5Palt = a.g5Palt; 
+		b.mx = a.mx; b.my = a.my; b.mz = a.mz;
+		b.alt = a.alt; b.palt = a.palt; b.g5Palt = a.g5Palt; 
 		b.gspeed = a.gspeed; b.g5Ias = a.g5Ias; b.g5Tas = a.g5Tas;
 		b.g5Pitch = a.g5Pitch; b.g5Roll = a.g5Roll; b.g5Slip = a.g5Slip; 
 		b.lat = a.lat; b.lon = a.lon; b.ubloxHdg = a.ubloxHdg; b.ubloxHdgAcc = a.ubloxHdgAcc;
@@ -710,12 +710,12 @@ struct AhrsInputPacked : public AhrsPackedStructure {
 		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 9-18 */
-			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f "  /* 21 - 27 */ 
-			"%.1f %.1f %+12.8lf %+12.8lf", 						// 28-31
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f %.3f "  /* 21 - 29 */ 
+			"%.1f %.1f %+12.8lf %+12.8lf", 						// 29-32
 		(double)sec, (double)selTrack, (double)gpsTrackGDL90, (double) gpsTrackVTG, (double) gpsTrackRMC,
 		(double) alt, (double)ax,(double) ay,(double) az, (double)gx,(double) gy, (double)gz,(double) mx, 
 		(double)my, (double)mz, (double)dtk, (double)g5Track, (double)palt, (double)gspeed, 
-		(double)g5Pitch, (double)g5Roll, (double)g5Hdg, (double)g5Ias, (double)g5Tas, (double)g5Palt,
+		(double)g5Pitch, (double)g5Roll, (double)g5Hdg, (double)g5Ias, (double)g5Tas, (double)g5Palt, (double)g5Slip,
 		(double)ubloxHdg, (double)ubloxHdgAcc, (double)ubloxAlt, (double)ubloxGroundSpeed, (double)lat, (double)lon);
 		return String(buf);	
 	}
