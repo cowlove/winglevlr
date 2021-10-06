@@ -85,7 +85,7 @@ struct AhrsInputC {
 		static char buf[512];
 		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
 			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 9-18 */
-			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f %.3f"  /* 21 - 28 */ 
+			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f %.3f "  /* 21 - 28 */ 
 			"%.1f %.1f %+12.8lf %+12.8lf", 						// 29-32
 		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
 		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5Slip, 
@@ -96,7 +96,7 @@ struct AhrsInputC {
 		sscanf(s, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %lf %lf", 
 		&sec, &selTrack, &gpsTrackGDL90, &gpsTrackVTG, &gpsTrackRMC, &alt, &ax, &ay, &az, &gx, &gy, 
 		&gz, &mx, &my, &mz, &dtk, &g5Track, &palt, &gspeed, &g5Pitch, &g5Roll, &g5Hdg, &g5Ias, &g5Tas, &g5Palt,
-		&ubloxHdg, &ubloxHdgAcc, &ubloxAlt, &ubloxGroundSpeed, &lat, &lon);
+		 &ubloxHdg, &ubloxHdgAcc, &ubloxAlt, &ubloxGroundSpeed, &lat, &lon);
 		return *this;
 	}
 	AhrsInputC &operator =(const AhrsInputB &a) { 
@@ -756,7 +756,7 @@ struct LogItemPacked : public AhrsPackedStructure {
 //typedef LogItemPacked LogItem;	
 typedef LogItemC LogItem;	
 
-
+	
 inline void testPack() { 
 	AhrsInputPacked p, q;
 	AhrsInputC a;

@@ -735,6 +735,7 @@ void setServos(float x, float y) {
 }
 
 bool firstLoop = true;
+int imuReadCount = 0;
 bool immediateLogStart = false;
 
 void loop() {	
@@ -1404,7 +1405,7 @@ public:
 		LogItem l; 
 		static uint64_t logfileMicrosOffset = 0;
 		int logFlags = 0;
-		for (int n = 0; n <= replayReduce; n++) { 
+		for (int n = 0; n < replayReduce; n++) { 
 			i.read((char *)&l, sizeof(l));
 			logFlags |= l.flags;
 		}
@@ -1413,7 +1414,7 @@ public:
 			l.flags |= logFlags;
 			if (logfileMicrosOffset == 0) 
 				logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
-			_micros = l.ai.sec * 1000000 - logfileMicrosOffset;
+			_micros = l.ai.sec * 1000000.0 - logfileMicrosOffset;
 			imu->ax = l.ai.ax;
 			imu->ay = l.ai.ay;
 			imu->az = l.ai.az;
@@ -1424,6 +1425,7 @@ public:
 			imu->my = l.ai.my;
 			imu->mz = l.ai.mz;
 			//auxMPU = l.auxMpu;
+			ahrsInput = l.ai;
 
 			if (ESP32csim_useAuxMpu) { 
 				float cksum = abs(auxMPU.ax) + abs(auxMPU.ay) + abs(auxMPU.az) +
@@ -1436,8 +1438,8 @@ public:
 				}
 			}
 
-			l.ai.g5Pitch = min(max(-30.0, (double)l.ai.g5Pitch), 30.0);
-			l.ai.g5Roll = min(max(-30.0, (double)l.ai.g5Roll), 30.0);
+			l.ai.g5Pitch = min(max(-45.0, (double)l.ai.g5Pitch), 45.0);
+			l.ai.g5Roll = min(max(-45.0, (double)l.ai.g5Roll), 45.0);
 			// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs 
 			if ((l.flags & LogFlags::g5Ps) /*|| l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt*/) { 
 				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", (double)l.ai.g5Ias, (double)l.ai.g5Tas, (double)l.ai.g5Palt)); 

@@ -603,7 +603,8 @@ public:
 
 	void exit() { 
 		exitNow = true;
-		Serial.printf("Exiting, qsize %d, free heap %d\n", (int)uxQueueMessagesWaiting(queue), ESP.getFreeHeap());
+		Serial.printf("Exiting, qsize %d, written %d, free heap %d\n", (int)uxQueueMessagesWaiting(queue), 
+			written, ESP.getFreeHeap());
 		T v;
 		add(&v);
 		while(exitNow) {
