@@ -24,7 +24,11 @@
 #include "GDL90Parser.h"
 #include "WaypointNav.h"
 
+#ifndef UBUNTU
 bool debugFastBoot = false;
+#else
+bool debugFastBoot = false;
+#endif
 
 using WaypointNav::trueToMag;
 using WaypointNav::magToTrue;
@@ -335,11 +339,15 @@ public:
 void imuLog(); 
 
 
-static AhrsInput ahrsInput;
+static AhrsInput ahrsInput, lastAhrsInput, lastAhrsGoodG5; 
 
 bool imuRead() { 
 	AhrsInput &x = ahrsInput;
-	x.sec = millis() / 1000.0;
+	x.sec = micros() / 1000000.0;
+	// TODO fix this in a less gross way. 
+	while (x.sec < lastAhrsInput.sec) {
+		x.sec += 65536.0 * 65536.0 / 1000000.0;
+	}
 #ifdef USE_ACCEL
 	imu->accelUpdate();
 	x.ax = imu->accelX();
@@ -381,7 +389,6 @@ LogItem logItem;
 SDCardBufferedLog<LogItem>  *logFile = NULL;
 bool logChanging = false;
 const char *logFileName = "AHRSD%03d.DAT";
-static AhrsInput lastAhrsInput, lastAhrsGoodG5; 
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
@@ -453,11 +460,11 @@ void setup() {
 	WiFi.setSleep(false);
 
 	wifi.addAP("Ping-582B", "");
-	wifi.addAP("Flora_2GEXT", "maynards");
-	wifi.addAP("Team America", "51a52b5354");
+	//wifi.addAP("Flora_2GEXT", "maynards");
+	wifi.addAP("Tip of the Spear", "51a52b5354");
 	wifi.addAP("ChloeNet", "niftyprairie7");
 
-	if (!debugFastBoot && !buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
+	if (!buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
 			wifi.run();
@@ -751,6 +758,9 @@ void loop() {
 	uint64_t now = micros();
 	double nowSec = millis() / 1000.0;
 	
+	if (debugFastBoot && nowSec > 3600) { 
+		ESP.restart();
+	}
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	PidControl *pid = &rollPID;
@@ -803,11 +813,13 @@ void loop() {
 	           
 	//ed.re.check();
 	if (firstLoop == true && (digitalRead(buttonMid.pin) == 0  || debugFastBoot)) { 
-		logFile = new SDCardBufferedLog<LogItem>(logFileName, 500/*q size*/, 0/*timeout*/, 500/*flushInterval*/, false/*textMode*/);
+	//if (debugFastBoot && nowSec > 60 && logFile == NULL) { 
+		logFile = new SDCardBufferedLog<LogItem>(logFileName, 200/*q size*/, 0/*timeout*/, 500/*flushInterval*/, false/*textMode*/);
 		logFilename = logFile->currentFile;
 		logChanging = false;
 		immediateLogStart = true;
 	}
+	firstLoop = false;
 	if (buttonCheckTimer.tick()) { 
 		buttonISR();
 		if (butFilt3.newEvent()) { // TOP or RIGHT button 
@@ -1228,20 +1240,7 @@ void loop() {
 		totalError.hdgSum += (angularDiff(ahrs.magHdg - ahrsInput.ubloxHdg));
 		totalError.pitch += abs(pitch - ahrsInput.g5Pitch);
 		totalError.pitchSum += (pitch - ahrsInput.g5Pitch);
-	
-#ifdef UBUNTU
-		static bool errorsCleared = false; 
-		if (errorsCleared == false && millis() < 200000) {  // don't count error during the first 200 sec, let AHRS stabilize  
-			totalError.clear();
-			errorsCleared = true;
-		}
-	
-		// special logfile name "+", write out log with computed values from the current simulation 			
-		if (strcmp(logFilename.c_str(), "+") == 0) {
-			pair<float,float> stick = ServoControl::servoToStick(servoOutput[0], servoOutput[1]); 
-			cout << logItem.toString().c_str() << strfmt("%f %f	LOG U",	stick.first, stick.second) << endl;
-		}
-#endif
+
 		lastAhrsInput = ahrsInput;
 	}
 
@@ -1283,11 +1282,29 @@ void loop() {
 		Display::log.setInverse(false, (logFile != NULL));
 	}
 			
+#if 0
+	// stuff sim debugging things into logItem 
+	logItem.ai.gpsTrackVTG = imuReadCount++;
+	logItem.ai.gpsTrackGDL90 = ahrs.mComp.value;
+	logItem.ai.gpsTrackRMC = ahrs.mComp.bestAux;
+#endif
+#ifdef UBUNTU
+	static bool errorsCleared = false; 
+	if (errorsCleared == false && millis() < 200000) {  // don't count error during the first 200 sec, let AHRS stabilize  
+		totalError.clear();
+		errorsCleared = true;
+	}
+
+	// special logfile name "+", write out log with computed values from the current simulation 			
+	if (strcmp(logFilename.c_str(), "+") == 0) {
+		pair<float,float> stick = ServoControl::servoToStick(servoOutput[0], servoOutput[1]); 
+		cout << logItem.toString().c_str() << strfmt("%f %f	LOG U",	stick.first, stick.second) << endl;
+	}
+#endif
 	if (logFile != NULL) {
 		sdLog();
 	}
 	logItem.flags = 0;
-	firstLoop = false;
 }
 
 #ifdef UBUNTU

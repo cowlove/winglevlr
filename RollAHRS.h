@@ -20,9 +20,9 @@ struct AhrsInputA {
 	float q3, palt, gspeed, g5Pitch = 0, g5Roll = 0, g5Hdg = 0, g5Ias = 0, g5Tas = 0, g5Palt = 0, g5TimeStamp = 0;
 	String toString() { 
 		static char buf[512];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %f %f %f" /* 1 - 10 */
-			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" /* 11 - 20 */
-			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f",  /* 21 - 27 */ 
+		snprintf(buf, sizeof(buf), "%f %f %f %f %f %f %f %f %f %f" /* 1 - 10 */
+			"%f %f %f %f %f %f %f %f %f %f %f" /* 11 - 20 */
+			"%f %f %f %f %f %f %f %f %f",  /* 21 - 27 */ 
 		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, p, r, y, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, q3, palt, gspeed, 
 		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5TimeStamp);
 		return String(buf);	
@@ -83,10 +83,10 @@ struct AhrsInputC {
 	double lat, lon; // 31,32
 	String toString() const { 
 		static char buf[512];
-		snprintf(buf, sizeof(buf), "%f %.1f %.1f %.1f %.1f %.1f %.3f %.3f " /* 1 - 8 */
-			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f " /* 9-18 */
-			"%.3f %.1f %.2f %.2f %.2f %.2f %.2f %.2f %.3f %.3f "  /* 21 - 28 */ 
-			"%.1f %.1f %+12.8lf %+12.8lf", 						// 29-32
+		snprintf(buf, sizeof(buf), "%f %f %f %f %f %f %f %f " /* 1 - 8 */
+			"%f %f %f %f %f %f %f %f %f %f " /* 9-18 */
+			"%f %f %f %f %f %f %f %f %f %f "  /* 21 - 28 */ 
+			"%f %f %lf %lf", 						// 29-32
 		sec, selTrack, gpsTrackGDL90, gpsTrackVTG, gpsTrackRMC, alt, ax, ay, az, gx, gy, gz, mx, my, mz, dtk, g5Track, palt, gspeed, 
 		g5Pitch, g5Roll, g5Hdg, g5Ias, g5Tas, g5Palt, g5Slip, 
 		ubloxHdg, ubloxHdgAcc, ubloxAlt, ubloxGroundSpeed, lat, lon);
@@ -196,23 +196,22 @@ inline static float windup360(float now, float prev) {
 	
 class MultiCompFilter { 
 	bool first = true;
-	float defaultCr = AHRS_RATE_CR_SCALE(0.03);
-	float age = 10.0;
+	float defaultCr = AHRS_RATE_CR_SCALE(0.001);
+	float age = 5.0;
 public:
 	float value, prevMainValue, bestCr, bestAux, bestAuxPri, expires, priority;
 	void reset() { first = true; } 
 	float calculate(float now, float v) {
 		if (first || abs(now - expires) > 20) {
 			prevMainValue = value = v;
-			bestAuxPri = -1;
+			bestAuxPri = priority = 0;
 			first = false;
 			expires = now + age;
 		}
 		// 
 		if(now > expires || bestAuxPri >= priority) { 
-			if (bestAuxPri == -1) {
+			if (bestAuxPri == 0) {
 				bestAux = v;
-				bestAuxPri = 0;			
 				bestCr = defaultCr;
 			}
 			expires = now + age;
@@ -221,7 +220,7 @@ public:
 			value = (1 - bestCr) * (value) + (bestCr * bestAux);
 		} 
 		value += angularDiff(v - prevMainValue);	
-		bestAuxPri = -1;
+		bestAuxPri = 0;
 		prevMainValue = v;
 		return value;	  
 	}
@@ -511,11 +510,12 @@ public:
 		float cHdg = hdg;
 		cHdg = mComp.calculate(l.sec, hdg);
 		if (tick10HZ) {
-			magHdgFit.add(l.sec, cHdg);
+			magHdgFit.add(l.sec, windup360(cHdg, magHdgFit.averageY()));
 		}
 		magHdg = constrain360(cHdg);		
-		
-		if (magHdgFit.full()) { 
+
+		// magHdg still slightly unreliable 	
+		if (false && magHdgFit.full()) { 
 			compYH -= magBankTrim;
 			magBank = -atan(magHdgFit.slope() * tas / 1091) * 180/M_PI;
 			if (abs(compYH - magBank) < magBankTrimMaxBankErr) { 
