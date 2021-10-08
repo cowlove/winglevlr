@@ -1183,16 +1183,16 @@ void loop() {
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(altPID.corr * 0.01, 3.0), -3.0);
-		desPitch = ed.pitchTrim.value + altCorr;
+		desPitch = ed.pitchTrim.value + altCorr + abs(sin(DEG2RAD(roll)) * 2);
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
 			stickX = stickTrimX + rollPID.corr / 2000 * ServoControl::servoThrow;
-			stickY = stickTrimY + pitchPID.corr / 2000 * ServoControl::servoThrow +
-				(desPitch - ed.pitchTrim.value) * pitchToStick; 
-			//	y = 0; // disable pitch
+			stickY = stickTrimY + pitchPID.corr / 2000 * ServoControl::servoThrow 
+				+ abs(sin(DEG2RAD(roll))) * 0.2
+				+ (desPitch - ed.pitchTrim.value) * pitchToStick; 
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
@@ -1224,7 +1224,7 @@ void loop() {
 		logItem.pwmOutput1 = servoOutput[1];
 		logItem.desRoll = desRoll;
 		logItem.desAlt = (apMode == 3) ? ed.desAlt.value : -1000;
-		logItem.desRoll = desRoll;
+		logItem.desPitch = desPitch;
 		logItem.roll = roll;
 		logItem.magHdg = ahrs.magHdg;
 		logItem.xte = crossTrackError.average();
