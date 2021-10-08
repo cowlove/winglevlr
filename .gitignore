@@ -13,3 +13,6 @@ tests.OLD
 out.plog
 joystick
 logs*
+.vagrant
+map.html
+*.gprof
