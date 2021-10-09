@@ -1058,11 +1058,12 @@ public:
 		} else { 
 			if (attached != NULL && value != *attached) { 
 				value = *attached;
+				Parent::changed = true;
 			}
 			Parent::setValue(value);
 			Parent::setInverse(state == SELECTED, false);
 		}
-		Parent::update(force);
+		//Parent::update(force);
 	};
 	void setValue(float v) { 
 		value = v;
@@ -1072,7 +1073,7 @@ public:
 		}
 		update();
 	}
-	void attach(float *f) { attached = f; }
+	void attach(float *f) { attached = f; value = *attached; }
 };
 
 inline void JDisplayEditor::negateSelectedValue() { 
@@ -1097,15 +1098,15 @@ inline void JDisplayEditor::update() {
 			for(int n = 0; n < items.size(); n++) {
 				items[n]->state = (n == selectedItem) ? JDisplayEditableItem::SELECTED : 
 					JDisplayEditableItem::UNSELECTED;
-				items[n]->update();
+				//items[n]->update();
 			}
 		}
 	} else { 
 		items[selectedItem]->newValue = items[selectedItem]->value + re.value * items[selectedItem]->increment;
 		items[selectedItem]->update();
 	}
-	//for(int n = 0; n < items.size(); n++) 
-	//	items[n]->update();
+	for(int n = 0; n < items.size(); n++) 
+		items[n]->update();
 }
 
 
@@ -1127,7 +1128,7 @@ inline void JDisplayEditor::buttonPress(bool longpress) {
 		if (longpress == false) { 
 			if (items[selectedItem]->newValue != items[selectedItem]->value) 
 				items[selectedItem]->recentChange = true;
-			items[selectedItem]->value = items[selectedItem]->newValue;
+			items[selectedItem]->setValue(items[selectedItem]->newValue);
 		}
 		items[selectedItem]->state = JDisplayEditableItem::SELECTED;
 		re.limMin = 0;
