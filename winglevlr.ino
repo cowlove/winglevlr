@@ -25,7 +25,7 @@
 #include "WaypointNav.h"
 
 #ifndef UBUNTU
-bool debugFastBoot = true;
+bool debugFastBoot = false;
 #else
 bool debugFastBoot = false;
 #endif
@@ -496,6 +496,9 @@ void setup() {
 	Display::dalt.attach(&desAlt);
 	Display::pitchTrim.setValue(0);
 	setKnobPid(Display::pidsel.value);
+	if (debugFastBoot) { 
+		Display::ip.color.lb = Display::ip.color.vb = ST7735_RED;
+	}
 	Display::jde.update();
 	
 	//ed.rlhz.value = 3; // period for relay activation, in seconds
