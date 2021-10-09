@@ -460,13 +460,13 @@ void setup() {
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
 
-	hdgPID.setGains(0.5, 0.001, 0.05);
+	hdgPID.setGains(0.5, 0.0003, 0.05);
 	hdgPID.hiGain.p = 10;
 	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 1.0;
 
-	xtePID.setGains(8.0, 0.001, 0.20);
+	xtePID.setGains(8.0, 0.0003, 0.20);
 	xtePID.maxerr.i = 1.0;
 	xtePID.finalGain = 20.0;
 	
@@ -474,7 +474,7 @@ void setup() {
 	pitchPID.finalGain = 5.0;
 	pitchPID.maxerr.i = .5;
 
-	altPID.setGains(1.0, 0.01, 3.0);
+	altPID.setGains(1.0, 0.002, 3.0);
 	altPID.finalGain = -.5;
 	pitchPID.maxerr.i = 100;
 
