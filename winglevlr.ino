@@ -1088,7 +1088,7 @@ void loop() {
 			} else { 
 				xteCorrection = 0;
 			}
-			if ((apMode == 3 && desAlt > 1000)) { 
+			if (desAlt > 1000) { 
 				float altErr = desAlt - ahrsInput.ubloxAlt;
 				if (abs(altErr) > 500) {
 					altPID.resetI();					
