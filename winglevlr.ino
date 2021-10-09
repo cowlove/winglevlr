@@ -25,7 +25,7 @@
 #include "WaypointNav.h"
 
 #ifndef UBUNTU
-bool debugFastBoot = false;
+bool debugFastBoot = true;
 #else
 bool debugFastBoot = false;
 #endif
@@ -275,66 +275,40 @@ namespace LogFlags {
 
 namespace Display {
 	JDisplay jd;
+	JDisplayEditor jde(26, 0);
+
+	JDisplayEditor *ed(&jde);
+
+	typedef JDisplayItem<float> F;
+	typedef JDisplayEditableItem E;
 	int y = 0;
-	const int c2x = 70;
-	JDisplayItem<const char *>  ip(&jd,10,y,"WIFI:", "%s ");
-	JDisplayItem<float>  dtk(&jd,10,y+=10," DTK:", "%05.1f ");  JDisplayItem<float>    trk(&jd,c2x,y,  " TRK:", "%05.1f ");
-	JDisplayItem<float> pitc(&jd,10,y+=10,"PITC:", "%+03.1f ");  JDisplayItem<float>    obs(&jd,c2x,y,  " OBS:", "%05.1f ");
-	JDisplayItem<float> roll(&jd,10,y+=10,"ROLL:", "%+03.1f");   JDisplayItem<int>    mode(&jd,c2x,y,  "MODE:", "%05d ");
-	JDisplayItem<float>  gdl(&jd,10,y+=10," GDL:", "%05.1f ");  JDisplayItem<float> g5hdg(&jd,c2x,y,  "G5HD:", "%05.1f ");
-	//JDisplayItem<float> xtec(&jd,10,y+=10,"XTEC:", "%+05.1f "); JDisplayItem<float> roll(&jd,c2x,y,    " RLL:", "%+05.1f ");
-	JDisplayItem<const char *> log(&jd,10,y+=10," LOG:", "%s-"); JDisplayItem<int>   drop(&jd,c2x+30,y,    "", "%03d ");
-    JDisplayItem<float> logw(&jd,10,y+=10,"LOGW:", "%05.0f ");
+	const int c1x = 00, c2x = 70;
+	JDisplayItem<const char *>  ip(&jd,c1x,y,"WIFI:", "%s ");
+	E dtrk = JDisplayEditableItem(&jd,c1x,y+=10," DTK:", "%05.1f ", ed, 1, 0, 359, true);
+													F trk(&jd,c2x,y,  " TRK:", "%05.1f ");
+
+	F pitc(&jd,c1x,y+=10,"PITC:", "%+03.1f ");  		F  obs(&jd,c2x,y,     " OBS:", "%05.1f ");
+	F roll(&jd,c1x,y+=10,"ROLL:", "%+03.1f");   		F  mode(&jd,c2x,y,    "MODE:", "%05.0f ");
+	F gdl(&jd,c1x,y+=10," GDL:", "%05.1f ");   			F  g5hdg(&jd,c2x,y,   "G5HD:", "%05.1f ");
+	//F xtec(&jd,c1x,y+=10,"XTEC:", "%+05.1f "); 		F roll(&jd,c2x,y,     " RLL:", "%+05.1f ");
+	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
+    F logw(&jd,c1x,y+=10,"LOGW:", "%05.0f ");
 	
-	JDisplayItem<float> pidpl(&jd,00,y+=10,"PL:", "%03.2f "); JDisplayItem<float> tttt(&jd,c2x,y,    " TT1:", "%04.1f ");
-	JDisplayItem<float> pidph(&jd,00,y+=10,"PH:", "%03.2f "); JDisplayItem<float> ttlt(&jd,c2x,y,    " TT2:", "%04.1f ");;
-	JDisplayItem<float>  pidi(&jd,00,y+=10," I:", "%03.2f "); JDisplayItem<float> maxb(&jd,c2x,y,    "MAXB:", "%04.1f ");
-	JDisplayItem<float>  pidd(&jd,00,y+=10," D:", "%03.2f "); JDisplayItem<float> maxi(&jd,c2x,y,    "MAXI:", "%04.1f ");
-	JDisplayItem<float>  pidg(&jd,00,y+=10," G:", "%03.2f "); JDisplayItem<float> ptrim(&jd,c2x,y,  "PTRM:", "%+4.1f");
-	JDisplayItem<float>  dead(NULL,00,y+=00,"DZ:", "%03.1f "); 
-    JDisplayItem<float>  dalt(&jd,10,y+=10,"DALT:", "%05.0f "); JDisplayItem<float> pidsel(&jd,c2x,y,  " PID:", "%1.0f");		
+	E pidpl(&jd,c1x,y+=10, "PL:", "%03.2f ", ed, .01); 	E tttt(&jd,c2x,y,      " TT1:", "%04.1f ", ed, 1.0);
+	E pidph(&jd,c1x,y+=10, "PH:", "%03.2f ", ed, .01); 	E ttlt(&jd,c2x,y,      " TT2:", "%04.1f ", ed, 1.0);
+	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,      "MAXB:", "%04.1f ", ed, 0.1);
+	E pidd (&jd,c1x,y+=10, " D:", "%03.2f ", ed, .01); 	E maxi(&jd,c2x,y,      "MAXI:", "%04.1f ", ed, 0.1);
+	E pidg (&jd,c1x,y+=10, " G:", "%03.2f ", ed, .01); 	E pitchTrim(&jd,c2x,y, "PTRM:", "%+4.1f", ed, 0.1);
+	F dead(NULL,c1x,y+=00, "DZ:", "%03.1f "); 
+    E desAlt(&jd,c1x,y+=10,"DALT:", "%05.0f ", ed, 20);	E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, 0, 4);
+  	E pidl(NULL,c1x,y+=10, "PIDL:", "%03.2f ", NULL, .1);
+	  
 
     //JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 }
 
 
 float lastDesAlt = 0.0;
-class MyEditor : public JDisplayEditor {
-public:
-	JDisplayEditableItem dtrk = JDisplayEditableItem(&Display::dtk, 1, 0, 359, true);
-	JDisplayEditableItem pidpl = JDisplayEditableItem(&Display::pidpl, .01);
-	JDisplayEditableItem pidph = JDisplayEditableItem(&Display::pidph, .01);
-	JDisplayEditableItem pidi = JDisplayEditableItem(&Display::pidi, .001);
-	JDisplayEditableItem pidd = JDisplayEditableItem(&Display::pidd, .01);
-	JDisplayEditableItem pidg = JDisplayEditableItem(&Display::pidg, .1);
-	JDisplayEditableItem pidl = JDisplayEditableItem(NULL, .1);
-	JDisplayEditableItem maxb = JDisplayEditableItem(&Display::maxb, .1);
-	JDisplayEditableItem maxi = JDisplayEditableItem(&Display::maxi, .1);
-	JDisplayEditableItem tttt = JDisplayEditableItem(&Display::tttt, 1);
-	JDisplayEditableItem ttlt = JDisplayEditableItem(&Display::ttlt, 1);
-//	JDisplayEditableItem tzer = JDisplayEditableItem(NULL, 1);
-	JDisplayEditableItem pidsel = JDisplayEditableItem(&Display::pidsel, 1, 0, 4);
-	JDisplayEditableItem pitchTrim = JDisplayEditableItem(&Display::ptrim, .1);
-	JDisplayEditableItem dead = JDisplayEditableItem(&Display::dead, .1);
-	JDisplayEditableItem desAlt = JDisplayEditableItem(&Display::dalt, 20);
-	
-	MyEditor() : JDisplayEditor(26, 0) { // add in correct knob selection order
-		add(&dtrk);	
-		add(&pidpl);	
-		add(&pidph);	
-		add(&pidi);	
-		add(&pidd);	
-		add(&pidg);	
-		add(&desAlt);
-		add(&tttt);
-		add(&ttlt);	
-		add(&maxb);
-		add(&maxi);
-		add(&pitchTrim);
-		add(&pidsel);
-		//add(&desAlt);
-	}
-} ed;
 
 void imuLog(); 
 
@@ -397,7 +371,7 @@ static int serialLogFlags = 0;
 
 void setDesiredTrk(float f) { 
 	desiredTrk = f;//round(f);
-	ed.dtrk.setValue(desiredTrk);
+	Display::dtrk.setValue(desiredTrk);
 }
 
 void sdLog()  {
@@ -460,11 +434,10 @@ void setup() {
 	WiFi.setSleep(false);
 
 	wifi.addAP("Ping-582B", "");
-	//wifi.addAP("Flora_2GEXT", "maynards");
 	wifi.addAP("Tip of the Spear", "51a52b5354");
 	wifi.addAP("ChloeNet", "niftyprairie7");
 
-	if (!buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
+	if (!debugFastBoot && !buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
 			wifi.run();
@@ -506,23 +479,24 @@ void setup() {
 	pitchPID.maxerr.i = 100;
 
     // make PID select knob display text from array instead of 0-3	
-	Display::pidsel.toString = [](float v){ return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 4) ? (int)v : 0]); 
+	Display::pidsel.toString = [](float v){ 
+		return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >=0 && v <= 4) ? (int)v : 0]); 
 	};		
-	ed.begin();
+	Display::jde.begin();
 
 #ifndef UBUNTU
-	ed.re.begin([ed]()->void{ ed.re.ISR(); });
+	Display::jde.re.begin([]()->void{ Display::jde.re.ISR(); });
 #endif
-	ed.maxb.setValue(20);
-	ed.tttt.setValue(60); // seconds to make each test turn 
-	ed.ttlt.setValue(75); // seconds betweeen test turn, ordegrees per turn   
+	Display::maxb.setValue(20);
+	Display::tttt.setValue(60); // seconds to make each test turn 
+	Display::ttlt.setValue(75); // seconds betweeen test turn, ordegrees per turn   
 	//ed.tzer.setValue(1000);
-	ed.pidsel.setValue(1);
-	ed.dtrk.setValue(desiredTrk);
-	ed.desAlt.setValue(1000);
-	ed.pitchTrim.setValue(0);
-	setKnobPid(ed.pidsel.value);
-	ed.update();
+	Display::pidsel.setValue(1);
+	Display::dtrk.setValue(desiredTrk);
+	Display::desAlt.setValue(1000);
+	Display::pitchTrim.setValue(0);
+	setKnobPid(Display::pidsel.value);
+	Display::jde.update();
 	
 	//ed.rlhz.value = 3; // period for relay activation, in seconds
 	//ed.mnrl.value = 70;
@@ -563,14 +537,14 @@ void setKnobPid(int f) {
 	else if (f == 3) { knobPID = &xtePID; }
 	else if (f == 4) { knobPID = &hdgPID; }
 	
-	ed.pidpl.setValue(knobPID->gain.p);
-	ed.pidph.setValue(knobPID->hiGain.p);
-	ed.pidi.setValue(knobPID->gain.i);
-	ed.pidd.setValue(knobPID->gain.d);
-	ed.pidl.setValue(knobPID->gain.l);
-	ed.pidg.setValue(knobPID->finalGain);
-	ed.maxi.setValue(knobPID->maxerr.i);
-	ed.dead.setValue(knobPID->hiGainTrans.p);
+	Display::pidpl.setValue(knobPID->gain.p);
+	Display::pidph.setValue(knobPID->hiGain.p);
+	Display::pidi.setValue(knobPID->gain.i);
+	Display::pidd.setValue(knobPID->gain.d);
+	Display::pidl.setValue(knobPID->gain.l);
+	Display::pidg.setValue(knobPID->finalGain);
+	Display::maxi.setValue(knobPID->maxerr.i);
+	Display::dead.setValue(knobPID->hiGainTrans.p);
 }
 
 static bool testTurnActive = false;
@@ -616,7 +590,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		int relay, ms;
 		if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
 		else if (sscanf(line, "navtr %f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
-		else if (sscanf(line, "maxb %f", &f) == 1) { ed.maxb.value = f; }
+		else if (sscanf(line, "maxb %f", &f) == 1) { Display::maxb.setValue(f); }
 		else if (sscanf(line, "roll %f", &f) == 1) { desRoll = f; }
 		else if (sscanf(line, "pidp %f", &f) == 1) { pitchPID.gain.p = f; }
 		else if (sscanf(line, "pidi %f", &f) == 1) { pitchPID.gain.i = f; }
@@ -632,11 +606,11 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (sscanf(line, "strim %f %f", &f, &f2) == 2) { stickTrimX = f; stickTrimY = f2; }
 		else if (sscanf(line, "strimx %f", &f) == 1) { stickTrimX = f; }
 		else if (sscanf(line, "strimy %f", &f) == 1) { stickTrimY = f; }
-		else if (sscanf(line, "ptrim %f", &f) == 1) { ed.pitchTrim.setValue(f); }
+		else if (sscanf(line, "ptrim %f", &f) == 1) { Display::pitchTrim.setValue(f); }
 		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
 		else if (sscanf(line, "mode %f", &f) == 1) { apMode = f; }
 		else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
-		else if (sscanf(line, "alt %f", &f) == 1) { ed.desAlt.value = f; }
+		else if (sscanf(line, "alt %f", &f) == 1) { Display::desAlt.value = f; }
 		else if (strstr(line, "wpclear") == line) { waypointList = ""; }
 		else if (strstr(line, "wpadd ") == line) { waypointList += (line + 6); waypointList += "\n"; }
 		else if (strstr(line, "wpstart") == line && wpNav == NULL) { 
@@ -651,7 +625,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 
 void setObsKnob(float knobSel, float v) { 
 	if (knobSel == 2) {
-		ed.desAlt.value = v * FEET_PER_METER;
+		Display::desAlt.value = v * FEET_PER_METER;
 	}
 	if (knobSel == 1 /*|| knobSel == 4*/) {
 		obs = v * 180.0 / M_PI;
@@ -780,10 +754,10 @@ void loop() {
 			millis()/1000.0,
 			//roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),   
 			stickX, stickY, roll, pitch, desPitch, 
-			ahrsInput.alt, ed.desAlt.value,
+			ahrsInput.alt, Display::desAlt.value,
 			//0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
-			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), ed.re.count, 
+			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), Display::jde.re.count, 
 				logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, 
 			auxMpuPacketCount, 
 			//servoOutput[0], servoOutput[1],
@@ -812,7 +786,7 @@ void loop() {
 	//         triple  - servo test mode
 	           
 	//ed.re.check();
-	if (firstLoop == true && (digitalRead(buttonMid.pin) == 0  || debugFastBoot)) { 
+	if (firstLoop == true && (digitalRead(buttonMid.pin) == 0 /* || debugFastBoot*/)) { 
 	//if (debugFastBoot && nowSec > 60 && logFile == NULL) { 
 		logFile = new SDCardBufferedLog<LogItem>(logFileName, 200/*q size*/, 0/*timeout*/, 500/*flushInterval*/, false/*textMode*/);
 		logFilename = logFile->currentFile;
@@ -900,7 +874,7 @@ void loop() {
 								
 		if (butFilt4.newEvent()) { 	// main knob button
 			if (butFilt4.wasCount == 1 && butFilt4.wasLong != true) { 
-				ed.buttonPress(butFilt4.wasLong);
+				Display::jde.buttonPress(butFilt4.wasLong);
 			}
 			if (butFilt4.wasLong && butFilt4.wasCount == 1) {			
 				armServo = !armServo;
@@ -910,12 +884,9 @@ void loop() {
 				//pitchPID.reset();
 				//ahrs.reset();
 			}
-			if (butFilt4.wasLong && butFilt4.wasCount == 2) {
-				ed.negateSelectedValue();
-			}
 			if (butFilt4.wasCount == 3) {		
-				ed.tttt.setValue(.1); 
-				ed.ttlt.setValue(.1);
+				Display::tttt.setValue(.1); 
+				Display::ttlt.setValue(.1);
 				armServo = testTurnActive = true;
 				 
 			}
@@ -925,20 +896,20 @@ void loop() {
 	if (testTurnActive) {
 		if (desiredTrk == -1) {
 			// roll mode, test turns are fixed time at maxb degrees 
-			if (nowSec - testTurnLastTurnTime > ed.tttt.value + ed.ttlt.value) { 
+			if (nowSec - testTurnLastTurnTime > Display::tttt.value + Display::ttlt.value) { 
 				testTurnLastTurnTime = nowSec;
 				testTurnAlternate  = (testTurnAlternate + 1) % 3;
 			}
-			if (nowSec - testTurnLastTurnTime <= ed.tttt.value)
-				desRoll = ed.maxb.value * (testTurnAlternate == 0 ? -1 : 1);
+			if (nowSec - testTurnLastTurnTime <= Display::tttt.value)
+				desRoll = Display::maxb.value * (testTurnAlternate == 0 ? -1 : 1);
 			else 
 				desRoll = 0;
 		} else {
 			// hdg mode, test turn is fixed number of degrees 
-			if (nowSec - testTurnLastTurnTime > ed.tttt.value) { 
+			if (nowSec - testTurnLastTurnTime > Display::tttt.value) { 
 				testTurnLastTurnTime = nowSec;
 				testTurnAlternate  = (testTurnAlternate + 1) % 3;
-				setDesiredTrk(desiredTrk + ed.ttlt.value * (testTurnAlternate == 0 ? -1 : 1));
+				setDesiredTrk(desiredTrk + Display::ttlt.value * (testTurnAlternate == 0 ? -1 : 1));
 			}
 		}
 			
@@ -1103,7 +1074,7 @@ void loop() {
 				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
 				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
 				setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
-				ed.desAlt.value = wpNav->wptTracker.commandAlt * FEET_PER_METER;
+				Display::desAlt.value = wpNav->wptTracker.commandAlt * FEET_PER_METER;
 				ahrsInput.dtk = desiredTrk;
 
 			} else if (apMode == 4) {
@@ -1114,8 +1085,8 @@ void loop() {
 			} else { 
 				xteCorrection = 0;
 			}
-			if ((apMode == 3 && ed.desAlt.value != -1000)) { 
-				float altErr = ed.desAlt.value - ahrsInput.ubloxAlt;
+			if ((apMode == 3 && Display::desAlt.value != -1000)) { 
+				float altErr = Display::desAlt.value - ahrsInput.ubloxAlt;
 				if (abs(altErr) > 500) {
 					altPID.resetI();					
 				}	
@@ -1175,7 +1146,7 @@ void loop() {
 					xtePID.resetI();
 				}
 				desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
-				desRoll = max(-ed.maxb.value, min(+ed.maxb.value, desRoll));
+				desRoll = max(-Display::maxb.value, min(+Display::maxb.value, desRoll));
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
@@ -1183,7 +1154,7 @@ void loop() {
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(altPID.corr * 0.01, 3.0), -3.0);
-		desPitch = ed.pitchTrim.value + altCorr + abs(sin(DEG2RAD(roll)) * 2);
+		desPitch = Display::pitchTrim.value + altCorr + abs(sin(DEG2RAD(roll)) * 2);
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
@@ -1192,7 +1163,7 @@ void loop() {
 			stickX = stickTrimX + rollPID.corr / 2000 * ServoControl::servoThrow;
 			stickY = stickTrimY + pitchPID.corr / 2000 * ServoControl::servoThrow 
 				+ abs(sin(DEG2RAD(roll))) * 0.2
-				+ (desPitch - ed.pitchTrim.value) * pitchToStick; 
+				+ (desPitch - Display::pitchTrim.value) * pitchToStick; 
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
@@ -1223,7 +1194,7 @@ void loop() {
 		logItem.pwmOutput0 = servoOutput[0];
 		logItem.pwmOutput1 = servoOutput[1];
 		logItem.desRoll = desRoll;
-		logItem.desAlt = (apMode == 3) ? ed.desAlt.value : -1000;
+		logItem.desAlt = (apMode == 3) ? Display::desAlt.value : -1000;
 		logItem.desPitch = desPitch;
 		logItem.roll = roll;
 		logItem.magHdg = ahrs.magHdg;
@@ -1246,20 +1217,20 @@ void loop() {
 
 	//digitalWrite(pins.servo_enable, !armServo);
 	
-	if (ed.pidsel.changed()) {
-		setKnobPid(ed.pidsel.value);
+	if (Display::pidsel.changed()) {
+		setKnobPid(Display::pidsel.value);
 	}
 	
 	if (screenTimer.tick() && screenEnabled) { 
-		ed.update();
-		knobPID->gain.p = ed.pidpl.value;
-		knobPID->hiGain.p = ed.pidph.value;
-		knobPID->gain.i = ed.pidi.value;
-		knobPID->gain.d = ed.pidd.value;
-		knobPID->gain.l = ed.pidl.value;
-		knobPID->maxerr.i = ed.maxi.value;
-		knobPID->finalGain = ed.pidg.value;
-		knobPID->hiGainTrans.p = ed.dead.value;
+		Display::jde.update();
+		knobPID->gain.p = Display::pidpl.value;
+		knobPID->hiGain.p = Display::pidph.value;
+		knobPID->gain.i = Display::pidi.value;
+		knobPID->gain.d = Display::pidd.value;
+		knobPID->gain.l = Display::pidl.value;
+		knobPID->maxerr.i = Display::maxi.value;
+		knobPID->finalGain = Display::pidg.value;
+		knobPID->hiGainTrans.p = Display::dead.value;
 		
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		//Display::dtk = desiredTrk; 

@@ -871,7 +871,9 @@ public:
 
 JDisplay *JDisplay::instanceP = NULL;
 
+class JDisplayEditor;
 class JDisplayItemBase {
+friend JDisplayEditor;
 	int x, y, updates;
 	int lb, lf, vb, vf;
 	JDisplay *d;
@@ -1016,17 +1018,18 @@ public:
 		re.wrap = false;
 		re.value = 0;
 		selectedItem = 0;
+		sortItems();
 		//re.begin( [this]()->void{ this->re.ISR(); });
 	}
 	inline void negateSelectedValue(); 
 	inline void update(); 
 	inline void buttonPress(bool longpress);			
-		
+	inline void sortItems();
 };
 
-class JDisplayEditableItem { 
+class JDisplayEditableItem : public JDisplayItem<float> { 
 protected:
-	JDisplayItem<float> *di; 
+	typedef JDisplayItem<float> Parent;
 public:
 	bool recentChange = false;
 	bool changed() { 
@@ -1039,27 +1042,37 @@ public:
 	float value, newValue, increment;
 	float min, max;
 	bool wrap;
+	float *attached = NULL;
 	enum { UNSELECTED, SELECTED, EDITING } state;
-	JDisplayEditableItem(JDisplayItem<float> *i, float inc, float mi = -100000, float ma = +10000, bool wr = false) : 
-		di(i), increment(inc), min(mi), max(ma), wrap(wr) {}
-	void update() {
-		if (di == NULL)
-			return;
-		if (state == EDITING) {
-			di->setValue(newValue);
-			di->setInverse(false, true);
-		} else { 
-			di->setValue(value);
-			di->setInverse(state == SELECTED, false);
+	JDisplayEditableItem(JDisplay *d, int x, int y, const char *label, const char *format, 
+		JDisplayEditor *ded, float inc = 1, float mi = -100000, float ma = +10000, bool wr = false) : 
+		increment(inc), min(mi), max(ma), wrap(wr), Parent(d, x, y, label, format) {
+			if (ded != NULL) { 
+				ded->add(this);
+			}
 		}
-		//di->update(false);
+	void update(bool force = false) {
+		if (state == EDITING) {
+			Parent::setValue(newValue);
+			Parent::setInverse(false, true);
+		} else { 
+			if (attached != NULL && value != *attached) { 
+				value = *attached;
+			}
+			Parent::setValue(value);
+			Parent::setInverse(state == SELECTED, false);
+		}
+		Parent::update(force);
 	};
 	void setValue(float v) { 
 		value = v;
-		if (di != NULL) 
-			di->setValue(v);
+		Parent::setValue(v);
+		if (attached != NULL) {
+			*attached = value;
+		}
 		update();
 	}
+	void attach(float *f) { attached = f; }
 };
 
 inline void JDisplayEditor::negateSelectedValue() { 
@@ -1069,6 +1082,12 @@ inline void JDisplayEditor::negateSelectedValue() {
 		items[selectedItem]->newValue *= -1.0;
 	}
 	items[selectedItem]->update();
+}
+inline void JDisplayEditor::sortItems() { 
+	std::sort(std::begin(items), std::end(items), 
+	[](JDisplayEditableItem * a, JDisplayEditableItem *b) {
+		return a->x != b->x ? a->x < b->x : a->y < b->y;  
+	});
 }
 
 inline void JDisplayEditor::update() { 
@@ -1116,7 +1135,7 @@ inline void JDisplayEditor::buttonPress(bool longpress) {
 		re.wrap = false;
 		re.value = selectedItem;
 	}
-	items[selectedItem]->update();
+	items[selectedItem]->update(true);
 }
 
 void JDisplayUpdateThread(void *p) { 
