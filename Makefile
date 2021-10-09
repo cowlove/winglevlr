@@ -3,7 +3,7 @@
 #BOARD=nodemcu-32s
 VERBOSE=1
 
-AHRS_RATE=200
+AHRS_RATE=50
 GIT_VERSION := "$(shell git describe --abbrev=4 --dirty --always --tags)"
 BUILD_EXTRA_FLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 BUILD_EXTRA_FLAGS += -DAHRS_RATE=${AHRS_RATE}
