@@ -460,6 +460,7 @@ void setup() {
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
 	rollPID.outputTrim = +100.0;
+	rollPID.inputTrim = -2.63;
 
 	hdgPID.setGains(0.5, 0.0003, 0.05); // output in degrees desired bank
 	hdgPID.hiGain.p = 10;
@@ -475,6 +476,7 @@ void setup() {
 	pitchPID.finalGain = 1.7;
 	pitchPID.maxerr.i = .5;
 	pitchPID.outputTrim = 0.0;
+	pitchPID.inputTrim = +2.85;
 
 	altPID.setGains(1.0, 0.002, 3.0); // output in degrees of pitch * 100  
 	altPID.finalGain = -0.2;
@@ -1314,9 +1316,9 @@ public:
 		// main loop code to make sure things work. 
 		//hdgPID.finalGain = 0.5;
 		pitchPID.outputTrim = rollPID.outputTrim = 0;
+		rollPID.inputTrim = 0;
 		ahrs.gyrOffZ = ahrs.gyrOffX  = ahrs.gyrOffY = 0;
-		ahrs.rollOffset = 0	;
-
+		
 		int period = AHRS_RATE_INV_SCALE(5000);
 		_micros = (_micros + period);
 		_micros -= (_micros % period);
@@ -1352,7 +1354,7 @@ public:
 		if (floor(lastMillis / 100) != floor(now / 100)) { // 10hz
 			delayBank.add(max(-0.5, abs(bank - 2.3)) * bank/abs(bank));
 			float dbank = delayBank.average();
-			track += tan(((dbank + ahrs.rollOffset)) * M_PI / 180) * 9.8 * 0.14;
+			track += tan(dbank * M_PI / 180) * 9.8 * 0.14;
 			if (track < 0) track += 360;
 			if (track > 360) track -= 360;
 			set_gpsTrack(track);
@@ -1609,8 +1611,6 @@ public:
 				else if (sscanf(it->c_str(), "mbt.maxerr=%f", &v) == 1) { ahrs.magBankTrimMaxBankErr = v; } 
 				else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) { ahrs.magDipConstant = v; } 
 				else if (sscanf(it->c_str(), "ahrs.crpitch=%f", &v) == 1) { ahrs.compRatioPitch = v; } 
-				else if (sscanf(it->c_str(), "ahrs.pitchoffset=%f", &v) == 1) { ahrs.pitchOffset = v; } 
-				else if (sscanf(it->c_str(), "ahrs.rolloffset=%f", &v) == 1) { ahrs.rollOffset = v; } 
 				else if (sscanf(it->c_str(), "ahrs.useauxmpu=%f", &v) == 1) { ESP32csim_useAuxMpu = v; } 
 				else if (sscanf(it->c_str(), "ahrs.gxdecel=%f", &v) == 1) { ahrs.gXdecelCorrelation = v; } 
 				else if (sscanf(it->c_str(), "ahrs.bankanglescale=%f", &v) == 1) { ahrs.bankAngleScale = v; }

@@ -262,7 +262,6 @@ public:
 		  accOffZ = -0;
 
 	float compRatio1 = AHRS_RATE_CR_SCALE(0.00072);  // roll comp filter ratio 
-	float rollOffset = +2.63;
 	float driftCorrCoeff1 = 2.80; // how fast to add in drift correction
 	float hdgCompRatio = AHRS_RATE_CR_SCALE(.00025);  // composite filter ratio for hdg 
 	float magDipConstant = 2.11; // unexplained correction factor for bank angle in dip calcs
@@ -272,7 +271,6 @@ public:
 	float debugVar = 0.3;
 	float gXdecelCorrelation = 1.003;
 	float compRatioPitch = AHRS_RATE_CR_SCALE(0.012);
-	float pitchOffset = -2.85; 	
 	float pitchRaw =0;
 	
 	RollAHRS() { 
@@ -458,7 +456,7 @@ public:
 			gyroDrift = gyroDriftFit.slope();
 		}
 		
-		compYH = compR + gyroDrift * driftCorrCoeff1 + rollOffset;
+		compYH = compR + gyroDrift * driftCorrCoeff1;
 		//if (abs(bankAngle) < 30) {			
 		//	gyroDrift += (bankAngle - compYH) * 0.0001;
 		//}
@@ -484,7 +482,7 @@ public:
 		float pG = cos(rollRad) * l.gx - sin(rollRad) * l.gz;//  - speedDelta * gXdecelCorrelation;
 		pitchRaw = (pitchRaw + pG * 1.00 /*gyroGain*/ * dt) * (1-compRatioPitch) + (accelPitch * compRatioPitch);
 
-		pitch = pitchRaw + pitchOffset - /*HACK*/debugVar * (sin(abs(2.2 * rollRad)) * pitchRaw);
+		pitch = pitchRaw - /*HACK*/debugVar * (sin(abs(2.2 * rollRad)) * pitchRaw);
 	 	pitch = isnan(pitch) ? 0 : pitch;
 	 	pitch = isinf(pitch) ? 0 : pitch;
 
