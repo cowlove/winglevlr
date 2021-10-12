@@ -1045,8 +1045,8 @@ public:
 	float *attached = NULL;
 	enum { UNSELECTED, SELECTED, EDITING } state;
 	JDisplayEditableItem(JDisplay *d, int x, int y, const char *label, const char *format, 
-		JDisplayEditor *ded, float inc = 1, float mi = -100000, float ma = +10000, bool wr = false) : 
-		increment(inc), min(mi), max(ma), wrap(wr), Parent(d, x, y, label, format) {
+		JDisplayEditor *ded, float inc = 1, float *att = NULL, float mi = -100000, float ma = +10000, bool wr = false) : 
+		increment(inc), min(mi), max(ma), wrap(wr), attached(att), Parent(d, x, y, label, format) {
 			if (ded != NULL) { 
 				ded->add(this);
 			}

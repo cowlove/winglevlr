@@ -61,6 +61,19 @@ WiFiUDP udpG90;
 WiFiUDP udpCmd;
 //WiFiUDP udpMAV;
 
+LogItem logItem;
+SDCardBufferedLog<LogItem>  *logFile = NULL;
+bool logChanging = false;
+const char *logFileName = "AHRSD%03d.DAT";
+static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
+static StaleData<int> canMsgCount(3000,-1);
+static float desiredTrk = -1;
+float desRoll = 0, pitchToStick = 0.15, desPitch = 0, desAlt = 0;		
+static int serialLogFlags = 0;
+float tttt = 60; // seconds to make each test turn 
+float ttlt = 75; // seconds betweeen test turn, ordegrees per turn   
+float bankStick = 0.1, bankPitch = 1;
+
 #define LED_PIN 22
 /* Old hardware pins: I2C pins/variant seems to determine layout 
 struct {
@@ -293,15 +306,15 @@ namespace Display {
 	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
     F logw(&jd,c1x,y+=10,"LOGW:", "%05.0f ");
 	
-	E pidpl(&jd,c1x,y+=10, "PL:", "%03.2f ", ed, .01); 	E tttt(&jd,c2x,y,      " TT1:", "%04.1f ", ed, 1.0);
-	E pidph(&jd,c1x,y+=10, "PH:", "%03.2f ", ed, .01); 	E ttlt(&jd,c2x,y,      " TT2:", "%04.1f ", ed, 1.0);
+	E pidpl(&jd,c1x,y+=10, "PL:", "%03.2f ", ed, .01); 	E bs(&jd,c2x,y,        "  BS:", "%04.2f ", ed, 0.01, &bankStick);
+	E pidph(&jd,c1x,y+=10, "PH:", "%03.2f ", ed, .01); 	E bp(&jd,c2x,y,        "  BP:", "%04.2f ", ed, 0.01, &bankPitch);
 	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,      "MAXB:", "%04.1f ", ed, 0.1);
 	E pidd (&jd,c1x,y+=10, " D:", "%03.2f ", ed, .01); 	E maxi(&jd,c2x,y,      "MAXI:", "%04.1f ", ed, 0.1);
 	E pidg (&jd,c1x,y+=10, " G:", "%03.2f ", ed, .01); 	E pidot(&jd,c2x,y,     " POT:", "%+4.1f ", ed, 0.1);
-	E dead (&jd,c1x,y+=10, "DZ:", "%03.1f ", ed, .1);  	E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, 0, 4);
+	E dead (&jd,c1x,y+=10, "DZ:", "%03.1f ", ed, .1);  	E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, NULL, 0, 4);
 	
 	E pidl(NULL,c1x,y+=0, "PIDL:", "%03.2f ", NULL, .1);  
-	E dalt(NULL,c1x,y+=0,"DALT:", "%05.0f ", NULL, 20);	
+	E dalt(NULL,c1x,y+=0,"DALT:", "%05.0f ", NULL, 20, &desAlt);	
     //JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 }
 
@@ -357,15 +370,6 @@ bool imuRead() {
 
 }
 
-LogItem logItem;
-SDCardBufferedLog<LogItem>  *logFile = NULL;
-bool logChanging = false;
-const char *logFileName = "AHRSD%03d.DAT";
-static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
-static StaleData<int> canMsgCount(3000,-1);
-static float desiredTrk = -1;
-float desRoll = 0, pitchToStick = 0.15, desPitch = 0, desAlt = 0;		
-static int serialLogFlags = 0;
 
 void setDesiredTrk(float f) { 
 	desiredTrk = f;//round(f);
@@ -489,12 +493,9 @@ void setup() {
 	Display::jde.re.begin([]()->void{ Display::jde.re.ISR(); });
 #endif
 	Display::maxb.setValue(20);
-	Display::tttt.setValue(60); // seconds to make each test turn 
-	Display::ttlt.setValue(75); // seconds betweeen test turn, ordegrees per turn   
 	//ed.tzer.setValue(1000);
 	Display::pidsel.setValue(1);
 	Display::dtrk.setValue(desiredTrk);
-	Display::dalt.attach(&desAlt);
 	setKnobPid(Display::pidsel.value);
 	if (debugFastBoot) { 
 		Display::ip.color.lb = Display::ip.color.vb = ST7735_RED;
@@ -582,6 +583,7 @@ float stickX, stickY;
 std::string waypointList;
 WaypointNav::WaypointSequencer *wpNav = NULL;
 GDL90Parser::State gdl90State;
+
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
@@ -885,8 +887,8 @@ void loop() {
 				//ahrs.reset();
 			}
 			if (butFilt4.wasCount == 3) {		
-				Display::tttt.setValue(.1); 
-				Display::ttlt.setValue(.1);
+				tttt = .1; 
+				ttlt = .1;
 				armServo = testTurnActive = true;
 				 
 			}
@@ -896,20 +898,20 @@ void loop() {
 	if (testTurnActive) {
 		if (desiredTrk == -1) {
 			// roll mode, test turns are fixed time at maxb degrees 
-			if (nowSec - testTurnLastTurnTime > Display::tttt.value + Display::ttlt.value) { 
+			if (nowSec - testTurnLastTurnTime > tttt + ttlt) { 
 				testTurnLastTurnTime = nowSec;
 				testTurnAlternate  = (testTurnAlternate + 1) % 3;
 			}
-			if (nowSec - testTurnLastTurnTime <= Display::tttt.value)
+			if (nowSec - testTurnLastTurnTime <= tttt)
 				desRoll = Display::maxb.value * (testTurnAlternate == 0 ? -1 : 1);
 			else 
 				desRoll = 0;
 		} else {
 			// hdg mode, test turn is fixed number of degrees 
-			if (nowSec - testTurnLastTurnTime > Display::tttt.value) { 
+			if (nowSec - testTurnLastTurnTime > tttt) { 
 				testTurnLastTurnTime = nowSec;
 				testTurnAlternate  = (testTurnAlternate + 1) % 3;
-				setDesiredTrk(desiredTrk + Display::ttlt.value * (testTurnAlternate == 0 ? -1 : 1));
+				setDesiredTrk(desiredTrk + ttlt * (testTurnAlternate == 0 ? -1 : 1));
 			}
 		}
 			
@@ -1154,14 +1156,14 @@ void loop() {
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(altPID.corr / 100, 3.0), -3.0);
-		desPitch = altCorr + abs(sin(DEG2RAD(roll)) * 2);
+		desPitch = altCorr + abs(sin(DEG2RAD(roll)) * bankPitch);
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
 			stickX = rollPID.corr / 1000;
-			stickY = pitchPID.corr / 1000 + abs(sin(DEG2RAD(roll))) * 0.2 + (desPitch * pitchToStick); 
+			stickY = pitchPID.corr / 1000 + abs(sin(DEG2RAD(roll))) * bankStick + (desPitch * pitchToStick); 
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
