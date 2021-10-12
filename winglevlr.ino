@@ -158,7 +158,6 @@ public:
 } ublox; 
 
 
-float stickTrimY = 0.00, stickTrimX = 0.10;
 void halInit() { 
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
@@ -298,12 +297,11 @@ namespace Display {
 	E pidph(&jd,c1x,y+=10, "PH:", "%03.2f ", ed, .01); 	E ttlt(&jd,c2x,y,      " TT2:", "%04.1f ", ed, 1.0);
 	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,      "MAXB:", "%04.1f ", ed, 0.1);
 	E pidd (&jd,c1x,y+=10, " D:", "%03.2f ", ed, .01); 	E maxi(&jd,c2x,y,      "MAXI:", "%04.1f ", ed, 0.1);
-	E pidg (&jd,c1x,y+=10, " G:", "%03.2f ", ed, .01); 	E pitchTrim(&jd,c2x,y, "PTRM:", "%+4.1f", ed, 0.1);
-	F dead(NULL,c1x,y+=00, "DZ:", "%03.1f "); 
-    E dalt(&jd,c1x,y+=10,"DALT:", "%05.0f ", ed, 20);	E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, 0, 4);
-  	E pidl(NULL,c1x,y+=10, "PIDL:", "%03.2f ", NULL, .1);
-	  
-
+	E pidg (&jd,c1x,y+=10, " G:", "%03.2f ", ed, .01); 	E pidot(&jd,c2x,y,     " POT:", "%+4.1f ", ed, 0.1);
+	E dead (&jd,c1x,y+=10, "DZ:", "%03.1f ", ed, .1);  	E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, 0, 4);
+	
+	E pidl(NULL,c1x,y+=0, "PIDL:", "%03.2f ", NULL, .1);  
+	E dalt(NULL,c1x,y+=0,"DALT:", "%05.0f ", NULL, 20);	
     //JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 }
 
@@ -366,7 +364,7 @@ const char *logFileName = "AHRSD%03d.DAT";
 static StaleData<float> gpsTrackGDL90(3000,-1), gpsTrackRMC(5000,-1), gpsTrackVTG(5000,-1);
 static StaleData<int> canMsgCount(3000,-1);
 static float desiredTrk = -1;
-float desRoll = 0, /*pitchTrim = -8,*/ pitchToStick = 0.15, desPitch = 0, desAlt = 0;		
+float desRoll = 0, pitchToStick = 0.15, desPitch = 0, desAlt = 0;		
 static int serialLogFlags = 0;
 
 void setDesiredTrk(float f) { 
@@ -454,29 +452,32 @@ void setup() {
 	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = -1;
 	
 	// Set up PID gains 
-	rollPID.setGains(7.52, 0.05, 0.11);
+	rollPID.setGains(7.52, 0.05, 0.11); // output in stickThrow units * 1000
 	rollPID.hiGain.p = 2;
 	rollPID.hiGainTrans.p = 5;
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
+	rollPID.oTrim = +100.0;
 
-	hdgPID.setGains(0.5, 0.0003, 0.05);
+	hdgPID.setGains(0.5, 0.0003, 0.05); // output in degrees desired bank
 	hdgPID.hiGain.p = 10;
 	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20;
 	hdgPID.finalGain = 1.0;
 
-	xtePID.setGains(8.0, 0.0003, 0.20);
+	xtePID.setGains(8.0, 0.0003, 0.20); // output in degrees desired hdg correction
 	xtePID.maxerr.i = 1.0;
 	xtePID.finalGain = 20.0;
 	
-	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
+	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // output in stickthrow units * 1000
 	pitchPID.finalGain = 1.7;
 	pitchPID.maxerr.i = .5;
+	pitchPID.oTrim = 0.0;
 
-	altPID.setGains(1.0, 0.002, 3.0);
+	altPID.setGains(1.0, 0.002, 3.0); // output in degrees of pitch * 100  
 	altPID.finalGain = -0.2;
-	pitchPID.maxerr.i = 100;
+	altPID.maxerr.i = 100;
+	altPID.oTrim = 0.0;
 
     // make PID select knob display text from array instead of 0-3	
 	Display::pidsel.toString = [](float v){ 
@@ -494,7 +495,6 @@ void setup() {
 	Display::pidsel.setValue(1);
 	Display::dtrk.setValue(desiredTrk);
 	Display::dalt.attach(&desAlt);
-	Display::pitchTrim.setValue(0);
 	setKnobPid(Display::pidsel.value);
 	if (debugFastBoot) { 
 		Display::ip.color.lb = Display::ip.color.vb = ST7735_RED;
@@ -548,6 +548,7 @@ void setKnobPid(int f) {
 	Display::pidg.setValue(knobPID->finalGain);
 	Display::maxi.setValue(knobPID->maxerr.i);
 	Display::dead.setValue(knobPID->hiGainTrans.p);
+	Display::pidot.setValue(knobPID->oTrim);
 }
 
 static bool testTurnActive = false;
@@ -606,10 +607,6 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (strstr(line, "zeroimu") == line) { ahrs.zeroSensors(); }
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { setDesiredTrk(f); }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
-		else if (sscanf(line, "strim %f %f", &f, &f2) == 2) { stickTrimX = f; stickTrimY = f2; }
-		else if (sscanf(line, "strimx %f", &f) == 1) { stickTrimX = f; }
-		else if (sscanf(line, "strimy %f", &f) == 1) { stickTrimY = f; }
-		else if (sscanf(line, "ptrim %f", &f) == 1) { Display::pitchTrim.setValue(f); }
 		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
 		else if (sscanf(line, "mode %f", &f) == 1) { apMode = f; }
 		else if (sscanf(line, "knob=%f", &f) == 1) { setKnobPid(f); }
@@ -1156,17 +1153,15 @@ void loop() {
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		float altCorr = max(min(altPID.corr * 0.01, 3.0), -3.0);
-		desPitch = Display::pitchTrim.value + altCorr + abs(sin(DEG2RAD(roll)) * 2);
+		float altCorr = max(min(altPID.corr / 100, 3.0), -3.0);
+		desPitch = altCorr + abs(sin(DEG2RAD(roll)) * 2);
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			stickX = stickTrimX + rollPID.corr / 1000;
-			stickY = stickTrimY + pitchPID.corr / 1000 
-				+ abs(sin(DEG2RAD(roll))) * 0.2
-				+ (desPitch - Display::pitchTrim.value) * pitchToStick; 
+			stickX = rollPID.corr / 1000;
+			stickY = pitchPID.corr / 1000 + abs(sin(DEG2RAD(roll))) * 0.2 + (desPitch * pitchToStick); 
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
@@ -1175,8 +1170,8 @@ void loop() {
 				// leave servos where they are  
 				break;
 			case 1: 
-				stickX = stickTrimX;
-				stickY = stickTrimY - .3;  
+				stickX = .1;
+				stickY = -.3;  
 				stickX += cos(millis() / 100.0) * .04;
 				stickY += sin(millis() / 100.0) * .04;
 				setServos(stickX, stickY); 
@@ -1234,6 +1229,7 @@ void loop() {
 		knobPID->maxerr.i = Display::maxi.value;
 		knobPID->finalGain = Display::pidg.value;
 		knobPID->hiGainTrans.p = Display::dead.value;
+		knobPID->oTrim = Display::pidot.value;
 		
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		//Display::dtk = desiredTrk; 
@@ -1315,7 +1311,7 @@ public:
 		//TODO: flightSim is very fragile/unstable.  Poke values into the
 		// main loop code to make sure things work. 
 		//hdgPID.finalGain = 0.5;
-		stickTrimY = stickTrimX = 0;
+		pitchPID.oTrim = rollPID.oTrim = 0;
 		ahrs.gyrOffZ = ahrs.gyrOffX  = ahrs.gyrOffY = 0;
 		ahrs.rollOffset = 0	;
 
