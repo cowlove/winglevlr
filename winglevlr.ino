@@ -302,13 +302,14 @@ namespace Display {
 	F gdl(&jd,c1x,y+=10," GDL:", "%05.1f ");   			F  g5hdg(&jd,c2x,y,   "G5HD:", "%05.1f ");
 	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
 	
-	E pidpl(&jd,c1x,y+=10, "PL:", "%03.2f ", ed, .01); 	E bs(&jd,c2x,y,    "  BS:", "%04.2f ", ed, 0.01, &bankStick);
-	E pidph(&jd,c1x,y+=10, "PH:", "%03.2f ", ed, .01); 	E bp(&jd,c2x,y,    "  BP:", "%04.2f ", ed, 0.01, &bankPitch);
+	E pidpl(&jd,c1x,y+=10, "PL:", "%04.2f ", ed, .01); 	E bs(&jd,c2x,y,    "  BS:", "%04.2f ", ed, 0.01, &bankStick);
+	E pidph(&jd,c1x,y+=10, "PH:", "%04.2f ", ed, .01); 	E bp(&jd,c2x,y,    "  BP:", "%04.2f ", ed, 0.01, &bankPitch);
 	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,  "MAXB:", "%04.1f ", ed, 0.1);
-	E pidd (&jd,c1x,y+=10, " D:", "%03.2f ", ed, .01); 	E maxi(&jd,c2x,y,  "MAXI:", "%04.1f ", ed, 0.1);
-	E pidg (&jd,c1x,y+=10, " G:", "%03.2f ", ed, .01); 	E pidot(&jd,c2x,y, "POTR:", "%+4.1f ", ed, 0.1);
-	E dead (&jd,c1x,y+=10, "DZ:", "%03.1f ", ed, .1);  	E pidit(&jd,c2x,y, "PITR:", "%+4.1f ", ed, 0.1);
-						E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, NULL, 0, 4);  
+	E pidd (&jd,c1x,y+=10, " D:", "%04.2f ", ed, .01); 	E maxi(&jd,c2x,y,  "MAXI:", "%04.1f ", ed, 0.1);
+	E pidg (&jd,c1x,y+=10, " G:", "%04.2f ", ed, .01); 	E pidot(&jd,c2x,y, "POTR:", "%+4.1f ", ed, 0.1);
+	E dead (&jd,c1x,y+=10, "DZ:", "%04.1f ", ed, .1);  	E pidit(&jd,c2x,y, "PITR:", "%+4.1f ", ed, 0.1);
+	E p2s  (&jd,c1x,y+=10, "PS:", "%04.2f ", ed, .01, &pitchToStick);
+														E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, NULL, 0, 4);  
 	
 	//E dalt(NULL,c1x,y+=0,"DALT:", "%05.0f ", NULL, 20, &desAlt);	
     //F navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
