@@ -39,8 +39,8 @@ public:
     }
     PID err, gain, maxerr, hiGain, hiGainTrans;
     double finalGain = 1.0;
-	double oTrim = 0.0; 			// post-finalGain output trim 
-    
+	double outputTrim = 0.0; 			// post-finalGain output trim 
+	double inputTrim = 0.0; 
 	float calcGain(float err, float loGain, float hiGain, float transition) {
 		float c =  err * loGain;
 		if (hiGain > 0 && (abs(err) > transition))
@@ -78,7 +78,10 @@ public:
     double add(double error, double measurement, double time) {
 		if (count++ % 2000 == 0) 
 			rebase();
-        lastVal = error;
+        
+		error -= inputTrim;
+		measurement -= inputTrim;
+		lastVal = error;
         
         float dt = (count > 0) ? time - lastTime : 0.0;
         lastTime = time;
@@ -91,10 +94,9 @@ public:
  	    err.i = i;
  	    err.l = calcGain(histCorrection.averageY(), gain.l, hiGain.l, hiGainTrans.l);
  	    err.d = calcGain(histMeasurement.slope(), gain.d, hiGain.d, hiGainTrans.d);
- 	    //err.d = calcGain(histError.slope(), gain.d, hiGain.d, hiGainTrans.d);
  	    //drms = histMeasurement.rmsError();
  	           
-	    corr = -(err.p + err.i + err.d + err.l) * finalGain + oTrim;
+	    corr = -(err.p + err.i + err.d + err.l) * finalGain + outputTrim;
 	    histCorrection.add(time, corr / finalGain);
 	    return corr;
     }

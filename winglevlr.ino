@@ -296,26 +296,23 @@ namespace Display {
 	int y = 0;
 	const int c1x = 00, c2x = 70;
 	JDisplayItem<const char *>  ip(&jd,c1x,y,"WIFI:", "%s ");
-	E dtrk = JDisplayEditableItem(&jd,c1x,y+=10," DTK:", "%05.1f ", ed, 1, 0, 359, true);
-													F trk(&jd,c2x,y,  " TRK:", "%05.1f ");
-
+	E dtrk(&jd,c1x,y+=10," DTK:", "%05.1f ", ed, 1, 0, 359, true); F trk(&jd,c2x,y,  " TRK:", "%05.1f ");
 	F pitc(&jd,c1x,y+=10,"PITC:", "%+03.1f ");  		F  obs(&jd,c2x,y,     " OBS:", "%05.1f ");
 	F roll(&jd,c1x,y+=10,"ROLL:", "%+03.1f");   		F  mode(&jd,c2x,y,    "MODE:", "%05.0f ");
 	F gdl(&jd,c1x,y+=10," GDL:", "%05.1f ");   			F  g5hdg(&jd,c2x,y,   "G5HD:", "%05.1f ");
-	//F xtec(&jd,c1x,y+=10,"XTEC:", "%+05.1f "); 		F roll(&jd,c2x,y,     " RLL:", "%+05.1f ");
 	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
-    F logw(&jd,c1x,y+=10,"LOGW:", "%05.0f ");
 	
-	E pidpl(&jd,c1x,y+=10, "PL:", "%03.2f ", ed, .01); 	E bs(&jd,c2x,y,        "  BS:", "%04.2f ", ed, 0.01, &bankStick);
-	E pidph(&jd,c1x,y+=10, "PH:", "%03.2f ", ed, .01); 	E bp(&jd,c2x,y,        "  BP:", "%04.2f ", ed, 0.01, &bankPitch);
-	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,      "MAXB:", "%04.1f ", ed, 0.1);
-	E pidd (&jd,c1x,y+=10, " D:", "%03.2f ", ed, .01); 	E maxi(&jd,c2x,y,      "MAXI:", "%04.1f ", ed, 0.1);
-	E pidg (&jd,c1x,y+=10, " G:", "%03.2f ", ed, .01); 	E pidot(&jd,c2x,y,     " POT:", "%+4.1f ", ed, 0.1);
-	E dead (&jd,c1x,y+=10, "DZ:", "%03.1f ", ed, .1);  	E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, NULL, 0, 4);
+	E pidpl(&jd,c1x,y+=10, "PL:", "%03.2f ", ed, .01); 	E bs(&jd,c2x,y,    "  BS:", "%04.2f ", ed, 0.01, &bankStick);
+	E pidph(&jd,c1x,y+=10, "PH:", "%03.2f ", ed, .01); 	E bp(&jd,c2x,y,    "  BP:", "%04.2f ", ed, 0.01, &bankPitch);
+	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,  "MAXB:", "%04.1f ", ed, 0.1);
+	E pidd (&jd,c1x,y+=10, " D:", "%03.2f ", ed, .01); 	E maxi(&jd,c2x,y,  "MAXI:", "%04.1f ", ed, 0.1);
+	E pidg (&jd,c1x,y+=10, " G:", "%03.2f ", ed, .01); 	E pidot(&jd,c2x,y, "POTR:", "%+4.1f ", ed, 0.1);
+	E dead (&jd,c1x,y+=10, "DZ:", "%03.1f ", ed, .1);  	E pidit(&jd,c2x,y, "PITR:", "%+4.1f ", ed, 0.1);
+						E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, NULL, 0, 4);  
 	
-	E pidl(NULL,c1x,y+=0, "PIDL:", "%03.2f ", NULL, .1);  
-	E dalt(NULL,c1x,y+=0,"DALT:", "%05.0f ", NULL, 20, &desAlt);	
-    //JDisplayItem<float> navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
+	//E dalt(NULL,c1x,y+=0,"DALT:", "%05.0f ", NULL, 20, &desAlt);	
+    //F navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
+    F logw(NULL,c1x,y+=10,"LOGW:", "%05.0f ");
 }
 
 
@@ -461,7 +458,7 @@ void setup() {
 	rollPID.hiGainTrans.p = 5;
 	rollPID.finalGain = 16.8;
 	rollPID.maxerr.i = 20;
-	rollPID.oTrim = +100.0;
+	rollPID.outputTrim = +100.0;
 
 	hdgPID.setGains(0.5, 0.0003, 0.05); // output in degrees desired bank
 	hdgPID.hiGain.p = 10;
@@ -476,12 +473,12 @@ void setup() {
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // output in stickthrow units * 1000
 	pitchPID.finalGain = 1.7;
 	pitchPID.maxerr.i = .5;
-	pitchPID.oTrim = 0.0;
+	pitchPID.outputTrim = 0.0;
 
 	altPID.setGains(1.0, 0.002, 3.0); // output in degrees of pitch * 100  
 	altPID.finalGain = -0.2;
 	altPID.maxerr.i = 100;
-	altPID.oTrim = 0.0;
+	altPID.outputTrim = 0.0;
 
     // make PID select knob display text from array instead of 0-3	
 	Display::pidsel.toString = [](float v){ 
@@ -545,11 +542,12 @@ void setKnobPid(int f) {
 	Display::pidph.setValue(knobPID->hiGain.p);
 	Display::pidi.setValue(knobPID->gain.i);
 	Display::pidd.setValue(knobPID->gain.d);
-	Display::pidl.setValue(knobPID->gain.l);
+	//Display::pidl.setValue(knobPID->gain.l);
 	Display::pidg.setValue(knobPID->finalGain);
 	Display::maxi.setValue(knobPID->maxerr.i);
 	Display::dead.setValue(knobPID->hiGainTrans.p);
-	Display::pidot.setValue(knobPID->oTrim);
+	Display::pidot.setValue(knobPID->outputTrim);
+	Display::pidit.setValue(knobPID->inputTrim);
 }
 
 static bool testTurnActive = false;
@@ -601,7 +599,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (sscanf(line, "pidp %f", &f) == 1) { pitchPID.gain.p = f; }
 		else if (sscanf(line, "pidi %f", &f) == 1) { pitchPID.gain.i = f; }
 		else if (sscanf(line, "pidd %f", &f) == 1) { pitchPID.gain.d = f; }
-		else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
+		//else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
 		else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
 		//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 		//else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
@@ -1227,11 +1225,12 @@ void loop() {
 		knobPID->hiGain.p = Display::pidph.value;
 		knobPID->gain.i = Display::pidi.value;
 		knobPID->gain.d = Display::pidd.value;
-		knobPID->gain.l = Display::pidl.value;
+		//knobPID->gain.l = Display::pidl.value;
 		knobPID->maxerr.i = Display::maxi.value;
 		knobPID->finalGain = Display::pidg.value;
 		knobPID->hiGainTrans.p = Display::dead.value;
-		knobPID->oTrim = Display::pidot.value;
+		knobPID->outputTrim = Display::pidot.value;
+		knobPID->inputTrim = Display::pidit.value;
 		
 		Display::ip = WiFi.localIP().toString().c_str(); 
 		//Display::dtk = desiredTrk; 
@@ -1313,7 +1312,7 @@ public:
 		//TODO: flightSim is very fragile/unstable.  Poke values into the
 		// main loop code to make sure things work. 
 		//hdgPID.finalGain = 0.5;
-		pitchPID.oTrim = rollPID.oTrim = 0;
+		pitchPID.outputTrim = rollPID.outputTrim = 0;
 		ahrs.gyrOffZ = ahrs.gyrOffX  = ahrs.gyrOffY = 0;
 		ahrs.rollOffset = 0	;
 
