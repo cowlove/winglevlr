@@ -295,7 +295,7 @@ namespace Display {
 	typedef JDisplayEditableItem E;
 	int y = 0;
 	const int c1x = 00, c2x = 70;
-	JDisplayItem<const char *>  ip(&jd,c1x,y,"WIFI:", "%s ");
+	F ip(&jd,c1x,y,"WIFI:", "%.0f");  F stickX(&jd,c2x,y,"ST:", "%+.2f"); 	F stickY(&jd,c2x+50,y,"/", "%+.2f");
 	E dtrk(&jd,c1x,y+=10," DTK:", "%05.1f ", ed, 1, 0, 359, true); F trk(&jd,c2x,y,  " TRK:", "%05.1f ");
 	F pitc(&jd,c1x,y+=10,"PITC:", "%+03.1f ");  		F  obs(&jd,c2x,y,     " OBS:", "%05.1f ");
 	F roll(&jd,c1x,y+=10,"ROLL:", "%+03.1f");   		F  mode(&jd,c2x,y,    "MODE:", "%05.0f ");
@@ -454,34 +454,37 @@ void setup() {
 	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = -1;
 	
 	// Set up PID gains 
-	rollPID.setGains(7.52, 0.05, 0.11); // output in stickThrow units * 1000
+	rollPID.setGains(7.52, 0.01, 0.11); // input in degrees bank err, output in stickThrow units
 	rollPID.hiGain.p = 2;
 	rollPID.hiGainTrans.p = 5;
+	rollPID.maxerr.i = 2.0; // degrees bank err
+	rollPID.outputTrim = +0.1;
+	rollPID.inputTrim = 0.0;
 	rollPID.finalGain = 16.8;
-	rollPID.maxerr.i = 20;
-	rollPID.outputTrim = +100.0;
-	rollPID.inputTrim = -2.63;
+	rollPID.finalScale = 0.001;
 
-	hdgPID.setGains(0.5, 0.0003, 0.05); // output in degrees desired bank
+	hdgPID.setGains(0.5, 0.0003, 0.05); // input in degrees hdg err, output in degrees desired bank
 	hdgPID.hiGain.p = 10;
 	hdgPID.hiGainTrans.p = 8.0;
-	hdgPID.maxerr.i = 20;
+	hdgPID.maxerr.i = 20; // degrees hdg err 
 	hdgPID.finalGain = 1.0;
 
-	xtePID.setGains(8.0, 0.0003, 0.20); // output in degrees desired hdg correction
+	xtePID.setGains(8.0, 0.0003, 0.20); // input in NM xte error, output in degrees desired hdg change
 	xtePID.maxerr.i = 1.0;
 	xtePID.finalGain = 20.0;
 	
-	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // output in stickthrow units * 1000
+	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
 	pitchPID.finalGain = 1.7;
-	pitchPID.maxerr.i = .5;
+	pitchPID.maxerr.i = .5; // degrees
 	pitchPID.outputTrim = 0.0;
 	pitchPID.inputTrim = +2.85;
+	pitchPID.finalScale = 0.001;
 
-	altPID.setGains(1.0, 0.002, 3.0); // output in degrees of pitch * 100  
+	altPID.setGains(1.0, 0.002, 3.0); // input in feet of alt err, output in degrees of pitch change
 	altPID.finalGain = -0.2;
-	altPID.maxerr.i = 100;
+	altPID.maxerr.i = 200; // feet 
 	altPID.outputTrim = 0.0;
+	altPID.finalScale = 0.01;
 
     // make PID select knob display text from array instead of 0-3	
 	Display::pidsel.toString = [](float v){ 
@@ -1156,15 +1159,15 @@ void loop() {
 		}
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		float altCorr = max(min(altPID.corr / 100, 3.0), -3.0);
+		float altCorr = max(min(altPID.corr, 3.0), -3.0);
 		desPitch = altCorr + abs(sin(DEG2RAD(roll - rollPID.inputTrim)) * bankPitch);
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			stickX = rollPID.corr / 1000;
-			stickY = pitchPID.corr / 1000 + abs(sin(DEG2RAD(roll - rollPID.inputTrim))) * bankStick 
+			stickX = rollPID.corr;
+			stickY = pitchPID.corr + abs(sin(DEG2RAD(roll - rollPID.inputTrim))) * bankStick 
 				+ (desPitch * pitchToStick); 
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
@@ -1236,7 +1239,9 @@ void loop() {
 		knobPID->outputTrim = Display::pidot.value;
 		knobPID->inputTrim = Display::pidit.value;
 		
-		Display::ip = WiFi.localIP().toString().c_str(); 
+		Display::ip = WiFi.localIP()[3];
+		Display::stickX = stickX;
+		Display::stickY = stickY; 
 		//Display::dtk = desiredTrk; 
 		Display::trk = ahrsInput.selTrack; 
 		//Display::navt = auxMPU.gy; //navDTK; 

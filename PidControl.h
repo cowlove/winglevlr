@@ -38,7 +38,7 @@ public:
       	gain.l = gl;
     }
     PID err, gain, maxerr, hiGain, hiGainTrans;
-    double finalGain = 1.0;
+    double finalGain = 1.0, finalScale = 1.0;
 	double outputTrim = 0.0; 			// post-finalGain output trim 
 	double inputTrim = 0.0; 
 	float calcGain(float err, float loGain, float hiGain, float transition) {
@@ -96,8 +96,8 @@ public:
  	    err.d = calcGain(histMeasurement.slope(), gain.d, hiGain.d, hiGainTrans.d);
  	    //drms = histMeasurement.rmsError();
  	           
-	    corr = -(err.p + err.i + err.d + err.l) * finalGain + outputTrim;
-	    histCorrection.add(time, corr / finalGain);
+	    histCorrection.add(time, corr);
+	    corr = -(err.p + err.i + err.d + err.l) * finalGain * finalScale + outputTrim;
 	    return corr;
     }
     
