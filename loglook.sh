@@ -105,7 +105,7 @@ while (( $# > 0 )); do
 	#if [ "$1" == "-amz" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($50) w l ax x1y1 tit "'$1'", '; fi
 	if [ "$1" == "-stickX" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($43) w l ax x1y2 tit "'$1'", '; fi
 	if [ "$1" == "-stickY" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($44) w l ax x1y2 tit "'$1'", '; fi
-	if [ "$1" == "-map" ]; then PS=$PS\ \"$F2\"' u 32:31 ax x2y2 w l tit "Ground Track", '; fi
+	if [ "$1" == "-map" ]; then PREPLOT="set size ratio -1;"; 	PS=$PS\ \"$F2\"' u 32:31  w l tit "Ground Track", '; fi
 	if [ "$1" == "-magplot" ]; then PS=$PS\ \"$F2\"' u 13:14 w p tit "Mag Plot", '; fi
 	if [ "$1" == "-pitcherr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($40-$20) w l ax x1y1 tit "Pitch Error", '; fi
 	if [ "$1" == "-rollerr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($37-$21) w l ax x1y1 tit "Roll Error", '; fi
@@ -173,7 +173,7 @@ set y2tic
 set x2tic
 set ytic nomirror
 set xtic nomirror
-
+${PREPLOT}
 print "**********************************************"
 
 

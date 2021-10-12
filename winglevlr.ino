@@ -471,11 +471,11 @@ void setup() {
 	xtePID.finalGain = 20.0;
 	
 	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8);
-	pitchPID.finalGain = 5.0;
+	pitchPID.finalGain = 1.7;
 	pitchPID.maxerr.i = .5;
 
 	altPID.setGains(1.0, 0.002, 3.0);
-	altPID.finalGain = -.5;
+	altPID.finalGain = -0.2;
 	pitchPID.maxerr.i = 100;
 
     // make PID select knob display text from array instead of 0-3	
@@ -1163,8 +1163,8 @@ void loop() {
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			stickX = stickTrimX + rollPID.corr / 2000 * ServoControl::servoThrow;
-			stickY = stickTrimY + pitchPID.corr / 2000 * ServoControl::servoThrow 
+			stickX = stickTrimX + rollPID.corr / 1000;
+			stickY = stickTrimY + pitchPID.corr / 1000 
 				+ abs(sin(DEG2RAD(roll))) * 0.2
 				+ (desPitch - Display::pitchTrim.value) * pitchToStick; 
 			stickX += cos(millis() / 100.0) * .04;
@@ -1472,8 +1472,7 @@ public:
 				}
 			}
 				
-			servoOutput[0] = l.pwmOutput0;
-			servoOutput[1] = l.pwmOutput1;
+			servoOutput[0] = servoOutput[1] = 0;
 			setDesiredTrk(l.ai.dtk);
 
 			// special logfile name "-", just replay existing log back out to stdout 
@@ -1635,7 +1634,7 @@ public:
 			//bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
 			//setDesiredTrk(ahrsInput.dtk = 135);
 		}
-		
+		bm.addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 	}
 
 	bool firstLoop = true;	
