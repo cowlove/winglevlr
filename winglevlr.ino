@@ -72,7 +72,7 @@ float desRoll = 0, pitchToStick = 0.15, desPitch = 0, desAlt = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn 
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn   
-float bankStick = 0.1, bankPitch = 1;
+float bankStick = 0.1, bankPitch = .5;
 
 #define LED_PIN 22
 /* Old hardware pins: I2C pins/variant seems to determine layout 
@@ -1157,14 +1157,15 @@ void loop() {
 
 		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(altPID.corr / 100, 3.0), -3.0);
-		desPitch = altCorr + abs(sin(DEG2RAD(roll)) * bankPitch);
+		desPitch = altCorr + abs(sin(DEG2RAD(roll - rollPID.inputTrim)) * bankPitch);
 		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
 			stickX = rollPID.corr / 1000;
-			stickY = pitchPID.corr / 1000 + abs(sin(DEG2RAD(roll))) * bankStick + (desPitch * pitchToStick); 
+			stickY = pitchPID.corr / 1000 + abs(sin(DEG2RAD(roll - rollPID.inputTrim))) * bankStick 
+				+ (desPitch * pitchToStick); 
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
