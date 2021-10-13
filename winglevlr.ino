@@ -458,8 +458,8 @@ void setup() {
 	rollPID.hiGain.p = 2;
 	rollPID.hiGainTrans.p = 5;
 	rollPID.maxerr.i = 2.0; // degrees bank err
-	rollPID.outputTrim = +0.1;
-	rollPID.inputTrim = 0.0;
+	rollPID.outputTrim = .152;
+	rollPID.inputTrim = -0.54;
 	rollPID.finalGain = 16.8;
 	rollPID.finalScale = 0.001;
 

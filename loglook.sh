@@ -34,7 +34,7 @@ NUM=$1
 shift
 TERMSPEC="set term qt size 2048,1024"
 WAIT="pause 1000"
-XRANGE='[*:*]'
+XRANGE='[]'
 
 make logs/AHRSD$NUM.plog
 #          1      2         3             4            5           6   7   8   9   10  11  12  13  14  15  16  17     18    19  
@@ -110,7 +110,7 @@ while (( $# > 0 )); do
 	if [ "$1" == "-pitcherr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($40-$20) w l ax x1y1 tit "Pitch Error", '; fi
 	if [ "$1" == "-rollerr" ]; then PS=$PS\ \"$F2\"' u ($1-F2_min_x):($37-$21) w l ax x1y1 tit "Roll Error", '; fi
 	if [ "$1" == "-stats" ]; then 
-		STATS='stats '$RANGE' "'$F2'" u ($1-F2_min_x):($'$2')'; 
+		STATS='stats '"$XRANGE"' "'$F2'" u ($1-F2_min_x):($'$2')'; 
 		shift
 	fi
 	if [ "$1" == "-file" ]; then 
@@ -158,7 +158,7 @@ while (( $# > 0 )); do
 	shift;
 done
 echo $XRANGE $PS
-
+echo "$STATS"
 
 cat << EOF | gnuplot
 $TERMSPEC
@@ -166,8 +166,7 @@ set title "${F2}"
 
 f2="$F2"
 f1="$F1"
-stats f2 u 1:16 name "F2"
-$STATS
+stats f2 u 1:1 name "F2"
 set grid
 set y2tic
 set x2tic
@@ -177,6 +176,7 @@ ${PREPLOT}
 print "**********************************************"
 
 
+${STATS}
 p ${XRANGE} ${PS}
 	
 $WAIT
