@@ -244,9 +244,9 @@ public:
 	}
 	MultiCompFilter mComp;
 	
-	float magOffX = 35.6;
-	float magOffY = 40.12;
-	float magOffZ = -50;
+	float magOffX = 40;
+	float magOffY = 42;
+	float magOffZ = -60;
 
 	
 	float magScaleX = 1.0;
@@ -471,6 +471,7 @@ public:
 		speedDelta = gSpeedFit.slope() * 0.51444;
 		accelRoll = RAD2DEG(atan2(avgAX.average(), avgAZ.average()));
 		rollRad = DEG2RAD(avgRoll.average() + accelRoll);
+		float pitchRad = DEG2RAD(avgPitch.average());
 		accelPitch = -RAD2DEG(atan2(cos(rollRad) * avgAY.average() - sin(rollRad) * avgAX.average(), avgAZ.average()));
 		//accelPitch = 0;
 		//accelRoll = 0;
@@ -490,11 +491,21 @@ public:
 		pitch = avgPitch.average();
 
 		// attempt magnetic dip bank error correction 
+	/*
 		float ra = magDipConstant * avgRoll.average() / 180 * M_PI;   
 		float z = sin(67.0*M_PI/180) * cos(ra); 
 		float y = sin(magHdg*M_PI/180);
 		float y1 = y * cos(ra) - z * sin(ra);
 		magHdg =  atan2(y1, cos(magHdg*M_PI/180)) * 180 / M_PI;
+	*/
+
+		float rmy = cos(pitchRad) * l.my + sin(pitchRad) * l.mz;
+		float rmz = cos(pitchRad) * l.mz - sin(pitchRad) * l.my;
+		float rmx = cos(rollRad) * l.mx - sin(rollRad) * rmz;
+		      rmz = cos(rollRad) * rmz + sin(rollRad) * l.mx;
+		magHdg =  RAD2DEG(atan2(rmy, rmx));
+		
+		
 		magHdg = angularClosest(magHdg, avgMagHdg.average());
 		avgMagHdg.add(magHdg);
 		magHdg360 = avgMagHdg.average();
@@ -510,7 +521,9 @@ public:
 		if (tick10HZ) {
 			magHdgFit.add(l.sec, windup360(cHdg, magHdgFit.averageY()));
 		}
-		magHdg = constrain360(cHdg);		
+		//magHdg = constrain360(cHdg);		
+		//magHdg = constrain360(hdg);
+		//magHdg = constrain360(magHdg);
 
 		// magHdg still slightly unreliable 	
 		if (false && magHdgFit.full()) { 
