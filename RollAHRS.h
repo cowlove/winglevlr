@@ -517,15 +517,16 @@ public:
 			hdgInitialized = true;
 			hdg = magHdg360;
 		}
-		hdg =  (hdg - (cos(rollRad) * l.gz + sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;		
+		float rgz = l.gz * cos(pitchRad) + l.gy * sin(pitchRad);
+		hdg =  (hdg - (cos(rollRad) * rgz - sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;		
 	
 		float cHdg = hdg;
 		cHdg = mComp.calculate(l.sec, hdg);
 		if (tick10HZ) {
 			magHdgFit.add(l.sec, windup360(cHdg, magHdgFit.averageY()));
 		}
-		//magHdg = constrain360(cHdg);		
-		magHdg = constrain360(hdg);
+		magHdg = constrain360(cHdg);		
+		//magHdg = constrain360(hdg);
 		//magHdg = constrain360(magHdg);
 
 		// magHdg still slightly unreliable 	
