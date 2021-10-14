@@ -319,7 +319,6 @@ public:
 	float fakeTimeMs = 0; // period for fake timestamps, 0 to use real time 
 	int count = 0;
 	AhrsInput prev;
-	Windup360 magHdg360;
 	float compR = 0, compYH =0, rollG = 0;
 	float gyroDrift = 0;
 	float gpsPitch = 0, accelPitch = 0;
@@ -393,8 +392,6 @@ public:
 		avgAY.add(l.ay);
 		avgAZ.add(l.az);
 		
-		magHdg = atan2(l.my, l.mx) * 180 / M_PI;
-
 		//magMagnitudeFit.add(l.sec, magTotalMagnitude);
 		magZFit.add(l.sec, l.mz); // FULL RATE 
 		magXFit.add(l.sec, l.mx);
@@ -425,9 +422,6 @@ public:
 			l.selTrack = windup360(l.selTrack, prev.selTrack);
 		}
 
-		//magHdgRawFit.add(l.sec, rawMagHdg);
-		//gpsHdgFit.add(l.sec, l.gpsTrack);
-		
 		if (count % 3217 == 0) { 
 			//gpsHdgFit.rebaseX();
 			magHdgFit.rebaseX();
@@ -490,55 +484,32 @@ public:
 		avgPitch.add(pitch);
 		pitch = avgPitch.average();
 
-		// attempt magnetic dip bank error correction 
-	/*
-		float ra = magDipConstant * avgRoll.average() / 180 * M_PI;   
-		float z = sin(67.0*M_PI/180) * cos(ra); 
-		float y = sin(magHdg*M_PI/180);
-		float y1 = y * cos(ra) - z * sin(ra);
-		magHdg =  atan2(y1, cos(magHdg*M_PI/180)) * 180 / M_PI;
-	*/
-
+	
 		float rmx = cos(pitchRad) * l.mx - sin(pitchRad) * l.mz;
 		float rmz = cos(pitchRad) * l.mz + sin(pitchRad) * l.mx;
 		float rmy = cos(rollRad) * l.my + sin(rollRad) * rmz;
 		      rmz = cos(rollRad) * rmz - sin(rollRad) * l.my;
 		//rmx = l.mx;
 		//rmy = l.my;
-		magHdg =  RAD2DEG(atan2(rmy, rmx));
+		float h = RAD2DEG(atan2(rmy, rmx));
 		
 		
-		magHdg = angularClosest(magHdg, avgMagHdg.average());
-		//magHdg = angularClosest(magHdg, l.ubloxHdg);
-		avgMagHdg.add(magHdg);
-		magHdg360 = avgMagHdg.average();
+		h = angularClosest(h, avgMagHdg.average());
+		avgMagHdg.add(h);
 
+		// startup initialization of "hdg" filter result 
 		if (hdgInitialized == false && avgMagHdg.full()) { 
 			hdgInitialized = true;
-			hdg = magHdg360;
+			hdg = avgMagHdg.average();
 		}
+
 		float rgz = l.gz * cos(pitchRad) + l.gy * sin(pitchRad);
-		hdg =  (hdg - (cos(rollRad) * rgz - sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + magHdg360 * hdgCompRatio;		
+		hdg =  (hdg - (cos(rollRad) * rgz - sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + avgMagHdg.average() * hdgCompRatio;		
 	
-		float cHdg = hdg;
-		cHdg = mComp.calculate(l.sec, hdg);
-		if (tick10HZ) {
-			magHdgFit.add(l.sec, windup360(cHdg, magHdgFit.averageY()));
-		}
-		magHdg = constrain360(cHdg);		
+		magHdg = constrain360(mComp.calculate(l.sec, hdg));		
 		//magHdg = constrain360(hdg);
 		//magHdg = constrain360(magHdg);
 
-		// magHdg still slightly unreliable 	
-		if (false && magHdgFit.full()) { 
-			compYH -= magBankTrim;
-			magBank = -atan(magHdgFit.slope() * tas / 1091) * 180/M_PI;
-			if (abs(compYH - magBank) < magBankTrimMaxBankErr) { 
-				magBankTrim += (compYH - magBank) * magBankTrimCr;
-				magBankTrim = max(min((double)magBankTrim, 10.0), -10.0);
-			}
-		}
-		
 		count++;
 		prev = l;
 

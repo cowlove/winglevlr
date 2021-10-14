@@ -1380,10 +1380,9 @@ public:
 
 		float hdg = track;
 		// simulate meaningless mag readings that stabilize when bank == 0 
-		imu->mx = cos(hdg * M_PI/180) * 50;
+		imu->mx = cos(hdg * M_PI/180) * 50 + 50;
 		imu->my = sin(hdg * M_PI/180) * 50 + 50;
 		imu->mz = -70;
-		//imu->mx =imu->my = imu->mz = 0;
 		ahrs.magBankTrim = 0; // TODO simulate mag so this doesn't oscillate
 		//ahrs.magHdg = hdg;
 		
