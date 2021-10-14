@@ -503,10 +503,13 @@ public:
 		float rmz = cos(pitchRad) * l.mz - sin(pitchRad) * l.my;
 		float rmx = cos(rollRad) * l.mx - sin(rollRad) * rmz;
 		      rmz = cos(rollRad) * rmz + sin(rollRad) * l.mx;
+		//rmx = l.mx;
+		//rmy = l.my;
 		magHdg =  RAD2DEG(atan2(rmy, rmx));
 		
 		
-		magHdg = angularClosest(magHdg, avgMagHdg.average());
+		//magHdg = angularClosest(magHdg, avgMagHdg.average());
+		magHdg = angularClosest(magHdg, l.ubloxHdg);
 		avgMagHdg.add(magHdg);
 		magHdg360 = avgMagHdg.average();
 
