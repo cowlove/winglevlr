@@ -246,7 +246,7 @@ public:
 	
 	float magOffX = 40;
 	float magOffY = 42;
-	float magOffZ = -60;
+	float magOffZ = -40;
 
 	
 	float magScaleX = 1.0;
@@ -499,10 +499,10 @@ public:
 		magHdg =  atan2(y1, cos(magHdg*M_PI/180)) * 180 / M_PI;
 	*/
 
-		float rmy = cos(pitchRad) * l.my + sin(pitchRad) * l.mz;
-		float rmz = cos(pitchRad) * l.mz - sin(pitchRad) * l.my;
-		float rmx = cos(rollRad) * l.mx - sin(rollRad) * rmz;
-		      rmz = cos(rollRad) * rmz + sin(rollRad) * l.mx;
+		float rmx = cos(pitchRad) * l.mx - sin(pitchRad) * l.mz;
+		float rmz = cos(pitchRad) * l.mz + sin(pitchRad) * l.mx;
+		float rmy = cos(rollRad) * l.my + sin(rollRad) * rmz;
+		      rmz = cos(rollRad) * rmz - sin(rollRad) * l.my;
 		//rmx = l.mx;
 		//rmy = l.my;
 		magHdg =  RAD2DEG(atan2(rmy, rmx));
