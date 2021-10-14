@@ -590,6 +590,8 @@ void SDCardBufferedLogThread(void *p);
 
 template <class T>
 class SDCardBufferedLog {
+	int writeBlockSz;
+	T *writeBuf;
 public:
 	int dropped = 0;
 	int maxWaiting = 0;
@@ -616,12 +618,14 @@ public:
 public:
 	String currentFile;
 	StaticQueue_t qb;
-	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true) : 
+	SDCardBufferedLog(const char *fname, int len, int timeout, int flushInt, bool textMode = true, int wb = 32) : 
 		filename(fname), 
 		flushInterval(flushInt), 
+		writeBlockSz(wb),
 		timo((timeout+portTICK_PERIOD_MS-1)/portTICK_PERIOD_MS) {
 			
 		queue = xQueueCreate(len, sizeof(T));
+		writeBuf = new T[writeBlockSz];
 		this->textMode = textMode;
 		xTaskCreate(SDCardBufferedLogThread<T>, "SDCardBufferedLogThread", 8192, (void *)this, tskIDLE_PRIORITY, NULL );   
 	}
@@ -631,7 +635,7 @@ public:
 		 printSD();
 		 SD.end();
 		 logFileBusySPI = false;
-
+		 delete writeBuf;
 	}
 	void add(const T *v) {
 		add(v, timo);
@@ -682,19 +686,23 @@ public:
 			f = SD.open((char *)currentFile.c_str(), FILE_WRITE);
 		}
 		Serial.printf("Opened %s\n", currentFile.c_str());
+		int idx = 0;
 		while(!exitNow) { // TODO: doesn't flush queue before exiting 	
-			T v;
-			if (xQueueReceive(queue, &v, timo) == pdTRUE) {
+			if (xQueueReceive(queue, writeBuf + idx, timo) == pdTRUE) {
 				if (!exitNow) {
 					uint64_t now = millis();
-					if (f) {
-						ScopedMutex lock(mutexSPI);
-						size_t s;
-						if (textMode)  
-							s = f.println(v.toString());
-						else 
-							s = f.write((uint8_t *)&v, sizeof(v));
-						if (s > 0) written++;
+					if (f) { 
+						if (textMode == true) { 
+							ScopedMutex lock(mutexSPI);
+							f.println((*writeBuf).toString());
+						} else { 
+							idx = (idx + 1) % writeBlockSz;
+							if (idx == 0) {
+								ScopedMutex lock(mutexSPI);
+								size_t s = f.write((uint8_t *)writeBuf, sizeof(T) * writeBlockSz);
+								if (s > 0) written += writeBlockSz;
+							}
+						}
 					}
 					lastWrite = now;
 					//Serial.printf("WROTE\n");
@@ -1286,7 +1294,6 @@ struct DsTempData {
 };
 
 inline std::vector<DsTempData> readTemps(OneWireNg *ow) { 
-
 	std::vector<DsTempData> rval;
     OneWireNg::Id id;
     OneWireNg::ErrorCode ec;
