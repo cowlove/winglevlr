@@ -508,8 +508,8 @@ public:
 		magHdg =  RAD2DEG(atan2(rmy, rmx));
 		
 		
-		//magHdg = angularClosest(magHdg, avgMagHdg.average());
-		magHdg = angularClosest(magHdg, l.ubloxHdg);
+		magHdg = angularClosest(magHdg, avgMagHdg.average());
+		//magHdg = angularClosest(magHdg, l.ubloxHdg);
 		avgMagHdg.add(magHdg);
 		magHdg360 = avgMagHdg.average();
 
@@ -524,7 +524,7 @@ public:
 		if (tick10HZ) {
 			magHdgFit.add(l.sec, windup360(cHdg, magHdgFit.averageY()));
 		}
-		//magHdg = constrain360(cHdg);		
+		magHdg = constrain360(cHdg);		
 		//magHdg = constrain360(hdg);
 		//magHdg = constrain360(magHdg);
 
