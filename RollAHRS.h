@@ -524,8 +524,8 @@ public:
 		if (tick10HZ) {
 			magHdgFit.add(l.sec, windup360(cHdg, magHdgFit.averageY()));
 		}
-		magHdg = constrain360(cHdg);		
-		//magHdg = constrain360(hdg);
+		//magHdg = constrain360(cHdg);		
+		magHdg = constrain360(hdg);
 		//magHdg = constrain360(magHdg);
 
 		// magHdg still slightly unreliable 	
