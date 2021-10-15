@@ -866,7 +866,7 @@ void loop() {
 			}
 			
 		}
-		if (butFilt2.newEvent()) { // BOTTOM or LfffEFT button
+		if (butFilt2.newEvent()) { // BOTTOM or LEFT button
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
 				armServo = !armServo;
 				servoSetupMode = 0;
@@ -936,7 +936,7 @@ void loop() {
 			GDL90Parser::State s = gdl90.getState();
 			if (s.valid && s.updated) {
 				gpsTrackGDL90 = trueToMag(s.track);
-				ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.02);
+				ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.05);
 				logItem.flags |= LogFlags::HdgGDL; 
 				gpsFixes++;
 				ahrsInput.alt = s.alt * 3.2808;
