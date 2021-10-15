@@ -827,10 +827,10 @@ void loop() {
 				} else {
 					waypointList = 
 "REPEAT 1\n"
-"47.46781184528505, -122.62479628528624 2300\n"
-"47.42959741100363, -122.55173591135885 2300\n" 
-"47.4331127570086, -122.66209866008706  2300\n" 
-"47.476968122716066, -122.54582666728088 2300\n"
+"47.46781184528505, -122.62479628528624\n"
+"47.42959741100363, -122.55173591135885\n" 
+"47.4331127570086, -122.66209866008706\n" 
+"47.476968122716066, -122.54582666728088\n"
 ;
 
 					wpNav = new WaypointsSequencerString(waypointList);
@@ -1080,7 +1080,9 @@ void loop() {
 				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
 				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
 				setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
-				desAlt = wpNav->wptTracker.commandAlt * FEET_PER_METER;
+				if (wpNav->wptTracker.commandAlt > -1000) {
+					desAlt = wpNav->wptTracker.commandAlt * FEET_PER_METER;
+				}
 				ahrsInput.dtk = desiredTrk;
 
 			} else if (apMode == 4) {
@@ -1672,6 +1674,9 @@ public:
 				wpNav = new WaypointsSequencerFile(wpFile.c_str());
 				hdgSelect = 3;
 			}
+			if (at(1.0)) { // alt bug to ~1200 ft
+				ESP32sim_udpInput(7891, "KSEL=2 KVAL=350.0\n");
+			}
 		} else {
 			if (firstLoop == true) { 
 				ifile = ifstream(replayFile, ios_base::in | ios::binary);
@@ -1684,7 +1689,7 @@ public:
 			}
 			logEntries++;
 		}
-	
+
 		//if (now >= 500 && lastTime < 500) {	Serial.inputLine = "pitch=10\n"; }
 		//if (now >= 100 && lastTime < 100) {	Serial.inputLine = "zeroimu\n"; }
 		firstLoop = false;

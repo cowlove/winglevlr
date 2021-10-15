@@ -17,6 +17,7 @@
 #include <iostream>
 
 namespace WaypointNav {
+    static const int ALT_INVALID = -1000;
 
     struct LatLon {
         LatLon(double la, double lo) : lat(la), lon(lo) {}
@@ -153,7 +154,7 @@ namespace WaypointNav {
 
     struct LatLonAlt { 
         LatLon loc;
-        float alt; // meters 
+        float alt = ALT_INVALID;
         bool valid;
         LatLonAlt() : valid(false) {}
         LatLonAlt(LatLon l, float a) : loc(l), alt(a), valid(true) {}
@@ -182,8 +183,6 @@ namespace WaypointNav {
         return best;
     }
 
-
-
     using namespace std;
     class WaypointTracker {
     public: 
@@ -193,7 +192,7 @@ namespace WaypointNav {
         bool waypointPassed;
         float speed; // knots 
         float vvel;  // fpm
-        float steerHdg, commandTrack, commandAlt;
+        float steerHdg, commandTrack, commandAlt = ALT_INVALID;
         float lastHd, lastVd;
         float corrH = 0, corrV = 0;
         float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
@@ -222,7 +221,9 @@ namespace WaypointNav {
                 float legDist = abs(distance(activeWaypoint.loc, startWaypoint.loc));
                 // TODO - implement gradual alt transitions 
                 //commandAlt = (activeWaypoint.alt - startWaypoint.alt) * min((float)1.0, max((float)0.0,(1 - distToWaypoint / legDist))) + startWaypoint.alt;
-                commandAlt = activeWaypoint.alt;
+                if (activeWaypoint.alt != ALT_INVALID) {
+                    commandAlt = activeWaypoint.alt;
+                }
             } else { 
                 //commandAlt = curPos.alt;                
             }
