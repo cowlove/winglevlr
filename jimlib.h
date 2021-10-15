@@ -717,7 +717,7 @@ public:
 				lastFlush = now;
 			}
 			int waiting = uxQueueMessagesWaiting(queue);
-			logFileBusySPI = waiting > 20;
+			logFileBusySPI = waiting > writeBlockSz;
 		}
 		if (f) {
 			ScopedMutex lock(mutexSPI);

@@ -283,6 +283,8 @@ namespace LogFlags {
 	static const int HdgRMC = 0x08;
 	static const int HdgGDL = 0x10;
 	static const int ublox = 0x20;
+	static const int wptNav = 0x40;
+	static const int ttaNav = 0x80;
 }
 
 namespace Display {
@@ -621,6 +623,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (strstr(line, "wpadd ") == line) { waypointList += (line + 6); waypointList += "\n"; }
 		else if (strstr(line, "wpstart") == line && wpNav == NULL) { 
 			wpNav = new WaypointsSequencerString(waypointList); 
+			logItem.flags |= LogFlags::wptNav;
 		}
 		else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
 		else {
@@ -834,6 +837,7 @@ void loop() {
 ;
 
 					wpNav = new WaypointsSequencerString(waypointList);
+					logItem.flags |= LogFlags::wptNav;
 				}
 			}
 		}
@@ -875,6 +879,9 @@ void loop() {
 			if (butFilt2.wasCount == 2) {
 				testTurnActive = !testTurnActive;
 				testTurnAlternate = 0;
+				if (testTurnActive) {
+					logItem.flags |= LogFlags::ttaNav;
+				}
 			}
 		}
 								
