@@ -269,8 +269,8 @@ public:
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 1.10;
 	float debugVar = 0.0;
-	float gXdecelCorrelation = 1.003;
-	float compRatioPitch = AHRS_RATE_CR_SCALE(0.012);
+	float gXdecelCorrelation = 1.125;
+	float compRatioPitch = .0202;//AHRS_RATE_CR_SCALE(0.012);
 	float pitchRaw =0;
 	
 	RollAHRS() { 

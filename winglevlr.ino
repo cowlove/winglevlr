@@ -1637,6 +1637,7 @@ public:
 				else if (sscanf(it->c_str(), "ahrs.gxdecel=%f", &v) == 1) { ahrs.gXdecelCorrelation = v; } 
 				else if (sscanf(it->c_str(), "ahrs.bankanglescale=%f", &v) == 1) { ahrs.bankAngleScale = v; }
 				else if (sscanf(it->c_str(), "ubloxcr=%f", &v) == 1) { ubloxHdgCr = v; }
+				else if (sscanf(it->c_str(), "pids.pitch.itrim=%f", &v) == 1) { pids.pitchPID.inputTrim = v; }
 				else if (strlen(it->c_str()) > 0) { 
 					printf("Unknown debug parameter '%s'\n", it->c_str()); 
 					exit(-1);
