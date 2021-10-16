@@ -268,7 +268,7 @@ public:
 	float magBankTrimCr = AHRS_RATE_INV_SCALE(0.00005);
 	float magBankTrimMaxBankErr = 12;
 	float bankAngleScale = 1.10;
-	float debugVar = 0.3;
+	float debugVar = 0.0;
 	float gXdecelCorrelation = 1.003;
 	float compRatioPitch = AHRS_RATE_CR_SCALE(0.012);
 	float pitchRaw =0;
@@ -302,7 +302,7 @@ public:
 	RollingLeastSquares 
 		gyroDriftFit = RollingLeastSquares(300), // 10HZ 
 		magHdgFit = RollingLeastSquares(50), // 10Hz
-		gSpeedFit = RollingLeastSquares(25); // 50Hz
+		speedFit = RollingLeastSquares(25); // 50Hz
 
 	RollingAverage<float, (int)AHRS_RATE_SCALE(200)> magStabFit;
 	RollingAverage<float, (int)AHRS_RATE_SCALE(50)> avgRoll;
@@ -413,7 +413,7 @@ public:
 		}
 		if (tick50HZ) { 
 			gyroZeroCount.add(zeroSampleCount);
-			gSpeedFit.add(l.sec, l.ubloxGroundSpeed);
+			speedFit.add(l.sec, l.g5Ias);
 			zeroSampleCount = 0;
 		}
 					
@@ -459,10 +459,8 @@ public:
 
 		// TODO replace this kinda-help heuristic until we get proper dip correction 
 		//magHdg += -cos(magHdg / 180 * M_PI) * sin(avgRoll.average() / 180 * M_PI) * 150;
-
-
 		
-		speedDelta = gSpeedFit.slope() * 0.51444;
+		speedDelta = speedFit.slope() * MPS_PER_KNOT;
 		accelRoll = RAD2DEG(atan2(avgAX.average(), avgAZ.average()));
 		rollRad = DEG2RAD(avgRoll.average() + accelRoll);
 		float pitchRad = DEG2RAD(avgPitch.average());
@@ -505,7 +503,6 @@ public:
 
 		float rgz = l.gz * cos(pitchRad) + l.gy * sin(pitchRad);
 		hdg =  (hdg - (cos(rollRad) * rgz - sin(abs(rollRad)) * l.gx) * dt) * (1 - hdgCompRatio) + avgMagHdg.average() * hdgCompRatio;		
-	
 		magHdg = constrain360(mComp.calculate(l.sec, hdg));		
 		//magHdg = constrain360(hdg);
 		//magHdg = constrain360(magHdg);

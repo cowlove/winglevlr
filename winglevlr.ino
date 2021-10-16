@@ -48,12 +48,52 @@ GDL90Parser gdl90;
 GDL90Parser::State state;
 
 RollAHRS ahrs;
-PidControl rollPID(AHRS_RATE_SCALE(30)) /*200Hz*/, 
-	pitchPID(AHRS_RATE_SCALE(10),6), 
-	hdgPID(50)/*20Hz*/, 
-	xtePID(100)/*5hz*/, 
-	altPID(25); /*5Hz*/
-PidControl *knobPID = &altPID;
+
+struct PIDS { 
+	PidControl rollPID = PidControl(AHRS_RATE_SCALE(30)) /*200Hz*/, 
+		pitchPID = PidControl(AHRS_RATE_SCALE(10),6), 
+		hdgPID = PidControl(50)/*20Hz*/, 
+		xtePID = PidControl(100)/*5hz*/, 
+		altPID = PidControl(25); /*5Hz*/
+
+	PIDS() { 
+		// Set up PID gains 
+		rollPID.setGains(7.52, 0.01, 0.11); // input in degrees bank err, output in stickThrow units
+		rollPID.hiGain.p = 2;
+		rollPID.hiGainTrans.p = 5;
+		rollPID.maxerr.i = 2.0; // degrees bank err
+		rollPID.outputTrim = .152;
+		rollPID.inputTrim = -0.54;
+		rollPID.finalGain = 16.8;
+		rollPID.finalScale = 0.001;
+
+		hdgPID.setGains(0.5, 0.0003, 0.05); // input in degrees hdg err, output in degrees desired bank
+		hdgPID.hiGain.p = 10;
+		hdgPID.hiGainTrans.p = 8.0;
+		hdgPID.maxerr.i = 20; // degrees hdg err 
+		hdgPID.finalGain = 0.70;
+
+		xtePID.setGains(8.0, 0.0003, 0.20); // input in NM xte error, output in degrees desired hdg change
+		xtePID.maxerr.i = 1.0;
+		xtePID.finalGain = 20.0;
+		
+		pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
+		pitchPID.finalGain = 1.7;
+		pitchPID.maxerr.i = .5; // degrees
+		pitchPID.outputTrim = 0.0;
+		pitchPID.inputTrim = +2.85;
+		pitchPID.finalScale = 0.001;
+
+		altPID.setGains(1.0, 0.002, 1.5); // input in feet of alt err, output in degrees of pitch change
+		altPID.finalGain = -0.10;
+		altPID.maxerr.i = 200; // feet 
+		altPID.outputTrim = 0.0;
+		altPID.finalScale = 0.01;
+
+	}
+} pids; 
+
+PidControl *knobPID = &pids.altPID;
 
 WiFiUDP udpSL30;
 WiFiUDP udpNMEA;
@@ -455,38 +495,6 @@ void setup() {
 	lastAhrsGoodG5.g5Hdg  = lastAhrsGoodG5.gpsTrackGDL90 = lastAhrsGoodG5.gpsTrackRMC = -1;
 	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = -1;
 	
-	// Set up PID gains 
-	rollPID.setGains(7.52, 0.01, 0.11); // input in degrees bank err, output in stickThrow units
-	rollPID.hiGain.p = 2;
-	rollPID.hiGainTrans.p = 5;
-	rollPID.maxerr.i = 2.0; // degrees bank err
-	rollPID.outputTrim = .152;
-	rollPID.inputTrim = -0.54;
-	rollPID.finalGain = 16.8;
-	rollPID.finalScale = 0.001;
-
-	hdgPID.setGains(0.5, 0.0003, 0.05); // input in degrees hdg err, output in degrees desired bank
-	hdgPID.hiGain.p = 10;
-	hdgPID.hiGainTrans.p = 8.0;
-	hdgPID.maxerr.i = 20; // degrees hdg err 
-	hdgPID.finalGain = 0.70;
-
-	xtePID.setGains(8.0, 0.0003, 0.20); // input in NM xte error, output in degrees desired hdg change
-	xtePID.maxerr.i = 1.0;
-	xtePID.finalGain = 20.0;
-	
-	pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
-	pitchPID.finalGain = 1.7;
-	pitchPID.maxerr.i = .5; // degrees
-	pitchPID.outputTrim = 0.0;
-	pitchPID.inputTrim = +2.85;
-	pitchPID.finalScale = 0.001;
-
-	altPID.setGains(1.0, 0.002, 1.5); // input in feet of alt err, output in degrees of pitch change
-	altPID.finalGain = -0.10;
-	altPID.maxerr.i = 200; // feet 
-	altPID.outputTrim = 0.0;
-	altPID.finalScale = 0.01;
 
     // make PID select knob display text from array instead of 0-3	
 	Display::pidsel.toString = [](float v){ 
@@ -540,11 +548,11 @@ void udpSendString(const char *b) {
 
 void setKnobPid(int f) { 
 	Serial.printf("Knob PID %d\n", f);
-	if      (f == 0) { knobPID = &pitchPID; }
-	else if (f == 1) { knobPID = &altPID;}
-	else if (f == 2) { knobPID = &rollPID; }
-	else if (f == 3) { knobPID = &xtePID; }
-	else if (f == 4) { knobPID = &hdgPID; }
+	if      (f == 0) { knobPID = &pids.pitchPID; }
+	else if (f == 1) { knobPID = &pids.altPID;}
+	else if (f == 2) { knobPID = &pids.rollPID; }
+	else if (f == 3) { knobPID = &pids.xtePID; }
+	else if (f == 4) { knobPID = &pids.hdgPID; }
 	
 	Display::pidpl.setValue(knobPID->gain.p);
 	Display::pidph.setValue(knobPID->hiGain.p);
@@ -600,15 +608,15 @@ void parseSerialCommandInput(const char *buf, int n) {
 		//Serial.printf("RECEIVED COMMAND: %s", line);
 		float f, f2;
 		int relay, ms;
-		if (sscanf(line, "navhi=%f", &f) == 1) { hdgPID.hiGain.p = f; }
-		else if (sscanf(line, "navtr %f", &f) == 1) { hdgPID.hiGainTrans.p = f; }
+		if (sscanf(line, "navhi=%f", &f) == 1) { pids.hdgPID.hiGain.p = f; }
+		else if (sscanf(line, "navtr %f", &f) == 1) { pids.hdgPID.hiGainTrans.p = f; }
 		else if (sscanf(line, "maxb %f", &f) == 1) { Display::maxb.setValue(f); }
 		else if (sscanf(line, "roll %f", &f) == 1) { desRoll = f; }
-		else if (sscanf(line, "pidp %f", &f) == 1) { pitchPID.gain.p = f; }
-		else if (sscanf(line, "pidi %f", &f) == 1) { pitchPID.gain.i = f; }
-		else if (sscanf(line, "pidd %f", &f) == 1) { pitchPID.gain.d = f; }
+		else if (sscanf(line, "pidp %f", &f) == 1) { pids.pitchPID.gain.p = f; }
+		else if (sscanf(line, "pidi %f", &f) == 1) { pids.pitchPID.gain.i = f; }
+		else if (sscanf(line, "pidd %f", &f) == 1) { pids.pitchPID.gain.d = f; }
 		//else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
-		else if (sscanf(line, "pidl %f", &f) == 1) { pitchPID.gain.l = f; }
+		else if (sscanf(line, "pidl %f", &f) == 1) { pids.pitchPID.gain.l = f; }
 		//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 		//else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 		//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
@@ -643,7 +651,7 @@ void setObsKnob(float knobSel, float v) {
 			setDesiredTrk(obs);
 			crossTrackError.reset();
 			testTurnActive = false;
-			xtePID.reset();
+			pids.xtePID.reset();
 			if (wpNav != NULL) { 
 				delete wpNav;
 				wpNav = NULL;
@@ -746,7 +754,7 @@ void loop() {
 	}
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
-	PidControl *pid = &rollPID;
+	PidControl *pid = &pids.rollPID;
 	if (true && serialReportTimer.tick()) {
 		// SERIAL STATUS line output 
 		Serial.printf(
@@ -1082,9 +1090,9 @@ void loop() {
 					crossTrackError.add(wpNav->wptTracker.xte * .0005);
 				}
 				if (abs(crossTrackError.average()) > 0.2) {
-					xtePID.resetI();
+					pids.xtePID.resetI();
 				}				
-				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+				xteCorrection = -pids.xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
 				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
 				setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
 				if (wpNav->wptTracker.commandAlt > -1000) {
@@ -1093,7 +1101,7 @@ void loop() {
 				ahrsInput.dtk = desiredTrk;
 
 			} else if (apMode == 4) {
-				xteCorrection = -xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
+				xteCorrection = -pids.xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
 				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
 				setDesiredTrk(navDTK + xteCorrection);
 				ahrsInput.dtk = desiredTrk;
@@ -1103,11 +1111,11 @@ void loop() {
 			if (desAlt > 1000) { 
 				float altErr = desAlt - ahrsInput.ubloxAlt;
 				if (abs(altErr) > 500) {
-					altPID.resetI();					
+					pids.altPID.resetI();					
 				}	
-				altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
+				pids.altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
 			} else { 
-				altPID.reset();
+				pids.altPID.reset();
 			}
 		}
 		
@@ -1157,26 +1165,26 @@ void loop() {
 					hdgErr = 0;
 				}
 				if (abs(hdgErr) > 15.0) {
-					hdgPID.resetI();
-					xtePID.resetI();
+					pids.hdgPID.resetI();
+					pids.xtePID.resetI();
 				}
-				desRoll = -hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
+				desRoll = -pids.hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
 				desRoll = max(-Display::maxb.value, min(+Display::maxb.value, desRoll));
 			} else if (!testTurnActive) {
 				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something 
 			}				
 		}
 
-		rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		float altCorr = max(min(altPID.corr, 3.0), -3.0);
-		desPitch = altCorr + abs(sin(DEG2RAD(roll - rollPID.inputTrim)) * bankPitch);
-		pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
+		pids.rollPID.add(roll - desRoll, roll, ahrsInput.sec);
+		float altCorr = max(min(pids.altPID.corr, 3.0), -3.0);
+		desPitch = altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
+		pids.pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			stickX = rollPID.corr;
-			stickY = pitchPID.corr + abs(sin(DEG2RAD(roll - rollPID.inputTrim))) * bankStick 
+			stickX = pids.rollPID.corr;
+			stickY = pids.pitchPID.corr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick 
 				+ (desPitch * pitchToStick); 
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
@@ -1330,8 +1338,8 @@ public:
 		//TODO: flightSim is very fragile/unstable.  Poke values into the
 		// main loop code to make sure things work. 
 		//hdgPID.finalGain = 0.5;
-		pitchPID.outputTrim = rollPID.outputTrim = 0;
-		rollPID.inputTrim = 0;
+		pids.pitchPID.outputTrim = pids.rollPID.outputTrim = 0;
+		pids.rollPID.inputTrim = 0;
 		ahrs.gyrOffZ = ahrs.gyrOffX  = ahrs.gyrOffY = 0;
 		
 		int period = AHRS_RATE_INV_SCALE(5000);
@@ -1704,7 +1712,9 @@ public:
 	}
 	void done() override { 
 		printf("# %f %f %f avg roll/pitch/hdg errors, %d log entries, %.1f real time seconds\n", 
-		totalError.roll / logEntries, totalError.pitch / logEntries,  totalError.hdg / logEntries, logEntries, millis() / 1000.0);
+		(totalError.roll - abs(totalError.rollSum)) / logEntries, 
+		(totalError.pitch - abs(totalError.pitchSum)) / logEntries,  
+		(totalError.hdg - abs(totalError.hdgSum))/ logEntries, logEntries, millis() / 1000.0);
 	}
 } espsim;
 
