@@ -72,7 +72,7 @@ float desRoll = 0, pitchToStick = 0.15, desPitch = 0, desAlt = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn 
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn   
-float bankStick = 0.1, bankPitch = .5;
+float bankStick = 0.3, bankPitch = .2;
 
 #define LED_PIN 22
 /* Old hardware pins: I2C pins/variant seems to determine layout 
@@ -308,8 +308,8 @@ namespace Display {
 	E pidph(&jd,c1x,y+=10, "PH:", "%04.2f ", ed, .01); 	E bp(&jd,c2x,y,    "  BP:", "%04.2f ", ed, 0.01, &bankPitch);
 	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,  "MAXB:", "%04.1f ", ed, 0.1);
 	E pidd (&jd,c1x,y+=10, " D:", "%04.2f ", ed, .01); 	E maxi(&jd,c2x,y,  "MAXI:", "%04.1f ", ed, 0.1);
-	E pidg (&jd,c1x,y+=10, " G:", "%04.2f ", ed, .01); 	E pidot(&jd,c2x,y, "POTR:", "%+4.1f ", ed, 0.1);
-	E dead (&jd,c1x,y+=10, "DZ:", "%04.1f ", ed, .1);  	E pidit(&jd,c2x,y, "PITR:", "%+4.1f ", ed, 0.1);
+	E pidg (&jd,c1x,y+=10, " G:", "%04.2f ", ed, .01); 	E pidot(&jd,c2x,y, "POTR:", "%+5.2f ", ed, 0.01);
+	E dead (&jd,c1x,y+=10, "DZ:", "%04.1f ", ed, .1);  	E pidit(&jd,c2x,y, "PITR:", "%+5.2f ", ed, 0.01);
 	E p2s  (&jd,c1x,y+=10, "PS:", "%04.2f ", ed, .01, &pitchToStick);
 														E pidsel = JDisplayEditableItem(&jd,c2x,y,  " PID:", "%1.0f", ed, 1, NULL, 0, 4);  
 	
@@ -469,7 +469,7 @@ void setup() {
 	hdgPID.hiGain.p = 10;
 	hdgPID.hiGainTrans.p = 8.0;
 	hdgPID.maxerr.i = 20; // degrees hdg err 
-	hdgPID.finalGain = 1.0;
+	hdgPID.finalGain = 0.70;
 
 	xtePID.setGains(8.0, 0.0003, 0.20); // input in NM xte error, output in degrees desired hdg change
 	xtePID.maxerr.i = 1.0;
@@ -482,8 +482,8 @@ void setup() {
 	pitchPID.inputTrim = +2.85;
 	pitchPID.finalScale = 0.001;
 
-	altPID.setGains(1.0, 0.002, 3.0); // input in feet of alt err, output in degrees of pitch change
-	altPID.finalGain = -0.2;
+	altPID.setGains(1.0, 0.002, 1.5); // input in feet of alt err, output in degrees of pitch change
+	altPID.finalGain = -0.10;
 	altPID.maxerr.i = 200; // feet 
 	altPID.outputTrim = 0.0;
 	altPID.finalScale = 0.01;
