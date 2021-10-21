@@ -948,7 +948,7 @@ void loop() {
 			if (nowSec - testTurnLastTurnTime > tttt) { 
 				testTurnLastTurnTime = nowSec;
 				testTurnAlternate  = (testTurnAlternate + 1) % 3;
-				setDesiredTrk(desiredTrk + ttlt * (testTurnAlternate == 0 ? -1 : 1));
+				setDesiredTrk(desiredTrk + ttlt * (testTurnAlternate == 2 ? -1 : 1));
 			}
 		}
 			
