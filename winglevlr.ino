@@ -584,10 +584,28 @@ static int apMode = 1; // apMode == 4 means follow NMEA HDG and XTE sentences, a
 static int hdgSelect = 2; //  0 use fusion magHdg 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
+
+#ifdef UBUNTU
+struct ErrorChannel {
+	vector<float> hist;
+	double sum = 0;
+	void add(double a) { hist.push_back(a); sum += a; }
+	void clear() { sum = 0; hist.clear(); }
+	double err() {
+		double absSum = 0;
+		double avg = sum / hist.size();
+		for (vector<float>::iterator it = hist.begin(); it != hist.end(); it++) {
+			absSum += abs(*it - avg);
+		} 
+		return absSum / hist.size(); 
+	}
+};
 struct {
-	double hdg, roll, pitch, hdgSum, rollSum, pitchSum;
-	void clear() { hdg = roll = pitch = hdgSum = rollSum = pitchSum = 0; }
+	ErrorChannel roll, pitch, hdg; 
+	void clear() { roll.clear(); pitch.clear(); hdg.clear(); }
 } totalError;
+#endif 
+
 //static int ledOn = 0;
 static int manualRelayMs = 60;
 static int gpsFixes = 0, udpBytes = 0, serBytes = 0, apUpdates = 0;
@@ -1227,13 +1245,6 @@ void loop() {
 		logItem.ai = ahrsInput;
 		//logItem.auxMpu = auxMPU;
 
-		totalError.roll += abs(roll + ahrsInput.g5Roll);
-		totalError.rollSum += roll + ahrsInput.g5Roll;
-		totalError.hdg += abs(angularDiff(ahrs.magHdg - ahrsInput.ubloxHdg));
-		totalError.hdgSum += (angularDiff(ahrs.magHdg - ahrsInput.ubloxHdg));
-		totalError.pitch += abs(pitch - ahrsInput.g5Pitch);
-		totalError.pitchSum += (pitch - ahrsInput.g5Pitch);
-
 		lastAhrsInput = ahrsInput;
 	}
 
@@ -1291,6 +1302,9 @@ void loop() {
 		totalError.clear();
 		errorsCleared = true;
 	}
+	totalError.roll.add(roll + ahrsInput.g5Roll);
+	totalError.hdg.add(angularDiff(ahrs.magHdg - ahrsInput.ubloxHdg));
+	totalError.pitch.add(pitch - ahrsInput.g5Pitch);
 
 	// special logfile name "+", write out log with computed values from the current simulation 			
 	if (strcmp(logFilename.c_str(), "+") == 0) {
@@ -1713,9 +1727,8 @@ public:
 	}
 	void done() override { 
 		printf("# %f %f %f avg roll/pitch/hdg errors, %d log entries, %.1f real time seconds\n", 
-		(totalError.roll - abs(totalError.rollSum)) / logEntries, 
-		(totalError.pitch - abs(totalError.pitchSum)) / logEntries,  
-		(totalError.hdg - abs(totalError.hdgSum))/ logEntries, logEntries, millis() / 1000.0);
+		totalError.roll.err(), totalError.pitch.err(), totalError.hdg.err(), (int)totalError.hdg.hist.size(), 
+		millis() / 1000.0);
 	}
 } espsim;
 

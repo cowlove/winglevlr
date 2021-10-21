@@ -3,7 +3,7 @@
 # time ./sweep.pl NUM=107 sweep.txt 
 $exhaustive = 1;
 $zoom = 2;
-$goal = 0.001;
+$goal = 0.0001;
 if ( $ARGV[0] =~ /(\d+)/i ) {
 	$num = $1;  # Allow NUM= to be overriden on the command line
 	shift;
@@ -81,6 +81,7 @@ sub process {
 
 $round = 1;	
 $bestCmd = "";
+$secondBest = -1;
 
 while(1) { 
 	if ($exhaustive) { 
@@ -99,9 +100,7 @@ while(1) {
 		$round *= $zoom;
 	
 	} else {
-
 		$it = 1;
-		$lastBest = -1;
 		while(($#params >= 2 && $it < 10) || ($#params < 2 && $it < 3)) { 
 			foreach $t ( @params ) {
 				delete $best{$t};
@@ -138,6 +137,7 @@ while(1) {
 						$best{$t} = $result;
 						$bestV{$t} = $v;
 						$bestCmd = $cmd;
+						$secondBest = $bestScore;
 						$bestScore = $result;
 					}
 					print "\n";
@@ -146,19 +146,19 @@ while(1) {
 					}
 				}
 			}
-			if (abs($bestScore - $lastBest) < $goal) { 
+			if (abs($bestScore - $secondBest) < $goal) { 
 				print "Met goal, quitting.\n";
 				last;
 			}
-			if ($bestScore == $lastBest) {
+			if ($bestScore == $secondBest) {
 				print "No improvement, quitting.\n";
 				last;
 			}
-			$lastBest = $bestScore;
+			$secondBest = $bestScore;
 			$it += 1;
 		}
 		print "Result: $bestScore\tIterations: Round: $round\t$it\tTotal simulations: $totalRuns\n$bestCmd\n\n";
-		if (abs($bestScore - $lastRoundBest) < $goal) { 
+		if (abs($bestScore - $secondBest) < $goal) { 
 			print "Met goal, quitting.\n";
 			last;
 		}
