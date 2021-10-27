@@ -7,7 +7,7 @@ c = {"time":0, "roll":36, "pitch":39}
 
 
 array  = np.loadtxt("./logs/AHRSD044.plog",
-    usecols=(c["time"],c["roll"],c["pitch"]))
+    usecols=(c["time"], c["roll"], c["pitch"]))
 fig, ax = plt.subplots()
 ax.plot(array[:, 0], array[:, 1], lw=.5)
 ax.plot(array[:, 0], array[:, 2], lw=.5)

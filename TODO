@@ -1,3 +1,6 @@
+* Change EditableItem so that it can refer to external reference
+
+
 * Switch to the standard SD library, quit using esp32_micro_sd library
 y
 
