@@ -40,7 +40,8 @@ git clone https://github.com/nhatuan84/esp32-micro-sdcard.git
 git clone https://github.com/mikalhart/TinyGPSPlus.git
 git clone https://github.com/sparkfun/SparkFun_Ublox_Arduino_Library.git
 
-sudo pip3 install -U pyserial gmplot
+sudo pip3 install -U pyserial gmplot matplotlib
+
 
 # makeEspArduino needs needs a preferences.txt file 
 echo sketchbook.path=${HOME}/Arduino >> ~/.arduino15/preferences.txt
