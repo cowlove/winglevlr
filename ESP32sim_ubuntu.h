@@ -110,7 +110,7 @@ struct OneWireNg {
 	OneWireNg(int, int) {}
 	typedef int ErrorCode; 
 	typedef int Id[8];
-	static const int EC_MORE = 0, EC_DONE = 0;
+	static const int EC_NO_DEVS = 0, EC_MORE = 0, EC_DONE = 0;
 	void writeByte(int) {}
 	void addressSingle(Id) {}
 	void touchBytes(const unsigned char *, int) {}
