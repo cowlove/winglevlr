@@ -177,7 +177,7 @@ while(len(argv) > 0):
     elif re.match("^[-]*run", a):
         run(filename, replay, git, cmdargs)
     elif re.match("^[-]*map", a):
-        runXY(filename, replay, git, cmdargs, ["lat", "lon"]);
+        runXY(filename, replay, git, cmdargs, ["lon", "lat"]);
     elif re.match("^[-]*magplot", a):
         runXY(filename, replay, git, cmdargs, ["mx", "my"]);
 

@@ -1292,7 +1292,6 @@ struct DsTempData {
 	uint64_t time;
 	float degC;
 };
-
 inline std::vector<DsTempData> readTemps(OneWireNg *ow) { 
 	std::vector<DsTempData> rval;
     OneWireNg::Id id;
@@ -1302,7 +1301,7 @@ inline std::vector<DsTempData> readTemps(OneWireNg *ow) {
     do
     {
         ec = ow->search(id);
-        if (!(ec == OneWireNg::EC_MORE || ec == OneWireNg::EC_DONE))
+        if (!(ec == OneWireNg::EC_MORE || ec == OneWireNg::EC_NO_DEVS))
             break;
 
         /* start temperature conversion */

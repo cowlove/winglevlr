@@ -52,9 +52,9 @@ cut '-d ' -f 48,49 out20.plog  | tr ' ' ',' >> tracksim_tta.txt
 # simulate following the flight plan
  make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.5,-122.3,1000 --tracksim ./tracksim_tta.txt --log + --seconds 5500 | grep "LOG" > out.plog && ./loglook.sh X -file out.plog -map
 
-make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.5,-122.45,1000,180,88 --button 20,36,3,0 --log + --seconds 1200 | grep "LOG" > out.plog && ./loglook.sh X -file out.plog -map  
+make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.5,-122.45,1000,180,88 --button 20,36,3,0 --log + --seconds 1200 | grep "LOG" > out.plog && ./ll.py  out.plog map  
 
 
 
-make winglevlr_ubuntu && ./winglevlr_ubuntu --wind 220@20 --startpos 47.5,-122.45,1000,180,88 --button 20,36,3,0 --log + --seconds 3600 | grep "LOG" > out.plog && ./plot_on_map.py ./out.plog  && google-chrome ./map.html && ./loglook.sh XX -file out.plog -xte 
+make winglevlr_ubuntu && ./winglevlr_ubuntu --wind 220@20 --startpos 47.5,-122.45,1000,180,88 --button 20,36,3,0 --log + --seconds 3600 | grep "LOG" > out.plog && ./plot_on_map.py ./out.plog  && google-chrome ./map.html && ./ll.py file out.plog xte 
 
