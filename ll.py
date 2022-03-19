@@ -154,9 +154,9 @@ while(len(argv) > 0):
             filename = argv.pop(0)
         else:   
             filename = a
+        replay = 1
         git = ""
         cmdargs = ""
-        replay = 1
     elif re.match("^[-]*reuse", a) or re.match(".*\.plog", a):
         # <--reuse> ./logs/AHRSD044.plog 
         run(filename, replay, git, cmdargs)

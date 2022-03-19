@@ -1577,21 +1577,24 @@ public:
 				ArduinoOTA.handle();
 			} while(updateInProgress == true);
 			server.handleClient();
-			
-			if (report.tick()) { 
-				udp.beginPacket("255.255.255.255", 9000);
-				char b[128];
-				snprintf(b, sizeof(b), "%d %s    " __BASE_FILE__ "   " __DATE__ "   " __TIME__ "   0x%08x\n", 
-					(int)(millis() / 1000), WiFi.localIP().toString().c_str(), /*(int)ESP.getEfuseMac()*/0);
-				udp.write((const uint8_t *)b, strlen(b));
-				udp.endPacket();
+			if (report.tick()) {
+				udpDebug(""); 
 			}
-			
-			
 		}
 	}
 	bool connected() { return WiFi.status() == WL_CONNECTED;  }  
-
+	void udpDebug(const char *s) { 
+		if (!connected())
+			return;
+		udp.beginPacket("255.255.255.255", 9000);
+		char b[128];
+		snprintf(b, sizeof(b), "%d %s    " __BASE_FILE__ "   " __DATE__ "   " __TIME__ "   0x%08x: ", 
+			(int)(millis() / 1000), WiFi.localIP().toString().c_str(), /*(int)ESP.getEfuseMac()*/0);
+		udp.write((const uint8_t *)b, strlen(b));
+		udp.write((const uint8_t *)s, strlen(s));
+		udp.write((const uint8_t *)"\n", 1);
+		udp.endPacket();
+	}
 };
 
 class ShortBootDebugMode {

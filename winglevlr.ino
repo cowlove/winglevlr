@@ -62,7 +62,7 @@ struct PIDS {
 		rollPID.hiGain.p = 2;
 		rollPID.hiGainTrans.p = 5;
 		rollPID.maxerr.i = 2.0; // degrees bank err
-		rollPID.outputTrim = .152;
+		rollPID.outputTrim = 0.0;
 		rollPID.inputTrim = -0.54;
 		rollPID.finalGain = 16.8;
 		rollPID.finalScale = 0.001;
@@ -746,7 +746,7 @@ namespace ServoControl {
 
 void setServos(float x, float y) {
 	pair<int,int> s = ServoControl::stickToServo(x, y);
-	servoOutput[0] =  max(450, min(2550, s.first));
+	servoOutput[0] =  max(900, min(2100, s.first));
 	servoOutput[1] =  max(450, min(2550, s.second));
 }
 
