@@ -18,6 +18,7 @@
 #include <TinyGPS++.h>
 
 #include "jimlib.h"
+#include "TTGO_TS.h"
 #include "RollingLeastSquares.h"
 #include "PidControl.h"
 #include "RollAHRS.h"
