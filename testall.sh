@@ -16,7 +16,7 @@ BLINK=$(tput blink)
 REVERSE=$(tput smso)
 UNDERLINE=$(tput smul)
 
-for f in */test.sh; do 
+for f in $@ */test.sh; do 
     D=`dirname $f`
     SK=`basename $D`.ino
     UB=`basename $D`_ubuntu
