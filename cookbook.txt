@@ -56,5 +56,5 @@ make winglevlr_ubuntu && ./winglevlr_ubuntu --startpos 47.5,-122.45,1000,180,88 
 
 
 
-make winglevlr_ubuntu && ./winglevlr_ubuntu --wind 220@20 --startpos 47.5,-122.45,1000,180,88 --button 20,36,3,0 --log + --seconds 3600 | grep "LOG" > out.plog && ./plot_on_map.py ./out.plog  && google-chrome ./map.html && ./ll.py file out.plog xte 
+make winglevlr_ubuntu && ./winglevlr_ubuntu --wind 220@20 --startpos 47.5,-122.45,1000,180,88 --button 20,36,3,0 --log + --seconds 3600 | grep "LOG" > out.plog && ./plot_on_map.py ./out.plog  && google-chrome ./map.html && ./ll.py out.plog xte 
 
