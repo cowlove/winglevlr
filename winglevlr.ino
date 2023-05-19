@@ -34,7 +34,8 @@ bool debugFastBoot = false;
 using WaypointNav::trueToMag;
 using WaypointNav::magToTrue;
 
-WiFiMulti wifi;
+//WiFiMulti wifi;
+JStuff j;
 
 //SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
 int logFileNumber = 0;
@@ -156,25 +157,35 @@ public:
 	SFE_UBLOX_GPS myGNSS;
 	int gpsGood = 0;
 	void init() {
-		Serial.printf("Trying 115K BPS...\n");
-		Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+		int bps = 57600;
+		//myGNSS.enableDebugging(Serial, false);
+		Serial.printf("Trying %d BPS...\n", bps);
+		Serial2.begin(bps, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
 		if (myGNSS.begin(Serial2) == false) { 
-		Serial.printf("Trying 9.6K BPS...\n");
-		Serial2.begin(9600, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
-		if (myGNSS.begin(Serial2) == false)  {
-			Serial.println("u-blox GNSS not detected. Please check wiring");
-			return;
+			Serial.printf("Trying 9.6K BPS...\n");
+			Serial2.begin(9600, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+			if (myGNSS.begin(Serial2) == false)  {
+				Serial.printf("Trying 115K BPS...\n");
+				Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+				if (myGNSS.begin(Serial2) == false)  {
+					Serial.println("u-blox GNSS not detected. Please check wiring");
+					return;
+				}
+			}
+			myGNSS.setSerialRate(bps); //Set UART1 to 57600bps.
+			Serial2.begin(bps, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+			myGNSS.saveConfiguration();        //Optional: Save the current settings to flash and BBR
 		}
-		myGNSS.setSerialRate(115200); //Set UART1 to 57600bps.
-		Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
-		myGNSS.saveConfiguration();        //Optional: Save the current settings to flash and BBR
 
-		}
-
-		myGNSS.setUART1Output(COM_TYPE_UBX);
-		myGNSS.setNavigationFrequency(10); 
-		myGNSS.setAutoPVT(true, true); 
-		//myGNSS.setAutoPVTrate(0.10); //Set output to 5 times a second
+		int b;
+		b = myGNSS.setUART1Output(COM_TYPE_UBX);
+		j.out("setUART1Output: %d", b);
+		b = myGNSS.setNavigationFrequency(10); 
+		j.out("setNavigationFrequency: %d", b);
+		b = myGNSS.setAutoPVT(true, true, 100); 
+		j.out("setAutoPVT: %d", b);
+		//b = myGNSS.setAutoPVTrate(0.10); //Set output to 5 times a second
+		//j.out("setAutoPVTrate: %d", b);
 
 		gpsGood = 1;
 		Serial.printf("Found GPS\n");
@@ -183,7 +194,7 @@ public:
 	float hdg, hac, gs, siv, alt;
 	int count = 0;
 	bool check() { 
-		if (gpsGood && myGNSS.getPVT(220)) {
+		if (gpsGood && myGNSS.getPVT(10)) {
 			lon = myGNSS.getLongitude() / 10000000.0;
 			hdg = myGNSS.getHeading() / 100000.0;
 			lat = myGNSS.getLatitude() / 10000000.0;
@@ -269,7 +280,13 @@ void halInit() {
 		//digitalWrite(pins.led, alternate);
 		digitalWrite(pins.tft_backlight, !alternate);
 	} 
-	
+
+	if (ahrs.rotate180 == false) {
+		int temp = pins.botButton;
+		pins.botButton = pins.topButton;
+		pins.topButton = temp;
+	}
+
 	imu->beginAccel(ACC_FULL_SCALE_4_G);
 	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
 	imu->beginMag(MAG_MODE_CONTINUOUS_100HZ);
@@ -434,9 +451,13 @@ void printMag() {
 }
 
 
+
 void setup() {	
-	//SPIFFS.begin();
-	
+	j.mqtt.active = false;
+	j.begin();	
+	j.run();
+	j.mqtt.active = false;
+
 	halInit();
 	// ugh: redo pin assignments, hal may have changed them
 	buttonTop.pin = pins.topButton; 
@@ -464,7 +485,7 @@ void setup() {
 	//digitalWrite(pins.servo_enable, 1);
 
 	Display::jd.begin();
-	Display::jd.setRotation(3);
+	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
 	Display::jd.clear();
 	
 	attachInterrupt(digitalPinToInterrupt(buttonMid.pin), buttonISR, CHANGE);
@@ -472,6 +493,7 @@ void setup() {
 	attachInterrupt(digitalPinToInterrupt(buttonTop.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(buttonKnob.pin), buttonISR, CHANGE);
 		
+#if 0
 	WiFi.disconnect(true);
 	WiFi.mode(WIFI_STA);
 	WiFi.setSleep(false);
@@ -479,11 +501,11 @@ void setup() {
 	wifi.addAP("Ping-582B", "");
 	wifi.addAP("Tip of the Spear", "51a52b5354");
 	wifi.addAP("ChloeNet", "niftyprairie7");
-
+#endif 
 	if (!debugFastBoot && !buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
-			wifi.run();
+			j.run();
 			delay(10);
 		}	
 	}
@@ -527,7 +549,7 @@ void setup() {
 	ledcAttachPin(pins.pwm_pitch, 0);   // GPIO 33 assigned to channel 1
 	ledcAttachPin(pins.pwm_roll, 1);   // GPIO 33 assigned to channel 1
 
-	ArduinoOTA.begin();
+	//ArduinoOTA.begin();
 }
 
  
@@ -624,7 +646,7 @@ ChangeTimer g5HdgChangeTimer;
 void parseSerialCommandInput(const char *buf, int n) { 
 	static LineBuffer lb;
 	lb.add(buf, n, [](const char *line) { 
-		//Serial.printf("RECEIVED COMMAND: %s", line);
+		Serial.printf("RECEIVED COMMAND: %s", line);
 		float f, f2;
 		int relay, ms;
 		if (sscanf(line, "navhi=%f", &f) == 1) { pids.hdgPID.hiGain.p = f; }
@@ -639,7 +661,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		//else if (sscanf(line, "pitch=%f", &f) == 1) { ed.pset.value = f; }
 		//else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 		//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
-		else if (strstr(line, "zeroimu") == line) { ahrs.zeroSensors(); }
+		else if (strstr(line, "zeroimu") == line) { Serial.print(ahrs.zeroSensors().c_str()); }
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { setDesiredTrk(f); }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
 		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
@@ -679,8 +701,6 @@ void setObsKnob(float knobSel, float v) {
 		lastObs = obs;
 	}	
 }
-
-
 
 namespace ServoControlOld { 
 	const float servoThrow = 2.0;
@@ -728,17 +748,17 @@ namespace ServoControlOld {
 };
 
 namespace ServoControl { 
-	const float servoThrow = +2.0;
+	const float servoThrow = +8.0;
 
 	pair<int, int> stickToServo(float x, float y) { 
-		float s1 = -x / servoThrow * 2000 + 1500;
-		float s0 = -y / servoThrow * 2000 + 1500;
+		float s1 = x / servoThrow * 2000 + 1500;
+		float s0 = y / servoThrow * 2000 + 1500;
 		return pair<int, int>(s0, s1);
 	}
 
 	pair<float,float> servoToStick(int s0, int s1) {
-		float x = -(s1 - 1500) / 2000.0 * servoThrow;
-		float y = -(s0 - 1500) / 2000.0 * servoThrow;
+		float x = (s1 - 1500) / 2000.0 * servoThrow;
+		float y = (s0 - 1500) / 2000.0 * servoThrow;
 		
 		return pair<float,float>(x, y);
 	}
@@ -757,7 +777,8 @@ bool immediateLogStart = false;
 
 void loop() {	
 	esp_task_wdt_reset();
-	ArduinoOTA.handle();	
+	//ArduinoOTA.handle();
+	j.run();	
 	delayMicroseconds(100);
 
 #ifndef UBUNTU
@@ -795,7 +816,7 @@ void loop() {
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr, 
 			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), Display::jde.re.count, 
 				logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0, 
-			auxMpuPacketCount, 
+			ublox.count, 
 			//servoOutput[0], servoOutput[1],
 			/*dummy*/0
 		);
@@ -849,6 +870,11 @@ void loop() {
 				}
 				Serial.printf("Servo setup mode %d\n", servoSetupMode);
 
+			}
+			if (butFilt3.wasCount == 2 && butFilt3.wasLong == false) {
+				// double press - arm servos 
+				armServo = !armServo;
+				servoSetupMode = 0;
 			}
 			if (butFilt3.wasCount == 3) {
 				if (wpNav != NULL) {
@@ -994,7 +1020,7 @@ void loop() {
 	if (udpCmd.parsePacket() > 0) {
 		char buf[1024];
 		int n = udpCmd.read((uint8_t *)buf, sizeof(buf));
-		parseSerialCommandInput(buf, n);
+		parseSerialCommandInput((string(buf) + "\n").c_str(), n);
 	}
 
 	if (udpSL30.parsePacket() > 0) { 
@@ -1609,7 +1635,7 @@ public:
 			int pin, clicks, longclick;
 			float tim;
 			sscanf(*(++a), "%f,%d,%d,%d", &tim, &pin, &clicks, &longclick);
-			bm.addPress(pin, tim, clicks, longclick);
+			ESP32sim_pinManager::manager->addPress(pin, tim, clicks, longclick);
 
 		} else if (strcmp(*a, "--logConvert") == 0)	 {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
@@ -1664,13 +1690,13 @@ public:
 		setServos(1,1);
 		ServoControl::servoToStick(servoOutput[0],servoOutput[1]);
 		if (replayFile == NULL) { 
-			bm.addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
+			ESP32sim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 			//bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate 
 			//bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode  
 			//bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
 			//setDesiredTrk(ahrsInput.dtk = 135);
 		}
-		bm.addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
+		ESP32sim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 	}
 
 	bool firstLoop = true;	

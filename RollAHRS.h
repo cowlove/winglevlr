@@ -236,7 +236,7 @@ public:
 
 class RollAHRS {
 public:
-	bool rotate180 = true;
+	bool rotate180 = false;
 	float fit360(float h) { 
 		while(h <= 0) h += 360;
 		while(h > 360) h -= 360;
@@ -252,11 +252,12 @@ public:
 	float magScaleX = 1.0;
 	float magScaleY = 1.0;
 	float magScaleZ = 1.0;
-	
-	float gyrOffX = -1.147; 
-	float gyrOffY = -0.189; 
-	float gyrOffZ = -0.208;
-		  
+
+
+	float gyrOffX = +0.951; 
+	float gyrOffY = +0.632; 
+	float gyrOffZ = +0.177;
+		  	  
 	float accOffX = +0,
 		  accOffY = -0,
 		  accOffZ = -0;

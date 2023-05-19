@@ -21,8 +21,8 @@ for f in $@ */test.sh; do
     SK=`basename $D`.ino
     UB=`basename $D`_ubuntu
     if ( [ -f $D/Makefile ] && [ -f $D/$SK ] ); then 
-        echo -n Clean build $D/$SK ...
-        if (cd $D && make clean && make ) > /dev/null 2>&1 ; then
+        echo -n Build $D/$SK ...
+        if (cd $D && make ) > /dev/null 2>&1 ; then
             echo -e "\r${GREEN}BUILT$NORMAL: $BLUE $SK $NORMAL                                "
         else  
             echo -e "\r${RED}BROKE$NORMAL: $BLUE $SK $NORMAL                                "
