@@ -67,3 +67,8 @@ joystick:	joystick.c
 
 jsrun: 	joystick fixtty	
 	stdbuf -o0 ./joystick | tee ${UPLOAD_PORT}
+
+mocat:
+	mosquitto_sub -h 192.168.5.1 -t "${MAIN_NAME}/#" -F "%I %t %p"   
+
+

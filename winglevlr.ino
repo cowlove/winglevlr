@@ -188,7 +188,7 @@ public:
 		//j.out("setAutoPVTrate: %d", b);
 
 		gpsGood = 1;
-		Serial.printf("Found GPS\n");
+		OUT("Found GPS\n");
 	}
 	double lat, lon;
 	float hdg, hac, gs, siv, alt;
@@ -451,12 +451,19 @@ void printMag() {
 }
 
 
+void parseSerialCommandInput(const char *buf, int n);
+void parseSerialLine(const char *buf) { 
+	parseSerialCommandInput(buf, strlen(buf)); 
+	parseSerialCommandInput("\n", 1);
+}
 
 void setup() {	
 	j.mqtt.active = false;
 	j.begin();	
 	j.run();
+
 	j.mqtt.active = false;
+	j.cli.on(".*", parseSerialLine);
 
 	halInit();
 	// ugh: redo pin assignments, hal may have changed them
@@ -646,7 +653,7 @@ ChangeTimer g5HdgChangeTimer;
 void parseSerialCommandInput(const char *buf, int n) { 
 	static LineBuffer lb;
 	lb.add(buf, n, [](const char *line) { 
-		Serial.printf("RECEIVED COMMAND: %s", line);
+		OUT("RECEIVED COMMAND: %s", line);
 		float f, f2;
 		int relay, ms;
 		if (sscanf(line, "navhi=%f", &f) == 1) { pids.hdgPID.hiGain.p = f; }
@@ -676,7 +683,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		}
 		else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
 		else {
-			Serial.printf("UNKNOWN COMMAND: %s", line);
+			OUT("UNKNOWN COMMAND: %s", line);
 		}
 	});
 }
@@ -1011,16 +1018,11 @@ void loop() {
 		});
 	}
 
-	if (Serial.available()) {
-		char buf[1024];
-		int n = Serial.readBytes((uint8_t *)buf, sizeof(buf));
-		parseSerialCommandInput(buf, n);
-	}
-
 	if (udpCmd.parsePacket() > 0) {
 		char buf[1024];
 		int n = udpCmd.read((uint8_t *)buf, sizeof(buf));
-		parseSerialCommandInput((string(buf) + "\n").c_str(), n);
+		parseSerialCommandInput(buf, n);
+		parseSerialCommandInput("\n", 1);
 	}
 
 	if (udpSL30.parsePacket() > 0) { 
