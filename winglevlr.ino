@@ -754,7 +754,37 @@ namespace ServoControlOld {
 	}
 };
 
-namespace ServoControl { 
+namespace ServoControl {
+
+
+	const float servoThrow = +2.0;
+	struct ArmInfo {
+		float length;
+		float angle;
+	} arms[] = {{1.8,DEG2RAD(225)}, {1.6,DEG2RAD(135)}};
+	
+	pair<float,float> anchorPos(0, -sqrt(
+		arms[0].length * arms[0].length +
+		arms[1].length * arms[1].length - 
+		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
+
+
+	pair<int, int> stickToServo(float x, float y) {
+		float anchOffX = x - anchorPos.first;
+		float anchOffY = y - anchorPos.second;
+		float armLen = sqrt(x * x + y * y);
+		float ang1 = 0;
+
+
+		return pair<int, int>(0, 1);
+	}
+
+	pair<float,float> servoToStick(int s0, int s1) {
+		return pair<float,float>(1, 1);
+	}
+};
+
+namespace LinearServoControl { 
 	const float servoThrow = +8.0;
 
 	pair<int, int> stickToServo(float x, float y) { 
@@ -770,7 +800,6 @@ namespace ServoControl {
 		return pair<float,float>(x, y);
 	}
 };
-
 
 void setServos(float x, float y) {
 	pair<int,int> s = ServoControl::stickToServo(x, y);

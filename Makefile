@@ -71,4 +71,5 @@ jsrun: 	joystick fixtty
 mocat:
 	mosquitto_sub -h 192.168.5.1 -t "${MAIN_NAME}/#" -F "%I %t %p"   
 
+csim: 	winglevlr_ubuntu
 
