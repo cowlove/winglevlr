@@ -709,7 +709,7 @@ void setObsKnob(float knobSel, float v) {
 	}	
 }
 
-namespace ServoControlOld { 
+namespace ServoControlString { 
 	const float servoThrow = 2.0;
 	const float leftStringX = 14;
 	const float leftStringY = 7;
@@ -754,9 +754,7 @@ namespace ServoControlOld {
 	}
 };
 
-namespace ServoControl {
-
-
+namespace ServoControlElbow {
 	const float servoThrow = +2.0;
 	struct ArmInfo {
 		float length;
@@ -784,7 +782,7 @@ namespace ServoControl {
 	}
 };
 
-namespace LinearServoControl { 
+namespace ServoControlLinear { 
 	const float servoThrow = +8.0;
 
 	pair<int, int> stickToServo(float x, float y) { 
@@ -800,6 +798,8 @@ namespace LinearServoControl {
 		return pair<float,float>(x, y);
 	}
 };
+
+#define ServoControl ServoControlLinear 
 
 void setServos(float x, float y) {
 	pair<int,int> s = ServoControl::stickToServo(x, y);
@@ -1483,6 +1483,14 @@ public:
 
 		lastMillis = now;
 
+		if (ahrs.rotate180 == false) {
+			imu->ax *= -1;
+			imu->ay *= -1;
+			imu->mx *= -1;
+			imu->my *= -1;
+			imu->gx *= -1;
+			imu->gy *= -1;
+		}
 	}
 
 	bool ESP32csim_useAuxMpu = false;
