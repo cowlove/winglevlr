@@ -4,8 +4,10 @@
 #include <iterator>
 
 #ifdef UBUNTU
+#define CSIM_PRINTF printf
 #include "ESP32sim_ubuntu.h"
 #else // #ifndef UBUNTU
+#define CSIM_PRINTF() while (0) {}
 #include <esp_task_wdt.h>
 #include <soc/soc.h>
 #include <soc/rtc_cntl_reg.h>
@@ -759,7 +761,8 @@ namespace ServoControlElbow {
 	struct ArmInfo {
 		float length;
 		float angle;
-	} arms[] = {{1.8,DEG2RAD(225)}, {1.6,DEG2RAD(135)}};
+		// TODO: broken, only works if anchorPos.x == 0, arms are equal
+	} arms[] = {{4.8,DEG2RAD(225)}, {4.8,DEG2RAD(90)}};
 	
 	pair<float,float> anchorPos(0, -sqrt(
 		arms[0].length * arms[0].length +
@@ -767,18 +770,50 @@ namespace ServoControlElbow {
 		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
 
 
-	pair<int, int> stickToServo(float x, float y) {
-		float anchOffX = x - anchorPos.first;
-		float anchOffY = y - anchorPos.second;
-		float armLen = sqrt(x * x + y * y);
-		float ang1 = 0;
-
-
-		return pair<int, int>(0, 1);
+	float srvPerDeg = 10.0;
+	float ang2servo(float a) { 
+		return 1500.0 + a * srvPerDeg;
+	}
+	float servo2ang(float s) { 
+		return (s - 1500.0) / srvPerDeg;
 	}
 
-	pair<float,float> servoToStick(int s0, int s1) {
-		return pair<float,float>(1, 1);
+	pair<float,float> servoToStick(float s0, float s1);
+	pair<int, int> stickToServo(float x, float y) {
+		assert(anchorPos.first == 0);
+		assert(arms[0].length == arms[1].length);
+		float anchOffX = x - anchorPos.first;
+		float anchOffY = y - anchorPos.second;
+		float armLen = sqrt(anchOffX * anchOffX + anchOffY * anchOffY);
+		float ang1 = RAD2DEG(acos(
+			(	arms[0].length * arms[0].length +
+				arms[1].length * arms[1].length -
+				armLen * armLen ) / 
+			(2 * arms[0].length * arms[1].length)) - arms[1].angle);
+		float ang0 = (x == 0 && y == 0) ? 0 : -RAD2DEG(atan2(x - anchorPos.first, y - anchorPos.second ));
+		pair<int,int> servo;
+		servo.first = ang2servo(ang0);
+		servo.second =  ang2servo(ang1);
+		pair<float,float> cs = servoToStick(servo.first, servo.second);
+
+		CSIM_PRINTF("x:%6.3f y:%6.3f al:%6.3f a0:%6.3f a1:%6.3f s0:%04d s1:%04d cx:%6.3f cy:%6.3f S2S\n", x, y, 
+			armLen, ang0, ang1, servo.first, servo.second, 
+			(double)cs.first, (double)cs.second);
+		return pair<int, int>(ang2servo(ang0), ang2servo(ang1));
+	}
+
+	pair<float,float> servoToStick(float s0, float s1) {
+		//s0 =1500;
+		//s1 = 1510;
+		float a0 = DEG2RAD(servo2ang(s0)) + arms[0].angle;
+		float a1 = a0 - (M_PI - arms[1].angle  - DEG2RAD(servo2ang(s1)));
+		CSIM_PRINTF("a0:%6.3f a1:%6.3f S2S\n", RAD2DEG(a0), RAD2DEG(a1));
+
+		float x = anchorPos.first + sin(a0) * arms[0].length + sin(a1) * arms[1].length;
+		float y = anchorPos.second - cos(a0) * arms[0].length - cos(a1) * arms[1].length;
+
+		 	
+		return pair<float,float>(x, y);
 	}
 };
 
@@ -799,7 +834,7 @@ namespace ServoControlLinear {
 	}
 };
 
-#define ServoControl ServoControlLinear 
+#define ServoControl ServoControlElbow
 
 void setServos(float x, float y) {
 	pair<int,int> s = ServoControl::stickToServo(x, y);
@@ -1270,8 +1305,8 @@ void loop() {
 				// leave servos where they are  
 				break;
 			case 1: 
-				stickX = .1;
-				stickY = -.3;  
+				stickX = 0;
+				stickY = 0;  
 				stickX += cos(millis() / 100.0) * .04;
 				stickY += sin(millis() / 100.0) * .04;
 				setServos(stickX, stickY); 
@@ -1439,8 +1474,8 @@ public:
 		bank += imu->gy * (AHRS_RATE_INV_SCALE(5000.0) / 1000000.0);
 		bank = max(-20.0, min(20.0 , (double)bank));
 		if (1 && floor(lastMillis / 100) != floor(millis() / 100)) { // 10hz
-			printf("%08.3f servo %05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis()/1000.0, 
-			ESP32sim_currentPwm[0], track, desRoll, bank, imu->gy);
+			printf("%08.3f servo %05d/%05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis()/1000.0, 
+			ESP32sim_currentPwm[0], ESP32sim_currentPwm[1], track, desRoll, bank, imu->gy);
 		}		
 		imu->gz = ahrs.gyrOffZ + tan(bank * M_PI/180) / speed * 1091;
 		imu->gz *= -1;
