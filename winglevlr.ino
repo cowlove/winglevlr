@@ -7,7 +7,8 @@
 #define CSIM_PRINTF printf
 #include "ESP32sim_ubuntu.h"
 #else // #ifndef UBUNTU
-#define CSIM_PRINTF() while (0) {}
+void noprintf(const char *, ...) {}
+#define CSIM_PRINTF printf
 #include <esp_task_wdt.h>
 #include <soc/soc.h>
 #include <soc/rtc_cntl_reg.h>
@@ -360,7 +361,7 @@ namespace Display {
 	F ip(&jd,c1x,y,"WIFI:", "%.0f");  F stickX(&jd,c2x,y,"ST:", "%+.2f"); 	F stickY(&jd,c2x+50,y,"/", "%+.2f");
 	E dtrk(&jd,c1x,y+=10," DTK:", "%05.1f ", ed, 1, 0, 359, true); F trk(&jd,c2x,y,  " TRK:", "%05.1f ");
 	F pitc(&jd,c1x,y+=10,"PITC:", "%+03.1f ");  		F  obs(&jd,c2x,y,     " OBS:", "%05.1f ");
-	F roll(&jd,c1x,y+=10,"ROLL:", "%+03.1f");   		F  mode(&jd,c2x,y,    "MODE:", "%05.0f ");
+	F roll(&jd,c1x,y+=10,"ROLL:", "%+03.1f");   		F  mode(&jd,c2x,y,    "MODE:", "%06.0f ");
 	F gdl(&jd,c1x,y+=10," GDL:", "%05.1f ");   			F  g5hdg(&jd,c2x,y,   "G5HD:", "%05.1f ");
 	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
 	
@@ -757,12 +758,18 @@ namespace ServoControlString {
 };
 
 namespace ServoControlElbow {
-	const float servoThrow = +2.0;
+	// 1) arm angles start with 0 degrees is forward, so sin/cos usage may seem reversed
+	// 2) arm[0].angle is absolute angle of the first arm
+	// 3) arm[1].angle is the relative angle of the second arm to the first 
+	// 4) (0,0) is stick neutral position
+	// 5) anchorPos is the x/y of the arm[0] hinge point 
+
+	const float servoThrow = +1.0;
 	struct ArmInfo {
 		float length;
 		float angle;
 		// TODO: broken, only works if anchorPos.x == 0, arms are equal
-	} arms[] = {{4.8,DEG2RAD(225)}, {4.8,DEG2RAD(90)}};
+	} arms[] = {{2.9, DEG2RAD(225)}, {2.9 ,DEG2RAD(90)}};
 	
 	pair<float,float> anchorPos(0, -sqrt(
 		arms[0].length * arms[0].length +
@@ -780,24 +787,37 @@ namespace ServoControlElbow {
 
 	pair<float,float> servoToStick(float s0, float s1);
 	pair<int, int> stickToServo(float x, float y) {
+		//x  = .05;
+		//y = 0;
+		x = -x;
+		x = min(servoThrow, max(-servoThrow, x));
+		y = min(servoThrow, max(-servoThrow, y));
+
 		assert(anchorPos.first == 0);
 		assert(arms[0].length == arms[1].length);
 		float anchOffX = x - anchorPos.first;
 		float anchOffY = y - anchorPos.second;
 		float armLen = sqrt(anchOffX * anchOffX + anchOffY * anchOffY);
-		float ang1 = RAD2DEG(acos(
+		float ang1 = -RAD2DEG(acos(
 			(	arms[0].length * arms[0].length +
 				arms[1].length * arms[1].length -
 				armLen * armLen ) / 
 			(2 * arms[0].length * arms[1].length)) - arms[1].angle);
-		float ang0 = (x == 0 && y == 0) ? 0 : -RAD2DEG(atan2(x - anchorPos.first, y - anchorPos.second ));
-		pair<int,int> servo;
+		// need to calculate the offset in ang0 caused by change in ang1
+		float arm1NeutralAbsAng = arms[0].angle - M_PI + arms[1].angle;
+		float arm1AbsAng = arm1NeutralAbsAng + DEG2RAD(ang1);
+		float ang1OffsetX = -arms[1].length * (sin(arm1AbsAng) - sin(arm1NeutralAbsAng));
+		float ang1OffsetY = arms[1].length * (cos(arm1AbsAng) - cos(arm1NeutralAbsAng));
+		float ang0 = (x == 0 && y == 0) ? 0 : 
+			+RAD2DEG(atan2(x - ang1OffsetX - anchorPos.first, 
+				y - ang1OffsetY - anchorPos.second));
+		pair<float,float> servo;
 		servo.first = ang2servo(ang0);
 		servo.second =  ang2servo(ang1);
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
-		CSIM_PRINTF("x:%6.3f y:%6.3f al:%6.3f a0:%6.3f a1:%6.3f s0:%04d s1:%04d cx:%6.3f cy:%6.3f S2S\n", x, y, 
-			armLen, ang0, ang1, servo.first, servo.second, 
+		CSIM_PRINTF("x:%6.3f y:%6.3f al:%6.3f a0:%6.3f a1:%6.3f a1ox: %06.3f a1oy: %06.3f s0:%06.3f s1:%06.3f cx:%6.3f cy:%6.3f S2S\n", x, y, 
+			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, servo.first, servo.second, 
 			(double)cs.first, (double)cs.second);
 		return pair<int, int>(ang2servo(ang0), ang2servo(ang1));
 	}
@@ -806,8 +826,8 @@ namespace ServoControlElbow {
 		//s0 =1500;
 		//s1 = 1510;
 		float a0 = DEG2RAD(servo2ang(s0)) + arms[0].angle;
-		float a1 = a0 - (M_PI - arms[1].angle  - DEG2RAD(servo2ang(s1)));
-		CSIM_PRINTF("a0:%6.3f a1:%6.3f S2S\n", RAD2DEG(a0), RAD2DEG(a1));
+		float a1 = a0 - M_PI + arms[1].angle  + DEG2RAD(servo2ang(s1));
+		CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
 
 		float x = anchorPos.first + sin(a0) * arms[0].length + sin(a1) * arms[1].length;
 		float y = anchorPos.second - cos(a0) * arms[0].length - cos(a1) * arms[1].length;
@@ -968,8 +988,9 @@ void loop() {
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
 				if (butFilt.wasCount == 1) {
-					setDesiredTrk(constrain360(desiredTrk - 10));
-					apMode = 1;
+					desPitch -= .1;
+					//setDesiredTrk(constrain360(desiredTrk - 10));
+					//apMode = 1;
 				} else { 
 					hdgSelect = (hdgSelect + 1) % 4;
 				}					
@@ -997,8 +1018,9 @@ void loop() {
 				//rollPID.reset();
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	
-				setDesiredTrk(constrain360(desiredTrk + 10));
-				apMode = 1;
+				//setDesiredTrk(constrain360(desiredTrk + 10));
+				//apMode = 1;
+				desPitch += .1;
 			}
 			if (butFilt2.wasCount == 2) {
 				testTurnActive = !testTurnActive;
@@ -1307,22 +1329,22 @@ void loop() {
 			case 1: 
 				stickX = 0;
 				stickY = 0;  
-				stickX += cos(millis() / 100.0) * .04;
-				stickY += sin(millis() / 100.0) * .04;
+				stickX += cos(millis() / 300.0) * ServoControl::servoThrow * .05;
+				stickY += sin(millis() / 300.0) * ServoControl::servoThrow * .05;
 				setServos(stickX, stickY); 
 				break;
 			case 2:
-				stickX = stickY = +8;  
+				stickX = stickY = -ServoControl::servoThrow;  
 				setServos(stickX, stickY); 
 				break;
 			case 3: 
-				stickX = stickY = -8;  
+				stickX = stickY = -ServoControl::servoThrow;  
 				setServos(stickX, stickY); 
 				break;
 		}
 		
 		ledcWrite(0, servoOutput[0] * 4915 / 1500); // scale PWM output to 1500-7300 
-		ledcWrite(1, servoOutput[1] * 4915 / 1500); // scale PWM output to 1500-7300 
+		ledcWrite(1, servoOutput[1] * 4915 / 1500); // rscale PWM output to 1500-7300 
 
 		logItem.pwmOutput0 = servoOutput[0];
 		logItem.pwmOutput1 = servoOutput[1];
@@ -1367,7 +1389,8 @@ void loop() {
 		Display::trk = ahrsInput.selTrack; 
 		//Display::navt = auxMPU.gy; //navDTK; 
 		Display::obs = obs; 
-		Display::mode = (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + hdgSelect * 10 + (int)testTurnActive; 
+		Display::mode = servoSetupMode * 100000 + (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 + 
+			hdgSelect * 10 + (int)testTurnActive; 
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::g5hdg = ahrsInput.ubloxHdg;
 		Display::g5hdg.setInverse(false, ((ublox.count / 10) % 2) == 0);
