@@ -988,7 +988,8 @@ void loop() {
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
 				if (butFilt.wasCount == 1) {
-					desPitch -= .1;
+					desPitch -= .5;
+
 					//setDesiredTrk(constrain360(desiredTrk - 10));
 					//apMode = 1;
 				} else { 
@@ -1020,7 +1021,7 @@ void loop() {
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	
 				//setDesiredTrk(constrain360(desiredTrk + 10));
 				//apMode = 1;
-				desPitch += .1;
+				desPitch += .5;
 			}
 			if (butFilt2.wasCount == 2) {
 				testTurnActive = !testTurnActive;
@@ -1310,7 +1311,7 @@ void loop() {
 
 		pids.rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(pids.altPID.corr, 3.0), -3.0);
-		desPitch = altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
+		//desPitch = altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
 		pids.pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
