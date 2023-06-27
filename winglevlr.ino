@@ -768,7 +768,7 @@ namespace ServoControlElbow {
 	// 4) (0,0) is stick neutral position
 	// 5) anchorPos is the x/y of the arm[0] hinge point 
 
-	const float servoThrow = +1.0;
+	const float servoThrow = +1.4;
 	struct ArmInfo {
 		float length;
 		float angle;
@@ -818,9 +818,9 @@ namespace ServoControlElbow {
 		pair<float,float> servo;
 		servo.first = ang2servo(ang0);
 		servo.second =  ang2servo(ang1);
-		if (svis != nullptr) { 
-			svis->update(ang0 + RAD2DEG(arms[0].angle), 
-				ang1 + RAD2DEG(arms[0].angle + arms[1].angle));
+		if (svis != nullptr && millis() / 1000.0 > svis->startTime) { 
+			svis->update(-ang0 + RAD2DEG(arms[0].angle), 
+				-ang1 + RAD2DEG(arms[0].angle + arms[1].angle));
 		}
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
@@ -1337,12 +1337,23 @@ void loop() {
 				// leave servos where they are  
 				break;
 			case 1: 
-				stickX = 0;
-				stickY = 0;  
-				stickX += cos(millis() / 300.0) * ServoControl::servoThrow * 1;
-				stickY += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
-				setServos(0, stickY); 
-				break;
+				{
+					stickX = 0;
+					stickY = 0;  
+					stickX += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
+					stickY += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
+					int phase = ((int)(millis() / 300.0 / 2 / M_PI)) % 3; 
+					if(phase == 0) {
+						stickX = 0;
+					} else if(phase == 1) {
+						stickY = 0;
+					} else { 
+						stickX = stickY = 0;
+					}
+					
+					setServos(stickX, stickY); 
+					break;
+				}
 			case 2:
 				stickX = stickY = -ServoControl::servoThrow;  
 				setServos(stickX, stickY); 
@@ -1715,8 +1726,11 @@ public:
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));
 		} else if (strcmp(*a, "--servovis") == 0) {
+			float svisStartTime;
+			sscanf(*(++a), "%f", &svisStartTime);
 			svis = new ServoVisualizer();
 			svis->init();
+			svis->startTime = svisStartTime;
 		} else if (strcmp(*a, "--wind") == 0) {
 			sscanf(*(++a), "%f@%f", &windDir, &windVel);
 		} else if (strcmp(*a, "--startpos") == 0) {
