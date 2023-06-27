@@ -819,7 +819,8 @@ namespace ServoControlElbow {
 		servo.first = ang2servo(ang0);
 		servo.second =  ang2servo(ang1);
 		if (svis != nullptr) { 
-			svis->update(ang0, ang1);
+			svis->update(ang0 + RAD2DEG(arms[0].angle), 
+				ang1 + RAD2DEG(arms[0].angle + arms[1].angle));
 		}
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
@@ -1338,9 +1339,9 @@ void loop() {
 			case 1: 
 				stickX = 0;
 				stickY = 0;  
-				stickX += cos(millis() / 300.0) * ServoControl::servoThrow * .05;
-				stickY += sin(millis() / 300.0) * ServoControl::servoThrow * .05;
-				setServos(stickX, stickY); 
+				stickX += cos(millis() / 300.0) * ServoControl::servoThrow * 1;
+				stickY += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
+				setServos(0, stickY); 
 				break;
 			case 2:
 				stickX = stickY = -ServoControl::servoThrow;  
