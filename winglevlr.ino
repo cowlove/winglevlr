@@ -2,7 +2,7 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
-
+ 
 #ifdef UBUNTU
 #define CSIM_PRINTF printf
 #include "ESP32sim_ubuntu.h"
@@ -27,6 +27,7 @@ void noprintf(const char *, ...) {}
 #include "RollAHRS.h"
 #include "GDL90Parser.h"
 #include "WaypointNav.h"
+#include "ServoVisualizer.h"
 
 #ifndef UBUNTU
 bool debugFastBoot = false;
@@ -464,7 +465,9 @@ void setup() {
 	j.mqtt.active = false;
 	j.begin();	
 	j.run();
-
+	//j.jw.aps = {{"Ping-582B", ""}, 
+	//			{"ChloeNet", "niftyprairie7"}};
+	
 	j.mqtt.active = false;
 	j.cli.on(".*", parseSerialLine);
 
@@ -757,6 +760,7 @@ namespace ServoControlString {
 	}
 };
 
+ServoVisualizer *svis = nullptr;
 namespace ServoControlElbow {
 	// 1) arm angles start with 0 degrees is forward, so sin/cos usage may seem reversed
 	// 2) arm[0].angle is absolute angle of the first arm
@@ -814,6 +818,9 @@ namespace ServoControlElbow {
 		pair<float,float> servo;
 		servo.first = ang2servo(ang0);
 		servo.second =  ang2servo(ang1);
+		if (svis != nullptr) { 
+			svis->update(ang0, ang1);
+		}
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
 		CSIM_PRINTF("x:%6.3f y:%6.3f al:%6.3f a0:%6.3f a1:%6.3f a1ox: %06.3f a1oy: %06.3f s0:%06.3f s1:%06.3f cx:%6.3f cy:%6.3f S2S\n", x, y, 
@@ -988,10 +995,10 @@ void loop() {
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
 			if (!butFilt.wasLong) {
 				if (butFilt.wasCount == 1) {
-					desPitch -= .5;
+					//desPitch -= .5;
 
-					//setDesiredTrk(constrain360(desiredTrk - 10));
-					//apMode = 1;
+					setDesiredTrk(constrain360(desiredTrk - 10));
+					apMode = 1;
 				} else { 
 					hdgSelect = (hdgSelect + 1) % 4;
 				}					
@@ -1019,9 +1026,9 @@ void loop() {
 				//rollPID.reset();
 			}
 			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {	
-				//setDesiredTrk(constrain360(desiredTrk + 10));
-				//apMode = 1;
-				desPitch += .5;
+				setDesiredTrk(constrain360(desiredTrk + 10));
+				apMode = 1;
+				//desPitch += .5;
 			}
 			if (butFilt2.wasCount == 2) {
 				testTurnActive = !testTurnActive;
@@ -1311,15 +1318,16 @@ void loop() {
 
 		pids.rollPID.add(roll - desRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(pids.altPID.corr, 3.0), -3.0);
-		//desPitch = altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
+		desPitch = altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
 		pids.pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
 
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			stickX = pids.rollPID.corr;
+			stickX = pids.rollPID.corr * 2.5;
 			stickY = pids.pitchPID.corr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick 
-				+ (desPitch * pitchToStick); 
+				+ (desPitch * pitchToStick);
+			stickY = 0;
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
@@ -1705,6 +1713,9 @@ public:
 		else if (strcmp(*a, "--log") == 0) { 
 			//bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in  
 			logFilename = (*(++a));
+		} else if (strcmp(*a, "--servovis") == 0) {
+			svis = new ServoVisualizer();
+			svis->init();
 		} else if (strcmp(*a, "--wind") == 0) {
 			sscanf(*(++a), "%f@%f", &windDir, &windVel);
 		} else if (strcmp(*a, "--startpos") == 0) {
