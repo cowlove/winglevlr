@@ -812,20 +812,26 @@ namespace ServoControlElbow {
 		float arm1AbsAng = arm1NeutralAbsAng + DEG2RAD(ang1);
 		float ang1OffsetX = -arms[1].length * (sin(arm1AbsAng) - sin(arm1NeutralAbsAng));
 		float ang1OffsetY = arms[1].length * (cos(arm1AbsAng) - cos(arm1NeutralAbsAng));
+		float angOffset = (ang1OffsetX == 0 && ang1OffsetY == 0) ? 0 : 
+			+RAD2DEG(atan2(ang1OffsetX - anchorPos.first, ang1OffsetY - anchorPos.second));
+			//+RAD2DEG(atan2(ang1OffsetY - anchorPos.second, ang1OffsetX - anchorPos.first));
 		float ang0 = (x == 0 && y == 0) ? 0 : 
-			+RAD2DEG(atan2(x - ang1OffsetX - anchorPos.first, 
-				y - ang1OffsetY - anchorPos.second));
+			+RAD2DEG(atan2(x - anchorPos.first, y - anchorPos.second));
+//			+RAD2DEG(atan2(y - anchorPos.second, x - anchorPos.first));
+		ang0 += angOffset;
+
+
 		pair<float,float> servo;
 		servo.first = ang2servo(ang0);
 		servo.second =  ang2servo(ang1);
 		if (svis != nullptr && millis() / 1000.0 > svis->startTime) { 
 			svis->update(-ang0 + RAD2DEG(arms[0].angle), 
-				-ang1 + RAD2DEG(arms[0].angle + arms[1].angle));
+				+ang1 + RAD2DEG(arms[0].angle - M_PI + arms[1].angle));
 		}
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
-		CSIM_PRINTF("x:%6.3f y:%6.3f al:%6.3f a0:%6.3f a1:%6.3f a1ox: %06.3f a1oy: %06.3f s0:%06.3f s1:%06.3f cx:%6.3f cy:%6.3f S2S\n", x, y, 
-			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, servo.first, servo.second, 
+		CSIM_PRINTF("x:%6.2f y:%6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", x, y, 
+			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, angOffset, servo.first, servo.second, 
 			(double)cs.first, (double)cs.second);
 		return pair<int, int>(ang2servo(ang0), ang2servo(ang1));
 	}
