@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/winglevlr_ubuntu",
-            "args": ["--button" "5,39,1,1" "--button" "10,39,1,1"],
+            "args": ["--servovis", "0", "--testStick"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

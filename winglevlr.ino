@@ -778,7 +778,7 @@ namespace ServoControlElbow {
 	pair<float,float> anchorPos(0, -sqrt(
 		arms[0].length * arms[0].length +
 		arms[1].length * arms[1].length - 
-		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
+		2 * arms[0].length * arms[1].length * cos(M_PI - arms[1].angle)));
 
 
 	float srvPerDeg = 10.0;
@@ -793,44 +793,50 @@ namespace ServoControlElbow {
 	pair<int, int> stickToServo(float x, float y) {
 		//x  = .05;
 		//y = 0;
-		x = -x;
+		//x = -x;
 		x = min(servoThrow, max(-servoThrow, x));
 		y = min(servoThrow, max(-servoThrow, y));
 
 		assert(anchorPos.first == 0);
 		assert(arms[0].length == arms[1].length);
-		float anchOffX = x - anchorPos.first;
-		float anchOffY = y - anchorPos.second;
-		float armLen = sqrt(anchOffX * anchOffX + anchOffY * anchOffY);
-		float ang1 = -RAD2DEG(acos(
+		double anchOffX = x - anchorPos.first;
+		double anchOffY = y - anchorPos.second;
+		double armLen = sqrt(anchOffX * anchOffX + anchOffY * anchOffY);
+		double ang1 = RAD2DEG(acos(
 			(	arms[0].length * arms[0].length +
 				arms[1].length * arms[1].length -
 				armLen * armLen ) / 
 			(2 * arms[0].length * arms[1].length)) - arms[1].angle);
 		// need to calculate the offset in ang0 caused by change in ang1
-		float arm1NeutralAbsAng = arms[0].angle - M_PI + arms[1].angle;
-		float arm1AbsAng = arm1NeutralAbsAng + DEG2RAD(ang1);
-		float ang1OffsetX = -arms[1].length * (sin(arm1AbsAng) - sin(arm1NeutralAbsAng));
-		float ang1OffsetY = arms[1].length * (cos(arm1AbsAng) - cos(arm1NeutralAbsAng));
-		float angOffset = (ang1OffsetX == 0 && ang1OffsetY == 0) ? 0 : 
-			+RAD2DEG(atan2(ang1OffsetX - anchorPos.first, ang1OffsetY - anchorPos.second));
-			//+RAD2DEG(atan2(ang1OffsetY - anchorPos.second, ang1OffsetX - anchorPos.first));
-		float ang0 = (x == 0 && y == 0) ? 0 : 
-			+RAD2DEG(atan2(x - anchorPos.first, y - anchorPos.second));
-//			+RAD2DEG(atan2(y - anchorPos.second, x - anchorPos.first));
+		double arm1NeutralAbsAng = arms[0].angle - M_PI + arms[1].angle;
+		double arm1AbsAng = arm1NeutralAbsAng + DEG2RAD(ang1);
+		double ang1OffsetX = arms[1].length * (sin(arm1AbsAng) - sin(arm1NeutralAbsAng));
+		double ang1OffsetY = -arms[1].length * (cos(arm1AbsAng) - cos(arm1NeutralAbsAng));
+		double angOffset = (ang1OffsetX == 0 && ang1OffsetY == 0) ? 0 : 
+			RAD2DEG(atan2(ang1OffsetX - anchorPos.first, ang1OffsetY - anchorPos.second));
+			//RAD2DEG(atan2(ang1OffsetY - anchorPos.second, ang1OffsetX - anchorPos.first));
+		double ang0 = (x == 0 && y == 0) ? 0 : 
+			RAD2DEG(atan2(x - anchorPos.first, y - anchorPos.second));
+			//RAD2DEG(atan2(y - anchorPos.second, x - anchorPos.first));
 		ang0 += angOffset;
 
 
 		pair<float,float> servo;
 		servo.first = ang2servo(ang0);
 		servo.second =  ang2servo(ang1);
-		if (svis != nullptr && millis() / 1000.0 > svis->startTime) { 
-			svis->update(-ang0 + RAD2DEG(arms[0].angle), 
-				+ang1 + RAD2DEG(arms[0].angle - M_PI + arms[1].angle));
-		}
+		if (svis != nullptr && (svis->startTime == 0 || millis() / 1000.0 > svis->startTime)) {
+			svis->scale = svis->len0 / arms[0].length;
+			svis->yoffset = -anchorPos.second * svis->scale;
+			vector<pair<float,float>> pts;
+			pts.push_back(pair<float,float>(-x,-y));
+			pts.push_back(pair<float,float>(0,-anchorPos.second - armLen)); 
+			svis->update(RAD2DEG(arms[0].angle) + ang0, 
+				RAD2DEG(arms[0].angle - M_PI + arms[1].angle) + ang1, pts);
+			}
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
-		CSIM_PRINTF("x:%6.2f y:%6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", x, y, 
+		CSIM_PRINTF("x:%6.2f y:%6.2f aoaa%6.2f, aora %6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", 
+			x, y, RAD2DEG(arm1NeutralAbsAng ), RAD2DEG(arm1AbsAng), 
 			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, angOffset, servo.first, servo.second, 
 			(double)cs.first, (double)cs.second);
 		return pair<int, int>(ang2servo(ang0), ang2servo(ang1));
@@ -1348,7 +1354,7 @@ void loop() {
 					stickY = 0;  
 					stickX += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
 					stickY += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
-					int phase = ((int)(millis() / 300.0 / 2 / M_PI)) % 3; 
+					int phase = ((int)(millis() / 300.0 / 2 / M_PI)) % 2; 
 					if(phase == 0) {
 						stickX = 0;
 					} else if(phase == 1) {
@@ -1735,7 +1741,6 @@ public:
 			float svisStartTime;
 			sscanf(*(++a), "%f", &svisStartTime);
 			svis = new ServoVisualizer();
-			svis->init();
 			svis->startTime = svisStartTime;
 		} else if (strcmp(*a, "--wind") == 0) {
 			sscanf(*(++a), "%f@%f", &windDir, &windVel);
@@ -1773,19 +1778,31 @@ public:
 			ESP32sim_convertLogOldToNew(i, o);
 			o.flush();
 			o.close();
-			exit(0);
+			exit(0);	
 		} else if (strcmp(*a, "--gdl") == 0) { 
             gdl90file = ifstream(*(++a), ios_base::in | ios_base::binary);
    		} else if (strcmp(*a, "--testStick") == 0) {
 			using namespace ServoControl;
-			for (float x = -servoThrow; x <= +servoThrow; x += servoThrow / 10) {
-				for (float y = -servoThrow; y <= +servoThrow; y += servoThrow / 10) {
-					setServos(x, y);
-					pair<float,float> r = servoToStick(servoOutput[0], servoOutput[1]);
-					printf("%+06.2f, %+06.2f  ->  %04d, %04d  ->  %+06.2f,%+06.2f\n", x, y, servoOutput[0], servoOutput[1], r.first, r.second);
-				}
-
+			while(1) { 
+				for (float x = 0; x <= +servoThrow; x += servoThrow / 20) 
+					setServos(x, 0);
+				for (float x = +servoThrow; x >= -servoThrow; x -= servoThrow / 20) 
+					setServos(x, 0);
+				for (float x = -servoThrow; x <= 0; x += servoThrow / 20) 
+					setServos(x, 0);
+				for (float x = 0; x <= +servoThrow; x += servoThrow / 20) 
+					setServos(0, x);
+				for (float x = +servoThrow; x >= -servoThrow; x -= servoThrow / 20) 
+					setServos(0, x);
+				for (float x = -servoThrow; x <= 0; x += servoThrow / 20) 
+					setServos(0, x);
 			}
+   		} else if (strcmp(*a, "--testStick1") == 0) {
+			using namespace ServoControl;
+			float x,y;
+			sscanf(*(++a), "%f,%f", &x, &y);
+			setServos(x, y);
+			while(1) { sleep(1); }
 		} else if (strcmp(*a, "--debug") == 0) {
 			vector<string> l = split(string(*(++a)), ',');
 			float v;
