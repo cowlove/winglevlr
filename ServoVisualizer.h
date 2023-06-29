@@ -48,21 +48,23 @@ public:
    void update(float ang0, float ang1, vector<pair<float,float>> pts) { 
       ang0 = DEG2RAD(-ang0);
       ang1 = DEG2RAD(-ang1);
-      float x = 0 - len0 * sin(ang0) - len1 * sin(ang1);
-      float y = 0 + len0 * cos(ang0) + len1 * cos(ang1);
-      hist[histIdx] = std::pair<float,float>(x,y);
+
+      float x0 = -len0 * sin(ang0);
+      float y0 = len0 * cos(ang0);
+      float x1 = -len0 * sin(ang0) - len1 * sin(ang1);
+      float y1 = len0 * cos(ang0) + len1 * cos(ang1);
+      hist[histIdx] = std::pair<float,float>(x1,y1);
       histIdx = (histIdx + 1) % HISTLEN;
 
       glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);      
 
+      // Draw a reference right angle coming off the first servo arm  
       glColor3f(.5,.5,.5);
       glLineWidth(2);
-      line(-len0 * sin(ang0), len0*cos(ang0), 
-         -len0 * sin(ang0) - len1 * sin(ang0 + M_PI / 2), 
-         len0 * cos(ang0) + len1 * cos(ang0 + M_PI / 2));
+      line(x0, y0, x0 - len1 * sin(ang0 + M_PI / 2), y0 + len1 * cos(ang0 + M_PI / 2));
 
-
+      // Draww a reference recticle 
       line(-.2, 0 - yoffset, .2, -yoffset);
       line(0, -.2 - yoffset, 0, .2 -yoffset);
       
@@ -76,10 +78,9 @@ public:
       glLineWidth(10);
    
       line(0, baseLen, 0, 0);
-      line(0, 0, -len0 * sin(ang0), len0 * cos(ang0));
-      line(-len0 * sin(ang0), len0*cos(ang0), 
-         -len0 * sin(ang0) - len1 * sin(ang1), len0 * cos(ang0) + len1 * cos(ang1));
-
+      line(0, 0, x0, y0);
+      line(x0, y0, x1, y1);
+      
       glColor3f(0,0,1);
       point(0, baseLen);
       point(0,0);

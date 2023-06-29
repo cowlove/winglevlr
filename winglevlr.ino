@@ -688,6 +688,8 @@ void parseSerialCommandInput(const char *buf, int n) {
 			logItem.flags |= LogFlags::wptNav;
 		}
 		else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
+		else if (sscanf(line, "knobturn %f", &f) == 1) { Display::jde.re.change((int)f); }
+		else if (sscanf(line, "knobpress %f", &f) == 1) { Display::jde.buttonPress((int)f); }
 		else {
 			OUT("UNKNOWN COMMAND: %s", line);
 		}
@@ -769,7 +771,7 @@ namespace ServoControlElbow {
 	// 5) anchorPos is the x/y of the arm[0] hinge point 
 
 	const float servoThrow = +1.4;
-	const float hinge = 30;
+	const float hinge = 20;
 	struct ArmInfo {
 		float length;
 		float angle;
@@ -782,7 +784,7 @@ namespace ServoControlElbow {
 		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
 
 
-	float srvPerDeg = 10.0;
+	float srvPerDeg = -7.4;
 	float ang2servo(float a) { 
 		return 1500.0 + a * srvPerDeg;
 	}
@@ -791,10 +793,11 @@ namespace ServoControlElbow {
 	}
 
 	pair<float,float> servoToStick(float s0, float s1);
-	pair<int, int> stickToServo(float x, float y) {
+	pair<int, int> stickToServo(float ox, float oy) {
 		//x  = .05;
 		//y = 0;
-		//x = -x;
+		float x = ox;
+		float y = oy;
 		x = min(servoThrow, max(-servoThrow, x));
 		y = min(servoThrow, max(-servoThrow, y));
 
@@ -837,7 +840,7 @@ namespace ServoControlElbow {
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
 		CSIM_PRINTF("x:%6.2f y:%6.2f aoaa%6.2f, aora %6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", 
-			x, y, RAD2DEG(arm1NeutralAbsAng ), RAD2DEG(arm1AbsAng), 
+			ox, oy, RAD2DEG(arm1NeutralAbsAng ), RAD2DEG(arm1AbsAng), 
 			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, angOffset, servo.first, servo.second, 
 			(double)cs.first, (double)cs.second);
 		return pair<int, int>(ang2servo(ang0), ang2servo(ang1));
@@ -1341,7 +1344,7 @@ void loop() {
 			stickX = pids.rollPID.corr * 2.5;
 			stickY = pids.pitchPID.corr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick 
 				+ (desPitch * pitchToStick);
-			stickY = 0;
+			//stickY = 0;
 			stickX += cos(millis() / 100.0) * .04;
 			stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
@@ -1351,28 +1354,17 @@ void loop() {
 				break;
 			case 1: 
 				{
-					stickX = 0;
-					stickY = 0;  
-					stickX += sin(millis() / 300.0) * ServoControl::servoThrow * .05;
-					stickY += sin(millis() / 300.0) * ServoControl::servoThrow * .051;
-					int phase = ((int)(millis() / 300.0 / 2 / M_PI)) % 2; 
-					if(phase == 0) {
-						stickX = 0;
-					} else if(phase == 1) {
-						stickY = 0;
-					} else { 
-						stickX = stickY = 0;
-					}	
+					stickX = cos(millis() / 300.0) * ServoControl::servoThrow * .1;
+					stickY = sin(millis() / 300.0) * ServoControl::servoThrow * .1;
 					setServos(stickX, stickY); 
 					break;
 				}
 			case 2: 
 				{
-					stickX = 0;
-					stickY = 0;  
-					stickX += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
-					stickY += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
-					int phase = ((int)(millis() / 300.0 / 2 / M_PI)) % 2; 
+					float speed = 600.0;
+					stickX = sin(millis() / speed) * ServoControl::servoThrow * 1;
+					stickY = sin(millis() / speed) * ServoControl::servoThrow * 1;
+					int phase = ((int)(millis() / speed / 2 / M_PI)) % 2; 
 					if(phase == 0) {
 						stickX = 0;
 					} else if(phase == 1) {

@@ -61,3 +61,6 @@ make winglevlr_ubuntu && ./winglevlr_ubuntu --wind 220@20 --startpos 47.5,-122.4
 # servoSetupMode to 1 and start visualizing servos at 22.5 seconds
 ./winglevlr_ubuntu  --button 5,39,1,1 --jdisplay --button 10,39,1,1  --servovis 22.5 | grep a1ox
 
+
+echo knobpress 0 | socat - udp-sendto:255.255.255.255:7895,broadcast
+
