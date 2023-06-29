@@ -119,6 +119,7 @@ static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn 
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn   
 float bankStick = 0.3, bankPitch = .2;
+float servoGain = 1.0;
 
 #define LED_PIN 22
 /* Old hardware pins: I2C pins/variant seems to determine layout 
@@ -366,7 +367,7 @@ namespace Display {
 	F gdl(&jd,c1x,y+=10," GDL:", "%05.1f ");   			F  g5hdg(&jd,c2x,y,   "G5HD:", "%05.1f ");
 	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
 	
-	E pidpl(&jd,c1x,y+=10, "PL:", "%04.2f ", ed, .01); 	E bs(&jd,c2x,y,    "  BS:", "%04.2f ", ed, 0.01, &bankStick);
+	E pidpl(&jd,c1x,y+=10, "PL:", "%04.2f ", ed, .01); 	E sg(&jd,c2x,y,    "  SG:", "%04.2f ", ed, 0.01, &servoGain);
 	E pidph(&jd,c1x,y+=10, "PH:", "%04.2f ", ed, .01); 	E bp(&jd,c2x,y,    "  BP:", "%04.2f ", ed, 0.01, &bankPitch);
 	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,  "MAXB:", "%04.1f ", ed, 0.1);
 	E pidd (&jd,c1x,y+=10, " D:", "%04.2f ", ed, .01); 	E maxi(&jd,c2x,y,  "MAXI:", "%04.1f ", ed, 0.1);
@@ -1341,12 +1342,12 @@ void loop() {
 		if (armServo == true) {  
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations. 
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values 
-			stickX = pids.rollPID.corr * 2.5;
-			stickY = pids.pitchPID.corr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick 
-				+ (desPitch * pitchToStick);
+			stickX = pids.rollPID.corr * servoGain;
+			stickY = (pids.pitchPID.corr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick 
+				+ (desPitch * pitchToStick)) * servoGain;
 			//stickY = 0;
-			stickX += cos(millis() / 100.0) * .04;
-			stickY += sin(millis() / 100.0) * .04;
+			//stickX += cos(millis() / 100.0) * .04;
+			//stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
 		} else switch(servoSetupMode) { 
 			case 0:
