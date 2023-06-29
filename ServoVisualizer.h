@@ -1,9 +1,10 @@
 #ifndef UBUNTU
 class ServoVisualizer { 
    public:
-      float startTime = 0;
+      float startTime = 0, scale, len0, yoffset;
       void init() {}
-      void update(float, float) {}
+      void update(...) {}
+
 };
 #else 
 #include <GL/gl.h>

@@ -978,7 +978,7 @@ void loop() {
 					armServo = false;
 					servoSetupMode = 0;
 				} else { 
-					servoSetupMode = (servoSetupMode + 1) % 4; 
+					servoSetupMode = (servoSetupMode + 1) % 5; 
 				}
 				Serial.printf("Servo setup mode %d\n", servoSetupMode);
 
@@ -1353,6 +1353,23 @@ void loop() {
 				{
 					stickX = 0;
 					stickY = 0;  
+					stickX += sin(millis() / 300.0) * ServoControl::servoThrow * .05;
+					stickY += sin(millis() / 300.0) * ServoControl::servoThrow * .051;
+					int phase = ((int)(millis() / 300.0 / 2 / M_PI)) % 2; 
+					if(phase == 0) {
+						stickX = 0;
+					} else if(phase == 1) {
+						stickY = 0;
+					} else { 
+						stickX = stickY = 0;
+					}	
+					setServos(stickX, stickY); 
+					break;
+				}
+			case 2: 
+				{
+					stickX = 0;
+					stickY = 0;  
 					stickX += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
 					stickY += sin(millis() / 300.0) * ServoControl::servoThrow * 1;
 					int phase = ((int)(millis() / 300.0 / 2 / M_PI)) % 2; 
@@ -1362,16 +1379,15 @@ void loop() {
 						stickY = 0;
 					} else { 
 						stickX = stickY = 0;
-					}
-					
+					}	
 					setServos(stickX, stickY); 
 					break;
 				}
-			case 2:
+			case 3:
 				stickX = stickY = -ServoControl::servoThrow;  
 				setServos(stickX, stickY); 
 				break;
-			case 3: 
+			case 4: 
 				stickX = stickY = -ServoControl::servoThrow;  
 				setServos(stickX, stickY); 
 				break;
