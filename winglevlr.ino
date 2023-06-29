@@ -769,16 +769,17 @@ namespace ServoControlElbow {
 	// 5) anchorPos is the x/y of the arm[0] hinge point 
 
 	const float servoThrow = +1.4;
+	const float hinge = 30;
 	struct ArmInfo {
 		float length;
 		float angle;
 		// TODO: broken, only works if anchorPos.x == 0, arms are equal
-	} arms[] = {{2.9, DEG2RAD(225)}, {2.9 ,DEG2RAD(90)}};
+	} arms[] = {{2.9, DEG2RAD(225 + hinge)}, {2.9 ,DEG2RAD(90 - hinge * 2)}};
 	
 	pair<float,float> anchorPos(0, -sqrt(
 		arms[0].length * arms[0].length +
 		arms[1].length * arms[1].length - 
-		2 * arms[0].length * arms[1].length * cos(M_PI - arms[1].angle)));
+		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
 
 
 	float srvPerDeg = 10.0;
@@ -831,8 +832,8 @@ namespace ServoControlElbow {
 			pts.push_back(pair<float,float>(-x,-y));
 			pts.push_back(pair<float,float>(0,-anchorPos.second - armLen)); 
 			svis->update(RAD2DEG(arms[0].angle) + ang0, 
-				RAD2DEG(arms[0].angle - M_PI + arms[1].angle) + ang1, pts);
-			}
+				RAD2DEG(arms[0].angle - M_PI + arms[1].angle) + ang0 + ang1, pts);
+		}
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
 		CSIM_PRINTF("x:%6.2f y:%6.2f aoaa%6.2f, aora %6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", 

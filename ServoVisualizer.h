@@ -57,6 +57,11 @@ public:
 
       glColor3f(.5,.5,.5);
       glLineWidth(2);
+      line(-len0 * sin(ang0), len0*cos(ang0), 
+         -len0 * sin(ang0) - len1 * sin(ang0 + M_PI / 2), 
+         len0 * cos(ang0) + len1 * cos(ang0 + M_PI / 2));
+
+
       line(-.2, 0 - yoffset, .2, -yoffset);
       line(0, -.2 - yoffset, 0, .2 -yoffset);
       
@@ -68,10 +73,11 @@ public:
 
       glColor3f(0,0,0);
       glLineWidth(10);
+   
       line(0, baseLen, 0, 0);
       line(0, 0, -len0 * sin(ang0), len0 * cos(ang0));
-      line(-len0 * sin(ang0), len0*cos(ang0), -len0 * sin(ang0) - len1 * sin(ang1), 
-         len0 * cos(ang0) + len1 * cos(ang1));
+      line(-len0 * sin(ang0), len0*cos(ang0), 
+         -len0 * sin(ang0) - len1 * sin(ang1), len0 * cos(ang0) + len1 * cos(ang1));
 
       glColor3f(0,0,1);
       point(0, baseLen);
