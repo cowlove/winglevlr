@@ -403,7 +403,7 @@ namespace ServoControlElbow {
 	// 4) (0,0) is stick neutral position
 	// 5) anchorPos is the x/y of the arm[0] hinge point 
 
-	float trimY = -0;
+	float trimY = -.5;
 	const float servoThrow = +1.5;
 	const float hinge = 15;
 	struct ArmInfo {
