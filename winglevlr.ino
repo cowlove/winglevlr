@@ -86,8 +86,8 @@ struct PIDS {
 		pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
 		pitchPID.finalGain = 1.7;
 		pitchPID.maxerr.i = .5; // degrees
-		pitchPID.outputTrim = 0.0;
-		pitchPID.inputTrim = +2.85;
+		pitchPID.outputTrim = -0.0;
+		pitchPID.inputTrim = +4;
 		pitchPID.finalScale = 0.001;
 
 		altPID.setGains(1.0, 0.002, 1.5); // input in feet of alt err, output in degrees of pitch change
@@ -119,10 +119,10 @@ static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn 
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn   
 float bankStick = 0.3, bankPitch = .2;
-float servoGain = 1.0;
+float servoGain = 1.5;
 
 #define LED_PIN 22
-/* Old hardware pins: I2C pins/variant seems to determine layout 
+/* Old hardwarinput pins: I2C pins/variant seems to determine layout 
 struct {
 	int topButton = 35;
 	int midButton = 34;
@@ -350,6 +350,170 @@ namespace LogFlags {
 	static const int ttaNav = 0x80;
 }
 
+namespace ServoControlString { 
+	const float servoThrow = 2.0;
+	const float leftStringX = 14;
+	const float leftStringY = 7;
+
+	const float rightStringX = 11;
+	const float rightStringY = 7;
+
+	const float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
+	const float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
+
+	float xScale = +1.0;
+	float yScale = +1.0;
+
+	pair<int, int> stickToServo(float x, float y) { 
+		float x1 = leftStringX + xScale * x;
+		float y1 = leftStringY + yScale * y;
+		float leftNewLen = sqrt(x1 * x1 + y1 * y1);
+
+		x1 = rightStringX - xScale * x;
+		y1 = rightStringY + yScale * y;
+		float rightNewLen = sqrt(x1 * x1 + y1 * y1);
+
+		float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
+		float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
+
+		return pair<int, int>(s0, s1);
+	}
+
+	pair<float,float> servoToStick(int s0, int s1) {
+		float a = leftStringX + rightStringX;
+		float b = (s0 - 1500.0) / 2000 * servoThrow + rightLen; 
+		float c = (s1 - 1500.0) / 2000 * servoThrow + leftLen; 
+
+		float area = sqrt( 4 * a * a * b * b - (a * a + b * b - c * c) * (a * a + b * b - c * c)) / 4;
+		float Y = area * 2 / a;
+		float X = sqrt(c * c - Y * Y);
+
+		float x = (X - leftStringX) / xScale;
+		float y = (Y - leftStringY) / yScale;
+
+		return pair<float,float>(x, y);
+	}
+};
+
+ServoVisualizer *svis = nullptr;
+namespace ServoControlElbow {
+	// 1) arm angles start with 0 degrees is forward, so sin/cos usage may seem reversed
+	// 2) arm[0].angle is absolute angle of the first arm
+	// 3) arm[1].angle is the relative angle of the second arm to the first 
+	// 4) (0,0) is stick neutral position
+	// 5) anchorPos is the x/y of the arm[0] hinge point 
+
+	float trimY = -0;
+	const float servoThrow = +1.5;
+	const float hinge = 15;
+	struct ArmInfo {
+		float length;
+		float angle;
+		// TODO: broken, only works if anchorPos.x == 0, arms are equal
+	} arms[] = {{1.8, DEG2RAD(225 + hinge)}, {1.8 ,DEG2RAD(90 - hinge * 2)}};
+	
+	pair<float,float> anchorPos(0, -sqrt(
+		arms[0].length * arms[0].length +
+		arms[1].length * arms[1].length - 
+		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
+
+
+	float srvPerDeg = -6.2;
+	float ang2servo(float a) { 
+		return 1500.0 + a * srvPerDeg;
+	}
+	float servo2ang(float s) { 
+		return (s - 1500.0) / srvPerDeg;
+	}
+
+	pair<float,float> servoToStick(float s0, float s1);
+	pair<int, int> stickToServo(float ox, float oy) {
+		//x  = .05;
+		//y = 0;
+		float x = ox;
+		float y = oy + trimY;
+		x = min(servoThrow, max(-servoThrow, x));
+		y = min(servoThrow, max(-servoThrow, y));
+
+		assert(anchorPos.first == 0);
+		assert(arms[0].length == arms[1].length);
+		double anchOffX = x - anchorPos.first;
+		double anchOffY = y - anchorPos.second;
+		double armLen = sqrt(anchOffX * anchOffX + anchOffY * anchOffY);
+		double ang1 = RAD2DEG(acos(
+			(	arms[0].length * arms[0].length +
+				arms[1].length * arms[1].length -
+				armLen * armLen ) / 
+			(2 * arms[0].length * arms[1].length)) - arms[1].angle);
+		// need to calculate the offset in ang0 caused by change in ang1
+		double arm1NeutralAbsAng = arms[0].angle - M_PI + arms[1].angle;
+		double arm1AbsAng = arm1NeutralAbsAng + DEG2RAD(ang1);
+		double ang1OffsetX = arms[1].length * (sin(arm1AbsAng) - sin(arm1NeutralAbsAng));
+		double ang1OffsetY = -arms[1].length * (cos(arm1AbsAng) - cos(arm1NeutralAbsAng));
+		double angOffset = (ang1OffsetX == 0 && ang1OffsetY == 0) ? 0 : 
+			RAD2DEG(atan2(ang1OffsetX - anchorPos.first, ang1OffsetY - anchorPos.second));
+			//RAD2DEG(atan2(ang1OffsetY - anchorPos.second, ang1OffsetX - anchorPos.first));
+		double ang0 = (x == 0 && y == 0) ? 0 : 
+			RAD2DEG(atan2(x - anchorPos.first, y - anchorPos.second));
+			//RAD2DEG(atan2(y - anchorPos.second, x - anchorPos.first));
+		ang0 += angOffset;
+
+
+		pair<float,float> servo;
+		servo.first = ang2servo(ang0);
+		servo.second =  ang2servo(ang1);
+		if (svis != nullptr && (svis->startTime == 0 || millis() / 1000.0 > svis->startTime)) {
+			svis->scale = svis->len0 / arms[0].length;
+			svis->yoffset = -anchorPos.second * svis->scale;
+			vector<pair<float,float>> pts;
+			pts.push_back(pair<float,float>(-x,-y));
+			pts.push_back(pair<float,float>(0,-anchorPos.second - armLen)); 
+			svis->update(RAD2DEG(arms[0].angle) + ang0, 
+				RAD2DEG(arms[0].angle - M_PI + arms[1].angle) + ang0 + ang1, pts);
+		}
+		pair<float,float> cs = servoToStick(servo.first, servo.second);
+
+		CSIM_PRINTF("x:%6.2f y:%6.2f aoaa%6.2f, aora %6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", 
+			ox, oy, RAD2DEG(arm1NeutralAbsAng ), RAD2DEG(arm1AbsAng), 
+			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, angOffset, servo.first, servo.second, 
+			(double)cs.first, (double)cs.second);
+		return pair<int, int>(ang2servo(ang0), ang2servo(ang1));
+	}
+
+	pair<float,float> servoToStick(float s0, float s1) {
+		//s0 =1500;
+		//s1 = 1510;
+		float a0 = DEG2RAD(servo2ang(s0)) + arms[0].angle;
+		float a1 = a0 - M_PI + arms[1].angle  + DEG2RAD(servo2ang(s1));
+		CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
+
+		float x = anchorPos.first + sin(a0) * arms[0].length + sin(a1) * arms[1].length;
+		float y = anchorPos.second - cos(a0) * arms[0].length - cos(a1) * arms[1].length;
+
+		 	
+		return pair<float,float>(x, y);
+	}
+};
+
+namespace ServoControlLinear { 
+	const float servoThrow = +8.0;
+
+	pair<int, int> stickToServo(float x, float y) { 
+		float s1 = x / servoThrow * 2000 + 1500;
+		float s0 = y / servoThrow * 2000 + 1500;
+		return pair<int, int>(s0, s1);
+	}
+
+	pair<float,float> servoToStick(int s0, int s1) {
+		float x = (s1 - 1500) / 2000.0 * servoThrow;
+		float y = (s0 - 1500) / 2000.0 * servoThrow;
+		
+		return pair<float,float>(x, y);
+	}
+};
+
+#define ServoControl ServoControlElbow
+
 namespace Display {
 	JDisplay jd;
 	JDisplayEditor jde(26, 0);
@@ -368,7 +532,7 @@ namespace Display {
 	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
 	
 	E pidpl(&jd,c1x,y+=10, "PL:", "%04.2f ", ed, .01); 	E sg(&jd,c2x,y,    "  SG:", "%04.2f ", ed, 0.01, &servoGain);
-	E pidph(&jd,c1x,y+=10, "PH:", "%04.2f ", ed, .01); 	E bp(&jd,c2x,y,    "  BP:", "%04.2f ", ed, 0.01, &bankPitch);
+	E pidph(&jd,c1x,y+=10, "PH:", "%04.2f ", ed, .01); 	E sty(&jd,c2x,y,   " STY:", "%04.2f ", ed, 0.01, &ServoControl::trimY);
 	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,  "MAXB:", "%04.1f ", ed, 0.1);
 	E pidd (&jd,c1x,y+=10, " D:", "%04.2f ", ed, .01); 	E maxi(&jd,c2x,y,  "MAXI:", "%04.1f ", ed, 0.1);
 	E pidg (&jd,c1x,y+=10, " G:", "%04.2f ", ed, .01); 	E pidot(&jd,c2x,y, "POTR:", "%+5.2f ", ed, 0.01);
@@ -542,7 +706,7 @@ void setup() {
 #ifndef UBUNTU
 	Display::jde.re.begin([]()->void{ Display::jde.re.ISR(); });
 #endif
-	Display::maxb.setValue(20);
+	Display::maxb.setValue(15);
 	//ed.tzer.setValue(1000);
 	Display::pidsel.setValue(1);
 	Display::dtrk.setValue(desiredTrk);
@@ -718,168 +882,6 @@ void setObsKnob(float knobSel, float v) {
 	}	
 }
 
-namespace ServoControlString { 
-	const float servoThrow = 2.0;
-	const float leftStringX = 14;
-	const float leftStringY = 7;
-
-	const float rightStringX = 11;
-	const float rightStringY = 7;
-
-	const float leftLen = sqrt(leftStringX * leftStringX + leftStringY * leftStringY);
-	const float rightLen = sqrt(rightStringX * rightStringX + rightStringY * rightStringY);
-
-	float xScale = +1.0;
-	float yScale = +1.0;
-
-	pair<int, int> stickToServo(float x, float y) { 
-		float x1 = leftStringX + xScale * x;
-		float y1 = leftStringY + yScale * y;
-		float leftNewLen = sqrt(x1 * x1 + y1 * y1);
-
-		x1 = rightStringX - xScale * x;
-		y1 = rightStringY + yScale * y;
-		float rightNewLen = sqrt(x1 * x1 + y1 * y1);
-
-		float s0 =  +(rightNewLen - rightLen) / servoThrow * 2000 + 1500;
-		float s1 =  +(leftNewLen - leftLen) / servoThrow * 2000 + 1500;
-
-		return pair<int, int>(s0, s1);
-	}
-
-	pair<float,float> servoToStick(int s0, int s1) {
-		float a = leftStringX + rightStringX;
-		float b = (s0 - 1500.0) / 2000 * servoThrow + rightLen; 
-		float c = (s1 - 1500.0) / 2000 * servoThrow + leftLen; 
-
-		float area = sqrt( 4 * a * a * b * b - (a * a + b * b - c * c) * (a * a + b * b - c * c)) / 4;
-		float Y = area * 2 / a;
-		float X = sqrt(c * c - Y * Y);
-
-		float x = (X - leftStringX) / xScale;
-		float y = (Y - leftStringY) / yScale;
-
-		return pair<float,float>(x, y);
-	}
-};
-
-ServoVisualizer *svis = nullptr;
-namespace ServoControlElbow {
-	// 1) arm angles start with 0 degrees is forward, so sin/cos usage may seem reversed
-	// 2) arm[0].angle is absolute angle of the first arm
-	// 3) arm[1].angle is the relative angle of the second arm to the first 
-	// 4) (0,0) is stick neutral position
-	// 5) anchorPos is the x/y of the arm[0] hinge point 
-
-	const float servoThrow = +1.4;
-	const float hinge = 20;
-	struct ArmInfo {
-		float length;
-		float angle;
-		// TODO: broken, only works if anchorPos.x == 0, arms are equal
-	} arms[] = {{2.9, DEG2RAD(225 + hinge)}, {2.9 ,DEG2RAD(90 - hinge * 2)}};
-	
-	pair<float,float> anchorPos(0, -sqrt(
-		arms[0].length * arms[0].length +
-		arms[1].length * arms[1].length - 
-		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
-
-
-	float srvPerDeg = -7.4;
-	float ang2servo(float a) { 
-		return 1500.0 + a * srvPerDeg;
-	}
-	float servo2ang(float s) { 
-		return (s - 1500.0) / srvPerDeg;
-	}
-
-	pair<float,float> servoToStick(float s0, float s1);
-	pair<int, int> stickToServo(float ox, float oy) {
-		//x  = .05;
-		//y = 0;
-		float x = ox;
-		float y = oy;
-		x = min(servoThrow, max(-servoThrow, x));
-		y = min(servoThrow, max(-servoThrow, y));
-
-		assert(anchorPos.first == 0);
-		assert(arms[0].length == arms[1].length);
-		double anchOffX = x - anchorPos.first;
-		double anchOffY = y - anchorPos.second;
-		double armLen = sqrt(anchOffX * anchOffX + anchOffY * anchOffY);
-		double ang1 = RAD2DEG(acos(
-			(	arms[0].length * arms[0].length +
-				arms[1].length * arms[1].length -
-				armLen * armLen ) / 
-			(2 * arms[0].length * arms[1].length)) - arms[1].angle);
-		// need to calculate the offset in ang0 caused by change in ang1
-		double arm1NeutralAbsAng = arms[0].angle - M_PI + arms[1].angle;
-		double arm1AbsAng = arm1NeutralAbsAng + DEG2RAD(ang1);
-		double ang1OffsetX = arms[1].length * (sin(arm1AbsAng) - sin(arm1NeutralAbsAng));
-		double ang1OffsetY = -arms[1].length * (cos(arm1AbsAng) - cos(arm1NeutralAbsAng));
-		double angOffset = (ang1OffsetX == 0 && ang1OffsetY == 0) ? 0 : 
-			RAD2DEG(atan2(ang1OffsetX - anchorPos.first, ang1OffsetY - anchorPos.second));
-			//RAD2DEG(atan2(ang1OffsetY - anchorPos.second, ang1OffsetX - anchorPos.first));
-		double ang0 = (x == 0 && y == 0) ? 0 : 
-			RAD2DEG(atan2(x - anchorPos.first, y - anchorPos.second));
-			//RAD2DEG(atan2(y - anchorPos.second, x - anchorPos.first));
-		ang0 += angOffset;
-
-
-		pair<float,float> servo;
-		servo.first = ang2servo(ang0);
-		servo.second =  ang2servo(ang1);
-		if (svis != nullptr && (svis->startTime == 0 || millis() / 1000.0 > svis->startTime)) {
-			svis->scale = svis->len0 / arms[0].length;
-			svis->yoffset = -anchorPos.second * svis->scale;
-			vector<pair<float,float>> pts;
-			pts.push_back(pair<float,float>(-x,-y));
-			pts.push_back(pair<float,float>(0,-anchorPos.second - armLen)); 
-			svis->update(RAD2DEG(arms[0].angle) + ang0, 
-				RAD2DEG(arms[0].angle - M_PI + arms[1].angle) + ang0 + ang1, pts);
-		}
-		pair<float,float> cs = servoToStick(servo.first, servo.second);
-
-		CSIM_PRINTF("x:%6.2f y:%6.2f aoaa%6.2f, aora %6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", 
-			ox, oy, RAD2DEG(arm1NeutralAbsAng ), RAD2DEG(arm1AbsAng), 
-			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, angOffset, servo.first, servo.second, 
-			(double)cs.first, (double)cs.second);
-		return pair<int, int>(ang2servo(ang0), ang2servo(ang1));
-	}
-
-	pair<float,float> servoToStick(float s0, float s1) {
-		//s0 =1500;
-		//s1 = 1510;
-		float a0 = DEG2RAD(servo2ang(s0)) + arms[0].angle;
-		float a1 = a0 - M_PI + arms[1].angle  + DEG2RAD(servo2ang(s1));
-		CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
-
-		float x = anchorPos.first + sin(a0) * arms[0].length + sin(a1) * arms[1].length;
-		float y = anchorPos.second - cos(a0) * arms[0].length - cos(a1) * arms[1].length;
-
-		 	
-		return pair<float,float>(x, y);
-	}
-};
-
-namespace ServoControlLinear { 
-	const float servoThrow = +8.0;
-
-	pair<int, int> stickToServo(float x, float y) { 
-		float s1 = x / servoThrow * 2000 + 1500;
-		float s0 = y / servoThrow * 2000 + 1500;
-		return pair<int, int>(s0, s1);
-	}
-
-	pair<float,float> servoToStick(int s0, int s1) {
-		float x = (s1 - 1500) / 2000.0 * servoThrow;
-		float y = (s0 - 1500) / 2000.0 * servoThrow;
-		
-		return pair<float,float>(x, y);
-	}
-};
-
-#define ServoControl ServoControlElbow
 
 void setServos(float x, float y) {
 	pair<int,int> s = ServoControl::stickToServo(x, y);
@@ -1355,8 +1357,8 @@ void loop() {
 				break;
 			case 1: 
 				{
-					stickX = cos(millis() / 300.0) * ServoControl::servoThrow * .1;
-					stickY = sin(millis() / 300.0) * ServoControl::servoThrow * .1;
+					stickX = cos(millis() / 300.0) * ServoControl::servoThrow * .04;
+					stickY = sin(millis() / 300.0) * ServoControl::servoThrow * .04;
 					setServos(stickX, stickY); 
 					break;
 				}
