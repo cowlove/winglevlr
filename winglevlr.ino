@@ -1843,6 +1843,9 @@ public:
 					exit(-1);
 				}
 			}
+		} else {
+			printf("Unknown debug parameter '%s'\n", *a); 
+			exit(-1);
 		}
 	}	
 	void setup() override {
