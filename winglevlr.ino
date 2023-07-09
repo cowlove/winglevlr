@@ -406,6 +406,8 @@ namespace ServoControlElbow {
 	float trimY = -.5;
 	const float servoThrow = +1.5;
 	const float hinge = 15;
+	float maxChange = .02;
+
 	struct ArmInfo {
 		float length;
 		float angle;
@@ -417,7 +419,7 @@ namespace ServoControlElbow {
 		arms[1].length * arms[1].length - 
 		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
 
-
+	pair<float,float> oldPos(0,0);
 	float srvPerDeg = -6.2;
 	float ang2servo(float a) { 
 		return 1500.0 + a * srvPerDeg;
@@ -435,6 +437,11 @@ namespace ServoControlElbow {
 		x = min(servoThrow, max(-servoThrow, x));
 		y = min(servoThrow, max(-servoThrow, y));
 
+		x = min(oldPos.first + maxChange, max(oldPos.first - maxChange, x));
+		y = min(oldPos.second + maxChange, max(oldPos.second - maxChange, y));
+		oldPos = pair<float,float>(x, y);
+
+		
 		assert(anchorPos.first == 0);
 		assert(arms[0].length == arms[1].length);
 		double anchOffX = x - anchorPos.first;
