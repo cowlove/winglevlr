@@ -87,7 +87,7 @@ struct PIDS {
 		pitchPID.finalGain = 1.7;
 		pitchPID.maxerr.i = .5; // degrees
 		pitchPID.outputTrim = -0.0;
-		pitchPID.inputTrim = +4;
+		pitchPID.inputTrim = +7;
 		pitchPID.finalScale = 0.001;
 
 		altPID.setGains(1.0, 0.002, 1.5); // input in feet of alt err, output in degrees of pitch change
