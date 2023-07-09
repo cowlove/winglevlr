@@ -537,7 +537,7 @@ namespace Display {
 	E dtrk(&jd,c1x,y+=10," DTK:", "%05.1f ", ed, 1, 0, 359, true); F trk(&jd,c2x,y,  " TRK:", "%05.1f ");
 	F pitc(&jd,c1x,y+=10,"PITC:", "%+03.1f ");  		F  obs(&jd,c2x,y,     " OBS:", "%05.1f ");
 	F roll(&jd,c1x,y+=10,"ROLL:", "%+03.1f");   		F  mode(&jd,c2x,y,    "MODE:", "%06.0f ");
-	F gdl(&jd,c1x,y+=10," GDL:", "%05.1f ");   			F  g5hdg(&jd,c2x,y,   "G5HD:", "%05.1f ");
+	F gdl(&jd,c1x,y+=10," GDL:", "%05.1f ");   			F  g5hdg(&jd,c2x,y,   "G5HD:", "%05.1f ");							
 	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
 	
 	E pidpl(&jd,c1x,y+=10, "PL:", "%04.2f ", ed, .01); 	E sg(&jd,c2x,y,    "  SG:", "%04.2f ", ed, 0.01, &servoGain);
@@ -839,6 +839,8 @@ void parseSerialCommandInput(const char *buf, int n) {
 		if (sscanf(line, "navhi=%f", &f) == 1) { pids.hdgPID.hiGain.p = f; }
 		else if (sscanf(line, "navtr %f", &f) == 1) { pids.hdgPID.hiGainTrans.p = f; }
 		else if (sscanf(line, "srate %f", &f) == 1) { ServoControl::maxChange = f; }
+		else if (sscanf(line, "trimx %f", &f) == 1) { ServoControl::trim.x = f; }
+		else if (sscanf(line, "trimy %f", &f) == 1) { ServoControl::trim.y = f; }
 		else if (sscanf(line, "maxb %f", &f) == 1) { Display::maxb.setValue(f); }
 		else if (sscanf(line, "roll %f", &f) == 1) { desRoll = f; }
 		else if (sscanf(line, "pidp %f", &f) == 1) { pids.pitchPID.gain.p = f; }
