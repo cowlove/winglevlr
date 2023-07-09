@@ -406,6 +406,8 @@ namespace ServoControlElbow {
 	float trimY = -.5;
 	const float servoThrow = +1.5;
 	const float hinge = 15;
+	float maxChange = .02;
+
 	struct ArmInfo {
 		float length;
 		float angle;
@@ -417,7 +419,7 @@ namespace ServoControlElbow {
 		arms[1].length * arms[1].length - 
 		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
 
-
+	pair<float,float> oldPos(0,0);
 	float srvPerDeg = -6.2;
 	float ang2servo(float a) { 
 		return 1500.0 + a * srvPerDeg;
@@ -435,6 +437,11 @@ namespace ServoControlElbow {
 		x = min(servoThrow, max(-servoThrow, x));
 		y = min(servoThrow, max(-servoThrow, y));
 
+		x = min(oldPos.first + maxChange, max(oldPos.first - maxChange, x));
+		y = min(oldPos.second + maxChange, max(oldPos.second - maxChange, y));
+		oldPos = pair<float,float>(x, y);
+
+		
 		assert(anchorPos.first == 0);
 		assert(arms[0].length == arms[1].length);
 		double anchOffX = x - anchorPos.first;
@@ -481,22 +488,20 @@ namespace ServoControlElbow {
 	}
 
 	pair<float,float> servoToStick(float s0, float s1) {
-		//s0 =1500;
-		//s1 = 1510;
 		float a0 = DEG2RAD(servo2ang(s0)) + arms[0].angle;
 		float a1 = a0 - M_PI + arms[1].angle  + DEG2RAD(servo2ang(s1));
 		CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
 
-		float x = anchorPos.first + sin(a0) * arms[0].length + sin(a1) * arms[1].length;
+		float x = anchorPos.first - sin(a0) * arms[0].length - sin(a1) * arms[1].length;
 		float y = anchorPos.second - cos(a0) * arms[0].length - cos(a1) * arms[1].length;
-
 		 	
-		return pair<float,float>(x, y);
+		return pair<float,float>(x, y - trimY);
 	}
 };
 
 namespace ServoControlLinear { 
 	const float servoThrow = +8.0;
+	float trimY = 0;
 
 	pair<int, int> stickToServo(float x, float y) { 
 		float s1 = x / servoThrow * 2000 + 1500;
@@ -1006,6 +1011,11 @@ void loop() {
 "47.4331127570086, -122.66209866008706\n" 
 "47.476968122716066, -122.54582666728088\n"
 ;
+					WaypointNav::LatLon curPos(ahrsInput.lat, ahrsInput.lon);
+					WaypointNav::LatLon nextPos = WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 10000);
+
+					waypointList = Sfmt("REPEAT 1\n%f, %f\n%f, %f\n",
+						nextPos.lat, nextPos.lon, curPos.lat, curPos.lon);
 
 					wpNav = new WaypointsSequencerString(waypointList);
 					logItem.flags |= LogFlags::wptNav;
@@ -1498,7 +1508,7 @@ public:
 	float bank = 0, track = 0, pitch = 0, roll = 0, yaw = 0, simPitch = 0;
 	uint64_t lastMillis = 0;
 	float cmdPitch;
-	float speed = 80, windDir = 200, windVel = 20;
+	float speed = 80, windDir = 200, wind, windVel = 20, windGust = 0;
 	WaypointNav::LatLonAlt curPos;
 	std::queue<float> gxDelay, pitchDelay;
 	
@@ -1580,7 +1590,12 @@ public:
 		
 		float dist = speed * MPS_PER_KNOT * (now - lastMillis) / 1000.0; 
 		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(track), dist);
-		dist = windVel * MPS_PER_KNOT * (now - lastMillis) / 1000.0; 
+		if (j.hz(.01)) {
+			wind = windVel;
+			if (windGust > 0) wind += random() * 1.0 / RAND_MAX * (windGust - windVel);
+
+		}
+		dist = wind * MPS_PER_KNOT * (now - lastMillis) / 1000.0; 
 		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(windDir + 180), dist);
 		curPos.alt += sin((pitch + simPitchOffset) * M_PI/180) * dist; 
 
@@ -1755,7 +1770,7 @@ public:
 			svis = new ServoVisualizer();
 			svis->startTime = svisStartTime;
 		} else if (strcmp(*a, "--wind") == 0) {
-			sscanf(*(++a), "%f@%f", &windDir, &windVel);
+			sscanf(*(++a), "%f@%fG%f", &windDir, &windVel, &windGust);
 		} else if (strcmp(*a, "--startpos") == 0) {
 			sscanf(*(++a), "%lf,%lf,%f,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track, &speed);
 			curPos.alt /= FEET_PER_METER;
@@ -1843,6 +1858,9 @@ public:
 					exit(-1);
 				}
 			}
+		} else {
+			printf("Unknown debug parameter '%s'\n", *a); 
+			exit(-1);
 		}
 	}	
 	void setup() override {

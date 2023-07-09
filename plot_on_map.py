@@ -59,6 +59,6 @@ if (len(waypoints) > 0):
 
 gmap.scatter(*zip(*waypoints), color='yellow')
 gmap.plot(*zip(*track1), edge_width=3, color='red')
-gmap.plot(*zip(*track2), edge_width=3, color='green')
+gmap.plot(*zip(*track2), edge_width=2, color='green')
 gmap.draw('map.html')
 

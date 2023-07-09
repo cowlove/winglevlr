@@ -13,7 +13,7 @@ fi
 sudo apt-get update
 #sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade
 sudo apt-get install -y arduino git curl build-essential bash-completion gnuplot python3 python3-pip
-sudo apt-get install python-serial
+sudo apt-get install python-seriali freeglut3-dev
 
 mkdir -p ${HOME}/bin
 export BINDIR=${HOME}/bin
