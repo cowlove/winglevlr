@@ -408,7 +408,7 @@ namespace ServoControlElbow {
 	// 4) (0,0) is stick neutral position
 	// 5) anchorPos is the x/y of the arm[0] hinge point 
 
-	XY trim(0, -0.5);
+	XY trim(0, -0.5), strim(-90, 50);
 	const float servoThrow = +1.5;
 	const float hinge = 15;
 	float maxChange = .08;
@@ -472,8 +472,8 @@ namespace ServoControlElbow {
 
 
 		pair<float,float> servo;
-		servo.first = ang2servo(ang0);
-		servo.second =  ang2servo(ang1);
+		servo.first = ang2servo(ang0) + strim.x;
+		servo.second =  ang2servo(ang1) + strim.y;
 		if (svis != nullptr && (svis->startTime == 0 || millis() / 1000.0 > svis->startTime)) {
 			svis->scale = svis->len0 / arms[0].length;
 			svis->yoffset = -anchorPos.y * svis->scale;
@@ -489,12 +489,12 @@ namespace ServoControlElbow {
 			ox, oy, RAD2DEG(arm1NeutralAbsAng ), RAD2DEG(arm1AbsAng), 
 			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, angOffset, servo.first, servo.second, 
 			(double)cs.first, (double)cs.second);
-		return pair<int, int>(ang2servo(ang0), ang2servo(ang1));
+		return pair<int, int>(servo.first, servo.second);
 	}
 
 	pair<float,float> servoToStick(float s0, float s1) {
-		float a0 = DEG2RAD(servo2ang(s0)) + arms[0].angle;
-		float a1 = a0 - M_PI + arms[1].angle  + DEG2RAD(servo2ang(s1));
+		float a0 = DEG2RAD(servo2ang(s0 - strim.x)) + arms[0].angle;
+		float a1 = a0 - M_PI + arms[1].angle  + DEG2RAD(servo2ang(s1 - strim.y));
 		CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
 
 		float x = anchorPos.x - sin(a0) * arms[0].length - sin(a1) * arms[1].length;
@@ -841,6 +841,8 @@ void parseSerialCommandInput(const char *buf, int n) {
 		else if (sscanf(line, "srate %f", &f) == 1) { ServoControl::maxChange = f; }
 		else if (sscanf(line, "trimx %f", &f) == 1) { ServoControl::trim.x = f; }
 		else if (sscanf(line, "trimy %f", &f) == 1) { ServoControl::trim.y = f; }
+		else if (sscanf(line, "strimx %f", &f) == 1) { ServoControl::strim.x = f; }
+		else if (sscanf(line, "strimy %f", &f) == 1) { ServoControl::strim.y = f; }
 		else if (sscanf(line, "maxb %f", &f) == 1) { Display::maxb.setValue(f); }
 		else if (sscanf(line, "roll %f", &f) == 1) { desRoll = f; }
 		else if (sscanf(line, "pidp %f", &f) == 1) { pids.pitchPID.gain.p = f; }
