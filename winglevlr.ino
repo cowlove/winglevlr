@@ -396,6 +396,11 @@ namespace ServoControlString {
 };
 
 ServoVisualizer *svis = nullptr;
+struct XY { 
+	XY(float x1, float y1) : x(x1), y(y1) {}
+	float x; 
+	float y; 
+};
 namespace ServoControlElbow {
 	// 1) arm angles start with 0 degrees is forward, so sin/cos usage may seem reversed
 	// 2) arm[0].angle is absolute angle of the first arm
@@ -403,10 +408,10 @@ namespace ServoControlElbow {
 	// 4) (0,0) is stick neutral position
 	// 5) anchorPos is the x/y of the arm[0] hinge point 
 
-	float trimY = -.5;
+	XY trim(0, -0.5);
 	const float servoThrow = +1.5;
 	const float hinge = 15;
-	float maxChange = .02;
+	float maxChange = .08;
 
 	struct ArmInfo {
 		float length;
@@ -414,12 +419,12 @@ namespace ServoControlElbow {
 		// TODO: broken, only works if anchorPos.x == 0, arms are equal
 	} arms[] = {{1.8, DEG2RAD(225 + hinge)}, {1.8 ,DEG2RAD(90 - hinge * 2)}};
 	
-	pair<float,float> anchorPos(0, -sqrt(
+	XY anchorPos(0, -sqrt(
 		arms[0].length * arms[0].length +
 		arms[1].length * arms[1].length - 
 		2 * arms[0].length * arms[1].length * cos(arms[1].angle)));
 
-	pair<float,float> oldPos(0,0);
+	XY oldPos(0,0);
 	float srvPerDeg = -6.2;
 	float ang2servo(float a) { 
 		return 1500.0 + a * srvPerDeg;
@@ -432,20 +437,20 @@ namespace ServoControlElbow {
 	pair<int, int> stickToServo(float ox, float oy) {
 		//x  = .05;
 		//y = 0;
-		float x = ox;
-		float y = oy + trimY;
+		float x = ox + trim.x;
+		float y = oy + trim.y;
 		x = min(servoThrow, max(-servoThrow, x));
 		y = min(servoThrow, max(-servoThrow, y));
 
-		x = min(oldPos.first + maxChange, max(oldPos.first - maxChange, x));
-		y = min(oldPos.second + maxChange, max(oldPos.second - maxChange, y));
-		oldPos = pair<float,float>(x, y);
+		x = min(oldPos.x + maxChange, max(oldPos.x - maxChange, x));
+		y = min(oldPos.y + maxChange, max(oldPos.y - maxChange, y));
+		oldPos = XY(x, y);
 
 		
-		assert(anchorPos.first == 0);
+		assert(anchorPos.x == 0);
 		assert(arms[0].length == arms[1].length);
-		double anchOffX = x - anchorPos.first;
-		double anchOffY = y - anchorPos.second;
+		double anchOffX = x - anchorPos.x;
+		double anchOffY = y - anchorPos.y;
 		double armLen = sqrt(anchOffX * anchOffX + anchOffY * anchOffY);
 		double ang1 = RAD2DEG(acos(
 			(	arms[0].length * arms[0].length +
@@ -458,11 +463,11 @@ namespace ServoControlElbow {
 		double ang1OffsetX = arms[1].length * (sin(arm1AbsAng) - sin(arm1NeutralAbsAng));
 		double ang1OffsetY = -arms[1].length * (cos(arm1AbsAng) - cos(arm1NeutralAbsAng));
 		double angOffset = (ang1OffsetX == 0 && ang1OffsetY == 0) ? 0 : 
-			RAD2DEG(atan2(ang1OffsetX - anchorPos.first, ang1OffsetY - anchorPos.second));
-			//RAD2DEG(atan2(ang1OffsetY - anchorPos.second, ang1OffsetX - anchorPos.first));
+			RAD2DEG(atan2(ang1OffsetX - anchorPos.x, ang1OffsetY - anchorPos.y));
+			//RAD2DEG(atan2(ang1OffsetY - anchorPos.y, ang1OffsetX - anchorPos.x));
 		double ang0 = (x == 0 && y == 0) ? 0 : 
-			RAD2DEG(atan2(x - anchorPos.first, y - anchorPos.second));
-			//RAD2DEG(atan2(y - anchorPos.second, x - anchorPos.first));
+			RAD2DEG(atan2(x - anchorPos.x, y - anchorPos.y));
+			//RAD2DEG(atan2(y - anchorPos.y, x - anchorPos.x));
 		ang0 += angOffset;
 
 
@@ -471,10 +476,10 @@ namespace ServoControlElbow {
 		servo.second =  ang2servo(ang1);
 		if (svis != nullptr && (svis->startTime == 0 || millis() / 1000.0 > svis->startTime)) {
 			svis->scale = svis->len0 / arms[0].length;
-			svis->yoffset = -anchorPos.second * svis->scale;
+			svis->yoffset = -anchorPos.y * svis->scale;
 			vector<pair<float,float>> pts;
 			pts.push_back(pair<float,float>(-x,-y));
-			pts.push_back(pair<float,float>(0,-anchorPos.second - armLen)); 
+			pts.push_back(pair<float,float>(0,-anchorPos.y - armLen)); 
 			svis->update(RAD2DEG(arms[0].angle) + ang0, 
 				RAD2DEG(arms[0].angle - M_PI + arms[1].angle) + ang0 + ang1, pts);
 		}
@@ -492,17 +497,16 @@ namespace ServoControlElbow {
 		float a1 = a0 - M_PI + arms[1].angle  + DEG2RAD(servo2ang(s1));
 		CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
 
-		float x = anchorPos.first - sin(a0) * arms[0].length - sin(a1) * arms[1].length;
-		float y = anchorPos.second - cos(a0) * arms[0].length - cos(a1) * arms[1].length;
+		float x = anchorPos.x - sin(a0) * arms[0].length - sin(a1) * arms[1].length;
+		float y = anchorPos.y - cos(a0) * arms[0].length - cos(a1) * arms[1].length;
 		 	
-		return pair<float,float>(x, y - trimY);
+		return pair<float,float>(x - trim.x, y - trim.y);
 	}
 };
 
 namespace ServoControlLinear { 
 	const float servoThrow = +8.0;
-	float trimY = 0;
-
+	XY trim(0, 0);
 	pair<int, int> stickToServo(float x, float y) { 
 		float s1 = x / servoThrow * 2000 + 1500;
 		float s0 = y / servoThrow * 2000 + 1500;
@@ -537,7 +541,7 @@ namespace Display {
 	JDisplayItem<const char *> log(&jd,c1x,y+=10," LOG:", "%s-"); F  drop(&jd,c2x+30,y,    "", "%03.0f ");
 	
 	E pidpl(&jd,c1x,y+=10, "PL:", "%04.2f ", ed, .01); 	E sg(&jd,c2x,y,    "  SG:", "%04.2f ", ed, 0.01, &servoGain);
-	E pidph(&jd,c1x,y+=10, "PH:", "%04.2f ", ed, .01); 	E sty(&jd,c2x,y,   " STY:", "%04.2f ", ed, 0.01, &ServoControl::trimY);
+	E pidph(&jd,c1x,y+=10, "PH:", "%04.2f ", ed, .01); 	E sty(&jd,c2x,y,   " STY:", "%04.2f ", ed, 0.01, &ServoControl::trim.y);
 	E pidi (&jd,c1x,y+=10, " I:", "%05.4f ", ed, .0001);E maxb(&jd,c2x,y,  "MAXB:", "%04.1f ", ed, 0.1);
 	E pidd (&jd,c1x,y+=10, " D:", "%04.2f ", ed, .01); 	E maxi(&jd,c2x,y,  "MAXI:", "%04.1f ", ed, 0.1);
 	E pidg (&jd,c1x,y+=10, " G:", "%04.2f ", ed, .01); 	E pidot(&jd,c2x,y, "POTR:", "%+5.2f ", ed, 0.01);
@@ -834,6 +838,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		int relay, ms;
 		if (sscanf(line, "navhi=%f", &f) == 1) { pids.hdgPID.hiGain.p = f; }
 		else if (sscanf(line, "navtr %f", &f) == 1) { pids.hdgPID.hiGainTrans.p = f; }
+		else if (sscanf(line, "srate %f", &f) == 1) { ServoControl::maxChange = f; }
 		else if (sscanf(line, "maxb %f", &f) == 1) { Display::maxb.setValue(f); }
 		else if (sscanf(line, "roll %f", &f) == 1) { desRoll = f; }
 		else if (sscanf(line, "pidp %f", &f) == 1) { pids.pitchPID.gain.p = f; }
@@ -1014,7 +1019,7 @@ void loop() {
 					WaypointNav::LatLon curPos(ahrsInput.lat, ahrsInput.lon);
 					WaypointNav::LatLon nextPos = WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 10000);
 
-					waypointList = Sfmt("REPEAT 1\n%f, %f\n%f, %f\n",
+					waypointList = sfmt("REPEAT 1\n%f, %f\n%f, %f\n",
 						nextPos.lat, nextPos.lon, curPos.lat, curPos.lon);
 
 					wpNav = new WaypointsSequencerString(waypointList);
