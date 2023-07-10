@@ -208,8 +208,8 @@ namespace WaypointNav {
         }
 
         float nextTurnLead = 0;
+        float distToWaypoint = 0;
         void run(float sec) { 
-            float distToWaypoint = 0;
             if (!curPos.valid)
                 return;
             if (activeWaypoint.valid && !waypointPassed) {
@@ -299,6 +299,9 @@ namespace WaypointNav {
         int autoPilotOn = 0, repeat = 0, decisionHeight = -1;
         WaypointSequencer(std::istream &i) : in(i) {}
         void run(float timestep) { 
+            if (waitTime > 0)
+                waitTime -= timestep;
+             
             if (wptTracker.activeWaypoint.valid == false || wptTracker.waypointPassed)  
                 readNextWaypoint(timestep);
             wptTracker.run(timestep);
@@ -312,11 +315,11 @@ namespace WaypointNav {
             double lat, lon, alt, track;
             using namespace std;
             std::string s("empty");
-            if (waitTime > 0 && (waitTime -= timestep) > 0) 
+            if (waitTime > 0)
                 return;
 
             wptTracker.activeWaypoint.valid = false;
-            while(wptTracker.activeWaypoint.valid == false) {
+            while(wptTracker.activeWaypoint.valid == false && waitTime <= 0) {
                 if (in.eof() || !std::getline(in, s)) {
                     if (repeat) {
                         in.clear();
@@ -334,7 +337,6 @@ namespace WaypointNav {
                 sscanf(s.c_str(), "SPEED %f", &wptTracker.speed);
                 sscanf(s.c_str(), "ENDALT %f", &endAlt);
                 sscanf(s.c_str(), "AP %d", &autoPilotOn);
-                sscanf(s.c_str(), "HDG %f", &wptTracker.steerHdg);
                 sscanf(s.c_str(), "WAIT %f", &waitTime);
                 
                 if (sscanf(s.c_str(), "INPUT.%s %f", buf, &f) == 2) { inputs[buf] = f; }
@@ -342,10 +344,14 @@ namespace WaypointNav {
                 if (sscanf(s.c_str(), "%lf, %lf %lf %lf", &lat, &lon, &alt, &track) == 4) {  
                     wptTracker.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
                     wptTracker.steerHdg = track;
-                } else if (sscanf(s.c_str(), "%lf, %lf %lf", &lat, &lon, &alt) == 3) 
+                } else if (sscanf(s.c_str(), "%lf, %lf %lf", &lat, &lon, &alt) == 3) {
                     wptTracker.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
-                else if (sscanf(s.c_str(), "%lf, %lf", &lat, &lon) == 2) 
+                } else if (sscanf(s.c_str(), "%lf, %lf", &lat, &lon) == 2) {
                     wptTracker.setWaypoint(LatLonAlt(lat, lon, wptTracker.nextWaypoint.alt));
+                } else if (sscanf(s.c_str(), "HDG %f", &wptTracker.steerHdg) == 1) {
+                    wptTracker.commandTrack = wptTracker.steerHdg;
+                    wptTracker.xte = 0;
+                } 
             }	
         }
     };

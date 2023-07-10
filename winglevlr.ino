@@ -87,7 +87,7 @@ struct PIDS {
 		pitchPID.finalGain = 1.7;
 		pitchPID.maxerr.i = .5; // degrees
 		pitchPID.outputTrim = -0.0;
-		pitchPID.inputTrim = +7;
+		pitchPID.inputTrim = +0;
 		pitchPID.finalScale = 0.001;
 
 		altPID.setGains(1.0, 0.002, 1.5); // input in feet of alt err, output in degrees of pitch change
@@ -411,7 +411,7 @@ namespace ServoControlElbow {
 	XY trim(0, -0.5), strim(-90, 50);
 	const float servoThrow = +1.5;
 	const float hinge = 15;
-	float maxChange = .08;
+	float maxChange = .025;
 
 	struct ArmInfo {
 		float length;
@@ -485,17 +485,17 @@ namespace ServoControlElbow {
 		}
 		pair<float,float> cs = servoToStick(servo.first, servo.second);
 
-		CSIM_PRINTF("x:%6.2f y:%6.2f aoaa%6.2f, aora %6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", 
-			ox, oy, RAD2DEG(arm1NeutralAbsAng ), RAD2DEG(arm1AbsAng), 
-			armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, angOffset, servo.first, servo.second, 
-			(double)cs.first, (double)cs.second);
+		//CSIM_PRINTF("x:%6.2f y:%6.2f aoaa%6.2f, aora %6.2f al:%6.2f a0:%6.2f a1:%6.2f a1ox: %06.2f a1oy: %06.2f ao: %06.2f s0:%06.2f s1:%06.2f cx:%6.2f cy:%6.2f S2S\n", 
+		//	ox, oy, RAD2DEG(arm1NeutralAbsAng ), RAD2DEG(arm1AbsAng), 
+		//	armLen, ang0, ang1, ang1OffsetX, ang1OffsetY, angOffset, servo.first, servo.second, 
+		//	(double)cs.first, (double)cs.second);
 		return pair<int, int>(servo.first, servo.second);
 	}
 
 	pair<float,float> servoToStick(float s0, float s1) {
 		float a0 = DEG2RAD(servo2ang(s0 - strim.x)) + arms[0].angle;
 		float a1 = a0 - M_PI + arms[1].angle  + DEG2RAD(servo2ang(s1 - strim.y));
-		CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
+		//CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
 
 		float x = anchorPos.x - sin(a0) * arms[0].length - sin(a1) * arms[1].length;
 		float y = anchorPos.y - cos(a0) * arms[0].length - cos(a1) * arms[1].length;
@@ -887,7 +887,7 @@ void setObsKnob(float knobSel, float v) {
 			crossTrackError.reset();
 			testTurnActive = false;
 			pids.xtePID.reset();
-			if (wpNav != NULL) { 
+			if (abs(obs - lastObs) > 5 && wpNav != NULL) { 
 				delete wpNav;
 				wpNav = NULL;
 			}
@@ -907,6 +907,33 @@ bool firstLoop = true;
 int imuReadCount = 0;
 bool immediateLogStart = false;
 
+void startMakeoutSess() { 
+	if (wpNav != NULL) {
+		delete wpNav;
+		wpNav = NULL;
+	} else {
+		waypointList = 
+"REPEAT 1\n"
+"47.46781184528505, -122.62479628528624\n"
+"47.42959741100363, -122.55173591135885\n" 
+"47.4331127570086, -122.66209866008706\n" 
+"47.476968122716066, -122.54582666728088\n"
+;
+		WaypointNav::LatLon curPos(ublox.lat, ublox.lon);
+		WaypointNav::LatLon nextPos = 
+			WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 6300);
+
+		if (0) { 
+			waypointList = sfmt("REPEAT 1\n%f, %f\nHDG %d\nWAIT 100\n",
+				nextPos.lat, nextPos.lon, ((int)magToTrue(ahrsInput.selTrack + 180)) % 360);
+		} else {
+			waypointList = sfmt("REPEAT 1\n%f, %f\n%f, %f\n",
+				nextPos.lat, nextPos.lon, curPos.lat, curPos.lon);
+		}
+		wpNav = new WaypointsSequencerString(waypointList);
+		logItem.flags |= LogFlags::wptNav;
+	}
+}
 void loop() {	
 	esp_task_wdt_reset();
 	//ArduinoOTA.handle();
@@ -988,6 +1015,10 @@ void loop() {
 		if (butFilt3.newEvent()) { // TOP or RIGHT button 
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {		// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
 				apMode = 1;
+				if (wpNav != NULL) { 
+					delete wpNav;
+					wpNav = NULL;
+				}
 				if (desiredTrk == -1) 
 					setDesiredTrk(ahrsInput.selTrack);
 				else 
@@ -1009,26 +1040,7 @@ void loop() {
 				servoSetupMode = 0;
 			}
 			if (butFilt3.wasCount == 3) {
-				if (wpNav != NULL) {
-					delete wpNav;
-					wpNav = NULL;
-				} else {
-					waypointList = 
-"REPEAT 1\n"
-"47.46781184528505, -122.62479628528624\n"
-"47.42959741100363, -122.55173591135885\n" 
-"47.4331127570086, -122.66209866008706\n" 
-"47.476968122716066, -122.54582666728088\n"
-;
-					WaypointNav::LatLon curPos(ahrsInput.lat, ahrsInput.lon);
-					WaypointNav::LatLon nextPos = WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 10000);
-
-					waypointList = sfmt("REPEAT 1\n%f, %f\n%f, %f\n",
-						nextPos.lat, nextPos.lon, curPos.lat, curPos.lon);
-
-					wpNav = new WaypointsSequencerString(waypointList);
-					logItem.flags |= LogFlags::wptNav;
-				}
+				startMakeoutSess();
 			}
 		}
 		if (butFilt.newEvent()) { // MIDDLE BUTTON
@@ -1177,7 +1189,13 @@ void loop() {
 					ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
 				} 
 				else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) { ahrsInput.g5Track = v; logItem.flags |= LogFlags::g5Nav; } 
-				else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) { apMode = v; } 
+				else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) {
+					Serial.printf("G5 MODE %f\n", v); 
+					apMode = v;
+					if (apMode == 5) { 
+						startMakeoutSess();
+					} 
+				} 
 				else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) { knobSel = v; } 
 				else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) { setObsKnob(knobSel, v); } 
 			}
@@ -1265,20 +1283,24 @@ void loop() {
 				wpNav->wptTracker.curPos.alt = ahrsInput.ubloxAlt / FEET_PER_METER;
 				wpNav->wptTracker.speed = ahrsInput.ubloxGroundSpeed;
 				wpNav->wptTracker.curPos.valid = true;
-				wpNav->run(ahrsInput.sec - lastAhrsInput.sec);
+				wpNav->run(5);
 				if (tick1HZ) {
 					crossTrackError.add(wpNav->wptTracker.xte * .0005);
 				}
 				if (abs(crossTrackError.average()) > 0.2) {
 					pids.xtePID.resetI();
-				}				
+				}		
+				static const double xteCorr = 15;		
 				xteCorrection = -pids.xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
-				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
+				xteCorrection = max(-xteCorr, min(xteCorr, (double)xteCorrection));
+				
 				setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
 				if (wpNav->wptTracker.commandAlt > -1000) {
 					desAlt = wpNav->wptTracker.commandAlt * FEET_PER_METER;
 				}
 				ahrsInput.dtk = desiredTrk;
+				Serial.printf("wptNav %06.1f %06.1f %03.1f %010.5f %010.5f\n", wpNav->wptTracker.distToWaypoint,
+				wpNav->wptTracker.commandTrack, wpNav->waitTime, ublox.lat, ublox.lon);
 
 			} else if (apMode == 4) {
 				xteCorrection = -pids.xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
