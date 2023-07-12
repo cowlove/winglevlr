@@ -188,7 +188,7 @@ namespace WaypointNav {
     public: 
         LatLonAlt curPos, prevPos;
         int wayPointCount = 0;
-        LatLonAlt startWaypoint, activeWaypoint, nextWaypoint;
+        LatLonAlt startWaypoint, activeWaypoint;
         bool waypointPassed;
         float speed; // knots 
         float vvel;  // fpm
@@ -207,6 +207,7 @@ namespace WaypointNav {
             lastVd = vd;
         }
 
+        bool didWaypointChange = false;
         float nextTurnLead = 0;
         float distToWaypoint = 0;
         void run(float sec) { 
@@ -224,8 +225,10 @@ namespace WaypointNav {
                 if (activeWaypoint.alt != ALT_INVALID) {
                     commandAlt = activeWaypoint.alt;
                 }
+                xte = crossTrackErr(startWaypoint.loc, activeWaypoint.loc, curPos.loc);
             } else { 
-                //commandAlt = curPos.alt;                
+                //commandAlt = curPos.alt;
+                xte = 0;                
             }
             float distTravelled = speed * .51444 * sec;
             
@@ -239,7 +242,6 @@ namespace WaypointNav {
             } else {
                 commandTrack += angularDiff(brg, commandTrack) * distToWaypoint * distToWaypoint / proximity / proximity;
             }
-            xte = crossTrackErr(startWaypoint.loc, activeWaypoint.loc, curPos.loc);
             // under 1000m and heading away from waypoint?  probably passed it 
             if (prevPos.valid && distToWaypoint < 1000  
                 && abs(angularDiff(bearing(prevPos.loc, curPos.loc), bearing(curPos.loc, activeWaypoint.loc))) >= 90 ) {
@@ -256,7 +258,6 @@ namespace WaypointNav {
 
         std::function<float(float)> onSteer = [](float steer){ return steer; };
 
-        // Set *next* waypoint. 
         void setWaypoint(const LatLonAlt &p) {
             if (activeWaypoint.valid) {
                 startWaypoint = activeWaypoint;
@@ -264,8 +265,7 @@ namespace WaypointNav {
                 startWaypoint = curPos;
             }
             //startWaypoint.alt = curPos.alt;
-            activeWaypoint = nextWaypoint;
-            nextWaypoint = p;
+            activeWaypoint = p;
             waypointPassed = false;
             wayPointCount++;
             if (wayPointCount == 1 && curPos.valid == false) { // first waypoint, initial position
@@ -277,14 +277,14 @@ namespace WaypointNav {
             }
 
             // TODO: implement flyby waypoints 
-            if (0 && startWaypoint.valid && activeWaypoint.valid && nextWaypoint.valid) { 
-                float turnRad = speed * speed / 11.26 / tan(DEG2RAD(12/*bank angle*/)) / FEET_PER_METER;
-                nextTurnLead = turnRad * tan(DEG2RAD(bearing(startWaypoint.loc, activeWaypoint.loc)  
-                    - bearing(activeWaypoint.loc, nextWaypoint.loc)) * 2);
-                nextTurnLead = min((float)2000.0, nextTurnLead);
-            } else { 
-                nextTurnLead = 250;
-            }
+            //if (0 && startWaypoint.valid && activeWaypoint.valid /*&& nextWaypoint.valid*/) { 
+            //    float turnRad = speed * speed / 11.26 / tan(DEG2RAD(12/*bank angle*/)) / FEET_PER_METER;
+            //    nextTurnLead = turnRad * tan(DEG2RAD(bearing(startWaypoint.loc, activeWaypoint.loc)  
+            //        - bearing(activeWaypoint.loc, nextWaypoint.loc)) * 2);
+            //    nextTurnLead = min((float)2000.0, nextTurnLead);
+            //}  
+            nextTurnLead = 250;
+            
 
             corrV = corrH = 0;
         }
@@ -293,6 +293,7 @@ namespace WaypointNav {
     class WaypointSequencer { 
         istream &in;
     public:
+        bool didWaypointChange = false;
         std::map<std::string,float> inputs; 
         WaypointTracker wptTracker;
         float endAlt = -1;
@@ -302,8 +303,12 @@ namespace WaypointNav {
             if (waitTime > 0)
                 waitTime -= timestep;
              
-            if (wptTracker.activeWaypoint.valid == false || wptTracker.waypointPassed)  
+            if (wptTracker.activeWaypoint.valid == false || wptTracker.waypointPassed) {
                 readNextWaypoint(timestep);
+                didWaypointChange = true;
+            } else { 
+                didWaypointChange = false;
+            }
             wptTracker.run(timestep);
     #ifdef UBUNTU
             if (wptTracker.curPos.valid && wptTracker.curPos.alt < endAlt) 
@@ -347,7 +352,7 @@ namespace WaypointNav {
                 } else if (sscanf(s.c_str(), "%lf, %lf %lf", &lat, &lon, &alt) == 3) {
                     wptTracker.setWaypoint(LatLonAlt(lat, lon, alt / FEET_PER_METER));
                 } else if (sscanf(s.c_str(), "%lf, %lf", &lat, &lon) == 2) {
-                    wptTracker.setWaypoint(LatLonAlt(lat, lon, wptTracker.nextWaypoint.alt));
+                    wptTracker.setWaypoint(LatLonAlt(lat, lon, wptTracker.activeWaypoint.alt));
                 } else if (sscanf(s.c_str(), "HDG %f", &wptTracker.steerHdg) == 1) {
                     wptTracker.commandTrack = wptTracker.steerHdg;
                     wptTracker.xte = 0;

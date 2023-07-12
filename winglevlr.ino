@@ -715,7 +715,7 @@ void setup() {
 #ifndef UBUNTU
 	Display::jde.re.begin([]()->void{ Display::jde.re.ISR(); });
 #endif
-	Display::maxb.setValue(15);
+	Display::maxb.setValue(20);
 	//ed.tzer.setValue(1000);
 	Display::pidsel.setValue(1);
 	Display::dtrk.setValue(desiredTrk);
@@ -912,23 +912,30 @@ void startMakeoutSess() {
 		delete wpNav;
 		wpNav = NULL;
 	} else {
-		waypointList = 
-"REPEAT 1\n"
-"47.46781184528505, -122.62479628528624\n"
-"47.42959741100363, -122.55173591135885\n" 
-"47.4331127570086, -122.66209866008706\n" 
-"47.476968122716066, -122.54582666728088\n"
-;
-		WaypointNav::LatLon curPos(ublox.lat, ublox.lon);
-		WaypointNav::LatLon nextPos = 
-			WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 6300);
-
+		Display::maxb.setValue(15);
 		if (0) { 
-			waypointList = sfmt("REPEAT 1\n%f, %f\nHDG %d\nWAIT 100\n",
-				nextPos.lat, nextPos.lon, ((int)magToTrue(ahrsInput.selTrack + 180)) % 360);
-		} else {
-			waypointList = sfmt("REPEAT 1\n%f, %f\n%f, %f\n",
-				nextPos.lat, nextPos.lon, curPos.lat, curPos.lon);
+			waypointList = 
+				"REPEAT 1\n"
+				"47.46781184528505, -122.62479628528624\n"
+				"47.42959741100363, -122.55173591135885\n" 
+				"47.4331127570086, -122.66209866008706\n" 
+				"47.476968122716066, -122.54582666728088\n"
+				;
+		} else { 
+			WaypointNav::LatLon curPos(ublox.lat, ublox.lon);
+			WaypointNav::LatLon nextPos = 
+				WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 6300);
+
+			waypointList = sfmt("REPEAT 1\n%f, %f\nHDG %f\nWAIT 30\nHDG %f\nWAIT 120\n"
+				"HDG %f\nWAIT 30\nHDG %f\nWAIT 30\n"
+				,
+				nextPos.lat, nextPos.lon, 
+				constrain360(ahrsInput.selTrack + 90),
+				constrain360(ahrsInput.selTrack + 180),
+				constrain360(ahrsInput.selTrack + 270),
+				constrain360(ahrsInput.selTrack + 0)
+				
+			);
 		}
 		wpNav = new WaypointsSequencerString(waypointList);
 		logItem.flags |= LogFlags::wptNav;
@@ -1275,7 +1282,7 @@ void loop() {
 		bool tick20HZ = floor(ahrsInput.sec * 20.0) != floor(lastAhrsInput.sec * 20.0);
 		bool tick5HZ = floor(ahrsInput.sec * 5.0) != floor(lastAhrsInput.sec * 5.0);
 
-		if (tick5HZ) { 
+		if (j.hz(5)) { 
 			if (wpNav != NULL) {
 				apMode = 3;
 				wpNav->wptTracker.curPos.loc.lat = ublox.lat;
@@ -1283,14 +1290,18 @@ void loop() {
 				wpNav->wptTracker.curPos.alt = ahrsInput.ubloxAlt / FEET_PER_METER;
 				wpNav->wptTracker.speed = ahrsInput.ubloxGroundSpeed;
 				wpNav->wptTracker.curPos.valid = true;
-				wpNav->run(5);
-				if (tick1HZ) {
+				wpNav->run(0.2);
+				if (wpNav->didWaypointChange) {
+					crossTrackError.reset();
+					pids.xtePID.reset();
+				}
+				if (j.hz(1)) {
 					crossTrackError.add(wpNav->wptTracker.xte * .0005);
 				}
 				if (abs(crossTrackError.average()) > 0.2) {
 					pids.xtePID.resetI();
 				}		
-				static const double xteCorr = 15;		
+				static const double xteCorr = 20;		
 				xteCorrection = -pids.xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
 				xteCorrection = max(-xteCorr, min(xteCorr, (double)xteCorrection));
 				
@@ -1299,8 +1310,8 @@ void loop() {
 					desAlt = wpNav->wptTracker.commandAlt * FEET_PER_METER;
 				}
 				ahrsInput.dtk = desiredTrk;
-				Serial.printf("wptNav %06.1f %06.1f %03.1f %010.5f %010.5f\n", wpNav->wptTracker.distToWaypoint,
-				wpNav->wptTracker.commandTrack, wpNav->waitTime, ublox.lat, ublox.lon);
+				Serial.printf("wptNav %06.1f ct:%06.1f trk:%06.1f %03.1f %010.5f %010.5f\n", wpNav->wptTracker.distToWaypoint,
+				wpNav->wptTracker.commandTrack, magToTrue(ahrsInput.selTrack), wpNav->waitTime, ublox.lat, ublox.lon);
 
 			} else if (apMode == 4) {
 				xteCorrection = -pids.xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);					
@@ -1590,12 +1601,11 @@ public:
 		imu->gz *= -1;
 
 		uint64_t now = millis();
-		if (floor(lastMillis / 100) != floor(now / 100)) { // 10hz
+		if (j.hz(10)) { 
 			delayBank.add(max(-0.5, abs(bank - 2.3)) * bank/abs(bank));
 			float dbank = delayBank.average();
-			track += tan(dbank * M_PI / 180) * 9.8 * 0.14;
-			if (track < 0) track += 360;
-			if (track > 360) track -= 360;
+			//TODO wind effect on ground track change 
+			track = constrain360(track + tan(dbank * M_PI / 180) * 9.8 * 0.14);
 			set_gpsTrack(track);
 		}
 
@@ -1619,15 +1629,17 @@ public:
 		ahrs.magBankTrim = 0; // TODO simulate mag so this doesn't oscillate
 		//ahrs.magHdg = hdg;
 		
-		float dist = speed * MPS_PER_KNOT * (now - lastMillis) / 1000.0; 
-		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(track), dist);
 		if (j.hz(.01)) {
 			wind = windVel;
 			if (windGust > 0) wind += random() * 1.0 / RAND_MAX * (windGust - windVel);
 
 		}
-		dist = wind * MPS_PER_KNOT * (now - lastMillis) / 1000.0; 
-		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, magToTrue(windDir + 180), dist);
+		// Simluated wind doesn't quite work 
+		float relWindAngle = angularDiff(track - windDir);
+		float gndSpeed = sqrt(wind * wind + speed * speed - 2 * wind * speed * cos(DEG2RAD(relWindAngle)));
+		//float gndSpeed = speed;
+		float dist = gndSpeed * MPS_PER_KNOT * (now - lastMillis) / 1000.0; 
+		curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, track, dist);		
 		curPos.alt += sin((pitch + simPitchOffset) * M_PI/180) * dist; 
 
 		lastMillis = now;
