@@ -926,15 +926,20 @@ void startMakeoutSess() {
 			WaypointNav::LatLon nextPos = 
 				WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 6300);
 
-			waypointList = sfmt("REPEAT 1\n%f, %f\nHDG %f\nWAIT 30\nHDG %f\nWAIT 120\n"
+			waypointList = sfmt(
+				"REPEAT 1\n"
+				"HDG %f\nWAIT 30\nHDG %f\nWAIT 120\n"
 				"HDG %f\nWAIT 30\nHDG %f\nWAIT 30\n"
-				,
-				nextPos.lat, nextPos.lon, 
-				constrain360(ahrsInput.selTrack + 90),
-				constrain360(ahrsInput.selTrack + 180),
-				constrain360(ahrsInput.selTrack + 270),
-				constrain360(ahrsInput.selTrack + 0)
-				
+				"%f, %f\n"
+				"HDG %f\nWAIT 30\nHDG %f\nWAIT 120\n"
+				"HDG %f\nWAIT 30\nHDG %f\nWAIT 30\n"
+				"%f, %f\n",
+				constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 180),
+				constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 0),
+				curPos.lat, curPos.lon, 
+				constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 180),
+				constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 0),
+				curPos.lat, curPos.lon 
 			);
 		}
 		wpNav = new WaypointsSequencerString(waypointList);
