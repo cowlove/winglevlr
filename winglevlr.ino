@@ -829,6 +829,7 @@ GDL90Parser::State gdl90State;
 
 Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
+void startMakeoutSess();
 
 void parseSerialCommandInput(const char *buf, int n) { 
 	static LineBuffer lb;
@@ -854,6 +855,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 		//else if (sscanf(line, "ptrim=%f", &f) == 1) { ed.tzer.value = f; }
 		//else if (sscanf(line, "mtin=%f", &f) == 1) { ed.mtin.value = f; }
 		else if (strstr(line, "zeroimu") == line) { Serial.print(ahrs.zeroSensors().c_str()); }
+		else if (strstr(line, "makeout") == line) { startMakeoutSess(); }
 		else if (sscanf(line, "dtrk=%f", &f) == 1) { setDesiredTrk(f); }
 		else if (sscanf(line, "s %f %f", &f, &f2) == 2) { servoOutput[0] = f; servoOutput[1] = f2; }
 		else if (sscanf(line, "p2stick %f", &f) == 1) { pitchToStick = f; }
@@ -908,6 +910,7 @@ int imuReadCount = 0;
 bool immediateLogStart = false;
 
 void startMakeoutSess() { 
+	Serial.printf("makeout sess %x\n", wpNav);
 	if (wpNav != NULL) {
 		delete wpNav;
 		wpNav = NULL;
@@ -928,11 +931,11 @@ void startMakeoutSess() {
 
 			waypointList = sfmt(
 				"REPEAT 1\n"
-				"HDG %f\nWAIT 30\nHDG %f\nWAIT 120\n"
-				"HDG %f\nWAIT 30\nHDG %f\nWAIT 30\n"
+				"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
+				"HDG %f\nWAIT 10\nHDG %f\nWAIT 30\n"
 				"%f, %f\n"
-				"HDG %f\nWAIT 30\nHDG %f\nWAIT 120\n"
-				"HDG %f\nWAIT 30\nHDG %f\nWAIT 30\n"
+				"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
+				"HDG %f\nWAIT 10\nHDG %f\nWAIT 30\n"
 				"%f, %f\n",
 				constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 180),
 				constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 0),
@@ -1027,7 +1030,7 @@ void loop() {
 		if (butFilt3.newEvent()) { // TOP or RIGHT button 
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) {		// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
 				apMode = 1;
-				if (wpNav != NULL) { 
+				if (0 && wpNav != NULL) { 
 					delete wpNav;
 					wpNav = NULL;
 				}
@@ -1287,7 +1290,7 @@ void loop() {
 		bool tick20HZ = floor(ahrsInput.sec * 20.0) != floor(lastAhrsInput.sec * 20.0);
 		bool tick5HZ = floor(ahrsInput.sec * 5.0) != floor(lastAhrsInput.sec * 5.0);
 
-		if (j.hz(5)) { 
+		if (tick5HZ) { 
 			if (wpNav != NULL) {
 				apMode = 3;
 				wpNav->wptTracker.curPos.loc.lat = ublox.lat;
@@ -1300,7 +1303,7 @@ void loop() {
 					crossTrackError.reset();
 					pids.xtePID.reset();
 				}
-				if (j.hz(1)) {
+				if (tick1HZ) {
 					crossTrackError.add(wpNav->wptTracker.xte * .0005);
 				}
 				if (abs(crossTrackError.average()) > 0.2) {
