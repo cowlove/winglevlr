@@ -780,7 +780,7 @@ void setup()
 	Display::jde.re.begin([]() -> void
 						  { Display::jde.re.ISR(); });
 #endif
-	Display::maxb.setValue(20);
+	Display::maxb.setValue(12);
 	// ed.tzer.setValue(1000);
 	Display::pidsel.setValue(1);
 	Display::dtrk.setValue(desiredTrk);
@@ -1737,7 +1737,7 @@ void loop()
 		Display::trk = ahrsInput.selTrack;
 		// Display::navt = auxMPU.gy; //navDTK;
 		Display::obs = obs;
-		Display::obs.setInverse(false, (g5LineCount / 5) % 2 == 0);
+		Display::obs.setInverse(false, (g5LineCount / 20) % 2 == 0);
 		Display::mode = servoSetupMode * 100000 + (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 +
 						hdgSelect * 10 + (int)testTurnActive;
 		Display::gdl = (float)gpsTrackGDL90;
