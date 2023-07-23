@@ -56,6 +56,47 @@ def addfile(fname, cols, diffArray = []):
             ax1.plot(array[:, 0], array[:, i], label=l)
 
 
+
+def evalSphere(c, array):
+    dists = []
+    for l in array:
+        d = np.sqrt((c[0] - l[0]) * (c[0] - l[0]) + 
+            (c[1] - l[1]) * (c[1] - l[1]) +
+            (c[2] - l[2]) * (c[2] - l[2]))
+        dists += [d, ]
+    r = np.std(dists)
+    return r
+
+# add specified columns from the data file to global x1 axis in an X vs Y scatter
+def magCalibrate(fname): 
+    dcn = [] 
+    ofile = makeFile(fname, 0, "", "")
+    for x in map(lambda i: colnames.index(i), ["mx", "my", "mz"]):
+        dcn += [x, ]
+    array  = np.loadtxt(ofile, usecols=dcn)
+    #center = [np.average(array.T[0]),np.average(array.T[1]),25]
+    center = [26,37,15]
+#[[ 3.56402466 26.17604815 37.20987549 25.        ]
+
+    span = 5
+    step = 1
+    results = []
+    for x in range(-span, span, step):
+        for y in range(-span, span, step):
+            print(x, y)
+            for z in range(-span, span, step):
+                c = [center[0] + x, center[1] + y, center[2] + z]
+                r = evalSphere(c, array)
+                line = [r, c[0], c[1], c[2]]
+                #print (line)
+                if len(results) == 0:
+                    results = line
+                else:
+                    results = np.vstack([results, line])
+    print (results[results[:,0].argsort()])
+    exit()
+
+
 # add specified columns from the data file to global x1 axis in an X vs Y scatter
 def addfileXY(fname, cols): 
     global ax1, ax2
@@ -178,9 +219,11 @@ while(len(argv) > 0):
         run(filename, replay, git, cmdargs)
     elif re.match("^[-]*map", a):
         runXY(filename, replay, git, cmdargs, ["lon", "lat"]);
+    elif re.match("^[-]*magcal", a):
+        run(filename, replay, git, cmdargs)
+        magCalibrate(filename);
     elif re.match("^[-]*magplot", a):
         runXY(filename, replay, git, cmdargs, ["mx", "my"]);
-
     else:
         columns += [a, ]
         if (len(diffArray) > 0):
