@@ -122,6 +122,7 @@ float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float bankStick = 0.3, bankPitch = .2;
 float servoGain = 1.5;
 int g5LineCount = 0;
+int serialLogMode = 0x1;
 
 #define LED_PIN 22
 /* Old hardwarinput pins: I2C pins/variant seems to determine layout
@@ -569,33 +570,18 @@ namespace Display
 	typedef JDisplayEditableItem E;
 	int y = 0;
 	const int c1x = 00, c2x = 70;
-	F ip(&jd, c1x, y, "WIFI:", "%.0f");
-	F stickX(&jd, c2x, y, "ST:", "%+.2f");
-	F stickY(&jd, c2x + 50, y, "/", "%+.2f");
-	E dtrk(&jd, c1x, y += 10, " DTK:", "%05.1f ", ed, 1, 0, 359, true);
-	F trk(&jd, c2x, y, " TRK:", "%05.1f ");
-	F pitc(&jd, c1x, y += 10, "PITC:", "%+03.1f ");
-	F obs(&jd, c2x, y, " OBS:", "%05.1f ");
-	F roll(&jd, c1x, y += 10, "ROLL:", "%+03.1f");
-	F mode(&jd, c2x, y, "MODE:", "%06.0f ");
-	F gdl(&jd, c1x, y += 10, " GDL:", "%05.1f ");
-	F g5hdg(&jd, c2x, y, " HDG:", "%05.1f ");
-	JDisplayItem<const char *> log(&jd, c1x, y += 10, " LOG:", "%s-");
-	F drop(&jd, c2x + 30, y, "", "%03.0f ");
-
-	E pidpl(&jd, c1x, y += 10, "PL:", "%04.2f ", ed, .01);
-	E sg(&jd, c2x, y, "  SG:", "%04.2f ", ed, 0.01, &servoGain);
-	E pidph(&jd, c1x, y += 10, "PH:", "%04.2f ", ed, .01);
-	E sty(&jd, c2x, y, " STY:", "%04.2f ", ed, 0.01, &ServoControl::trim.y);
-	E pidi(&jd, c1x, y += 10, " I:", "%05.4f ", ed, .0001);
-	E maxb(&jd, c2x, y, "MAXB:", "%04.1f ", ed, 0.1);
-	E pidd(&jd, c1x, y += 10, " D:", "%04.2f ", ed, .01);
-	E maxi(&jd, c2x, y, "MAXI:", "%04.1f ", ed, 0.1);
-	E pidg(&jd, c1x, y += 10, " G:", "%04.2f ", ed, .01);
-	E pidot(&jd, c2x, y, "POTR:", "%+5.2f ", ed, 0.01);
-	E dead(&jd, c1x, y += 10, "DZ:", "%04.1f ", ed, .1);
-	E pidit(&jd, c2x, y, "PITR:", "%+5.2f ", ed, 0.01);
-	E p2s(&jd, c1x, y += 10, "PS:", "%04.2f ", ed, .01, &pitchToStick);
+	F ip(&jd, c1x, y, "WIFI:", "%.0f");	F stickX(&jd, c2x, y, "ST:", "%+.2f");F stickY(&jd, c2x + 50, y, "/", "%+.2f");
+	E dtrk(&jd, c1x, y += 10, " DTK:", "%05.1f ", ed, 1, 0, 359, true);       F trk(&jd, c2x, y, " TRK:", "%05.1f ");
+	F pitc(&jd, c1x, y += 10, "PITC:", "%+03.1f ");  		F obs(&jd, c2x, y, " OBS:", "%05.1f ");
+	F roll(&jd, c1x, y += 10, "ROLL:", "%+03.1f");   		F mode(&jd, c2x, y, "MODE:", "%06.0f ");
+	F gdl(&jd, c1x, y += 10, " GDL:", "%05.1f ");    		F g5hdg(&jd, c2x, y, " HDG:", "%05.1f ");
+	JDisplayItem<const char *> log(&jd, c1x, y += 10, " LOG:", "%s-"); F drop(&jd, c2x + 30, y, "", "%03.0f ");
+	E pidpl(&jd, c1x, y += 10, "PL:", "%04.2f ", ed, .01);	E sg(&jd, c2x, y, "  SG:", "%04.2f ", ed, 0.01, &servoGain);
+	E pidph(&jd, c1x, y += 10, "PH:", "%04.2f ", ed, .01);	E sty(&jd, c2x, y, " STY:", "%04.2f ", ed, 0.01, &ServoControl::trim.y);
+	E pidi(&jd, c1x, y += 10, " I:", "%05.4f ", ed, .0001);	E maxb(&jd, c2x, y, "MAXB:", "%04.1f ", ed, 0.1);
+	E pidd(&jd, c1x, y += 10, " D:", "%04.2f ", ed, .01);	E maxi(&jd, c2x, y, "MAXI:", "%04.1f ", ed, 0.1);
+	E pidg(&jd, c1x, y += 10, " G:", "%04.2f ", ed, .01);	E pidot(&jd, c2x, y, "POTR:", "%+5.2f ", ed, 0.01);	
+	E dead(&jd, c1x, y += 10, "DZ:", "%04.1f ", ed, .1);  	E pidit(&jd, c2x, y, "PITR:", "%+5.2f ", ed, 0.01); 	E p2s(&jd, c1x, y += 10, "PS:", "%04.2f ", ed, .01, &pitchToStick);
 	E pidsel = JDisplayEditableItem(&jd, c2x, y, " PID:", "%1.0f", ed, 1, NULL, 0, 4);
 
 	// E dalt(NULL,c1x,y+=0,"DALT:", "%05.0f ", NULL, 20, &desAlt);
@@ -945,6 +931,7 @@ void parseSerialCommandInput(const char *buf, int n)
 		else if (sscanf(line, "trimy %f", &f) == 1) { ServoControl::trim.y = f; }
 		else if (sscanf(line, "strimx %f", &f) == 1) { ServoControl::strim.x = f; }
 		else if (sscanf(line, "strimy %f", &f) == 1) { ServoControl::strim.y = f; }
+		else if (sscanf(line, "sgain %f", &f) == 1) { servoGain = f; }
 		else if (sscanf(line, "maxb %f", &f) == 1) { Display::maxb.setValue(f); }
 		else if (sscanf(line, "roll %f", &f) == 1) { desRoll = f; }
 		else if (sscanf(line, "pidp %f", &f) == 1) { pids.pitchPID.gain.p = f; }
@@ -970,8 +957,18 @@ void parseSerialCommandInput(const char *buf, int n)
 			logItem.flags |= LogFlags::wptNav;
 		}
 		else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
-		else if (sscanf(line, "knobturn %f", &f) == 1) { Display::jde.re.change((int)f); }
-		else if (sscanf(line, "knobpress %f", &f) == 1) { Display::jde.buttonPress((int)f); }
+		else if (sscanf(line, "knobturn %f", &f) == 1) { 
+			Display::jde.re.change((int)f); 
+			//serialOutput(Display::jd.dump());
+		}
+		else if (sscanf(line, "knobpress %f", &f) == 1) { 
+			Display::jde.buttonPress((int)f); 
+			//serialOutput(Display::jd.dump());
+		}
+		else if (sscanf(line, "smode %f", &f) == 1) { 
+			serialLogMode = f;
+		}
+
 		else {
 			OUT("UNKNOWN COMMAND: %s", line);
 		} });
@@ -1082,7 +1079,7 @@ void loop()
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	PidControl *pid = &pids.rollPID;
-	if (true && serialReportTimer.tick())
+	if (true && serialReportTimer.tick() && (serialLogMode & 0x1))
 	{
 		// SERIAL STATUS line output
 		Serial.printf(
@@ -1753,6 +1750,9 @@ void loop()
 		// Display::xtec = xteCorrection;
 		Display::log = (logFile != NULL) ? logFile->currentFile.c_str() : "none      ";
 		Display::log.setInverse(false, (logFile != NULL));
+#ifdef UBUNTU
+	//	::printf("%s\n", Display::jd.dump().c_str());
+#endif
 	}
 
 #if 0
@@ -2274,15 +2274,15 @@ public:
 				}
 				else if (strlen(it->c_str()) > 0)
 				{
-					printf("Unknown debug parameter '%s'\n", it->c_str());
-					exit(-1);
+					//printf("Unknown debug parameter '%s'\n", it->c_str());
+					//exit(-1);
 				}
 			}
 		}
 		else
 		{
-			printf("Unknown debug parameter '%s'\n", *a);
-			exit(-1);
+			//printf("Unknown debug parameter '%s'\n", *a);
+			//exit(-1);
 		}
 	}
 	void setup() override
