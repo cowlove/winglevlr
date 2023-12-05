@@ -16,6 +16,7 @@ FIELD=3
 
 # List of parameters to sweep, each with midpoint, range, increment 
 #############################################################
-zeros.mx 0 30 3
-zeros.my 55 30 3
-dipconstant  4 4 .5	
+zeros.mx 27 20  3
+zeros.my 22 20 3
+zeros.mz 15 20 3 
+#dipconstant  4 4 .5	
