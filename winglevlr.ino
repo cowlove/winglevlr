@@ -219,7 +219,8 @@ public:
 			fixOk = myGNSS.getGnssFixOk();
 			if (fixOk) 
 				count++;
-			//Serial.printf("GPS: %+09.4f, %+09.4f %+05.1f %.0f %d\n", lat, lon, hdg, siv, (int)fixOk);
+			Serial.printf("GPS %+13.8f %+13.8f %+05.1f %.0f %.2f %d\n", lat, lon, hdg, siv, 
+				gs, (int)fixOk);
 			return fixOk;
 		}
 		return false;
@@ -681,15 +682,6 @@ void parseSerialLine(const char *buf)
 
 void setup()
 {
-	j.mqtt.active = false;
-	j.begin();
-	j.run();
-	// j.jw.aps = {{"Ping-582B", ""},
-	//			{"ChloeNet", "niftyprairie7"}};
-
-	j.mqtt.active = false;
-	j.cli.on(".*", parseSerialLine);
-
 	halInit();
 	// ugh: redo pin assignments, hal may have changed them
 	buttonTop.pin = pins.topButton;
@@ -700,6 +692,19 @@ void setup()
 	buttonBot.read();
 	buttonMid.read();
 	buttonKnob.read();
+
+	j.jw.enabled = !buttonTop.read();
+	j.mqtt.active = false;
+	
+	j.begin();
+	j.mqtt.active = false;
+	j.run();
+	j.mqtt.active = false;
+	// j.jw.aps = {{"Ping-582B", ""},
+	//			{"ChloeNet", "niftyprairie7"}};
+
+	j.mqtt.active = false;
+	j.cli.on(".*", parseSerialLine);
 
 	Serial.printf("Reading log file number\n");
 	int l = logFileNumber;
@@ -737,7 +742,7 @@ void setup()
 	wifi.addAP("Tip of the Spear", "51a52b5354");
 	wifi.addAP("ChloeNet", "niftyprairie7");
 #endif
-	if (!debugFastBoot && !buttonKnob.read() && !buttonTop.read())
+	if (j.jw.enabled && !debugFastBoot && !buttonKnob.read() && !buttonTop.read())
 	{ // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
 		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/)
@@ -747,10 +752,12 @@ void setup()
 		}
 	}
 
-	udpSL30.begin(7891);
-	udpG90.begin(4000);
-	udpNMEA.begin(7892);
-	udpCmd.begin(7895);
+	if (j.jw.enabled) { 
+		udpSL30.begin(7891);
+		udpG90.begin(4000);
+		udpNMEA.begin(7892);
+		udpCmd.begin(7895);
+	}
 
 	lastAhrsGoodG5.g5Hdg = lastAhrsGoodG5.gpsTrackGDL90 = lastAhrsGoodG5.gpsTrackRMC = -1;
 	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = -1;
@@ -1079,7 +1086,7 @@ void loop()
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	PidControl *pid = &pids.rollPID;
-	if (true && serialReportTimer.tick() && (serialLogMode & 0x1))
+	if (false && serialReportTimer.tick() && (serialLogMode & 0x1))
 	{
 		// SERIAL STATUS line output
 		Serial.printf(
@@ -1150,10 +1157,12 @@ void loop()
 					delete wpNav;
 					wpNav = NULL;
 				}
-				if (desiredTrk == -1)
+				if (desiredTrk == -1) {
+					desPitch = ahrs.pitch;
 					setDesiredTrk(ahrsInput.selTrack);
-				else
+				} else {
 					setDesiredTrk(-1);
+				}
 			}
 			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true)
 			{
@@ -1164,7 +1173,7 @@ void loop()
 				}
 				else
 				{
-					servoSetupMode = (servoSetupMode + 1) % 5;
+					servoSetupMode = (servoSetupMode + 1) % 6;
 				}
 				Serial.printf("Servo setup mode %d\n", servoSetupMode);
 			}
@@ -1185,8 +1194,6 @@ void loop()
 			{
 				if (butFilt.wasCount == 1)
 				{
-					// desPitch -= .5;
-
 					setDesiredTrk(constrain360(desiredTrk - 10));
 					apMode = 1;
 				}
@@ -1627,9 +1634,9 @@ void loop()
 		}
 
 		pids.rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		float altCorr = max(min(pids.altPID.corr, 3.0), -3.0);
-		desPitch = altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
-		pids.pitchPID.add(ahrs.pitch - desPitch, ahrs.pitch - desPitch, ahrsInput.sec);
+		float altCorr = 0;//max(min(pids.altPID.corr, 3.0), -3.0);
+		float p = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
+		pids.pitchPID.add(ahrs.pitch - p, ahrs.pitch - p, ahrsInput.sec);
 
 		if (armServo == true)
 		{
@@ -1677,11 +1684,24 @@ void loop()
 				break;
 			}
 			case 3:
+			{
+				float speed = 600.0;
+				stickX = sin(millis() / speed) * ServoControl::servoThrow * 1;
+				stickY = sin(millis() / speed) * ServoControl::servoThrow * 1;
+				int phase = ((int)(millis() / speed / 2 / M_PI)) % 4;
+				if (phase == 0) stickX = -ServoControl::servoThrow;
+				else if (phase == 1) stickX = +ServoControl::servoThrow;
+				else if (phase == 2) stickY = -ServoControl::servoThrow;
+				else if (phase == 3) stickY = +ServoControl::servoThrow;
+				setServos(stickX, stickY);
+				break;
+			}
+			case 4:
 				stickX = stickY = -ServoControl::servoThrow;
 				setServos(stickX, stickY);
 				break;
-			case 4:
-				stickX = stickY = -ServoControl::servoThrow;
+			case 5:
+				stickX = stickY = +ServoControl::servoThrow;
 				setServos(stickX, stickY);
 				break;
 			}
