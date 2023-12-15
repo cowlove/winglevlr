@@ -219,8 +219,8 @@ public:
 			fixOk = myGNSS.getGnssFixOk();
 			if (fixOk) 
 				count++;
-			Serial.printf("GPS %+13.8f %+13.8f %+05.1f %.0f %.2f %d\n", lat, lon, hdg, siv, 
-				gs, (int)fixOk);
+			//Serial.printf("GPS %+13.8f %+13.8f %+05.1f %.0f %.2f %d\n", lat, lon, hdg, siv, 
+			//	gs, (int)fixOk);
 			return fixOk;
 		}
 		return false;
@@ -442,7 +442,7 @@ namespace ServoControlElbow
 	XY trim(0, -0.5), strim(-90, 50);
 	const float servoThrow = +1.5;
 	const float hinge = 15;
-	float maxChange = .025;
+	float maxChange = .06;
 
 	struct ArmInfo
 	{
@@ -682,6 +682,10 @@ void parseSerialLine(const char *buf)
 
 void setup()
 {
+	Display::jd.begin();
+	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
+	Display::jd.clear();
+
 	halInit();
 	// ugh: redo pin assignments, hal may have changed them
 	buttonTop.pin = pins.topButton;
@@ -724,10 +728,6 @@ void setup()
 	// pinMode(pins.servo_enable, OUTPUT);
 	// digitalWrite(pins.servo_enable, 1);
 
-	Display::jd.begin();
-	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
-	Display::jd.clear();
-
 	attachInterrupt(digitalPinToInterrupt(buttonMid.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(buttonBot.pin), buttonISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(buttonTop.pin), buttonISR, CHANGE);
@@ -768,7 +768,6 @@ void setup()
 		return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >= 0 && v <= 4) ? (int)v : 0]);
 	};
 	Display::jde.begin();
-
 #ifndef UBUNTU
 	Display::jde.re.begin([]() -> void
 						  { Display::jde.re.ISR(); });
@@ -1664,20 +1663,15 @@ void loop()
 			}
 			case 2:
 			{
-				float speed = 600.0;
+				float speed = 500.0;
 				stickX = sin(millis() / speed) * ServoControl::servoThrow * 1;
 				stickY = sin(millis() / speed) * ServoControl::servoThrow * 1;
 				int phase = ((int)(millis() / speed / 2 / M_PI)) % 2;
-				if (phase == 0)
-				{
+				if (phase == 0) {
 					stickX = 0;
-				}
-				else if (phase == 1)
-				{
+				} else if (phase == 1) {
 					stickY = 0;
-				}
-				else
-				{
+				} else {
 					stickX = stickY = 0;
 				}
 				setServos(stickX, stickY);
@@ -1685,14 +1679,21 @@ void loop()
 			}
 			case 3:
 			{
-				float speed = 600.0;
-				stickX = sin(millis() / speed) * ServoControl::servoThrow * 1;
-				stickY = sin(millis() / speed) * ServoControl::servoThrow * 1;
-				int phase = ((int)(millis() / speed / 2 / M_PI)) % 4;
-				if (phase == 0) stickX = -ServoControl::servoThrow;
-				else if (phase == 1) stickX = +ServoControl::servoThrow;
-				else if (phase == 2) stickY = -ServoControl::servoThrow;
-				else if (phase == 3) stickY = +ServoControl::servoThrow;
+				float speed = 500.0;
+				stickX = cos(millis() / speed) * ServoControl::servoThrow;
+				stickY = cos(millis() / speed) * ServoControl::servoThrow;
+				int phase = ((int)(millis() / speed / M_PI)) % 4;
+				if (phase == 0) {
+					stickY = -ServoControl::servoThrow;
+				} else if (phase == 1) {
+					stickX = -ServoControl::servoThrow;
+				} else if (phase == 2) { 
+					stickY = +ServoControl::servoThrow;
+					stickX = -stickX;
+				} else if (phase == 3) {
+					stickX = +ServoControl::servoThrow;
+					stickY = -stickY;
+				}
 				setServos(stickX, stickY);
 				break;
 			}
@@ -2125,6 +2126,7 @@ public:
 			sscanf(*(++a), "%f", &svisStartTime);
 			svis = new ServoVisualizer();
 			svis->startTime = svisStartTime;
+			servoSetupMode = 3;
 		}
 		else if (strcmp(*a, "--wind") == 0)
 		{
