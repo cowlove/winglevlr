@@ -933,6 +933,7 @@ void parseSerialCommandInput(const char *buf, int n)
 		if (sscanf(line, "navhi=%f", &f) == 1) { pids.hdgPID.hiGain.p = f; }
 		else if (sscanf(line, "navtr %f", &f) == 1) { pids.hdgPID.hiGainTrans.p = f; }
 		else if (sscanf(line, "srate %f", &f) == 1) { ServoControl::maxChange = f; }
+		else if (sscanf(line, "sgain %f", &f) == 1) { servoGain = f; }
 		else if (sscanf(line, "trimx %f", &f) == 1) { ServoControl::trim.x = f; }
 		else if (sscanf(line, "trimy %f", &f) == 1) { ServoControl::trim.y = f; }
 		else if (sscanf(line, "strimx %f", &f) == 1) { ServoControl::strim.x = f; }

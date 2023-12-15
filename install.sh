@@ -29,10 +29,11 @@ arduino-cli lib install MPU9250_asukiaaa
 arduino-cli lib install "Adafruit GFX Library"
 arduino-cli lib install "Adafruit ST7735 and ST7789 Library"
 arduino-cli lib install OneWireNg
+arduino-cli lib install PubSubClient
 arduino-cli lib uninstall SD
 mkdir -p ${HOME}/Arduino/libraries
 cd ${HOME}/Arduino/libraries 
-git clone git@github.com:cowlove/esp32jimlib.git
+git clone https://github.com/cowlove/esp32jimlib.git
 git clone https://github.com/plerup/makeEspArduino.git
 cd makeEspArduino
 git checkout 190e073
