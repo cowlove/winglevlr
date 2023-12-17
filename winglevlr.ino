@@ -165,10 +165,17 @@ public:
 	int gpsGood = 0;
 	void init()
 	{
-		int bps = 57600;
+		int bps = 38400;
 		// myGNSS.enableDebugging(Serial, false);
 		Serial.printf("Trying %d BPS...\n", bps);
 		Serial2.begin(bps, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
+		for(int i = 0; i < 100; i++) {  
+			while(Serial2.available()) { 
+				int c = Serial2.read();
+				Serial.printf("%c", c);
+			}
+			delay(5);
+		}
 		if (myGNSS.begin(Serial2) == false)
 		{
 			Serial.printf("Trying 9.6K BPS...\n");
@@ -219,8 +226,8 @@ public:
 			fixOk = myGNSS.getGnssFixOk();
 			if (fixOk) 
 				count++;
-			//Serial.printf("GPS %+13.8f %+13.8f %+05.1f %.0f %.2f %d\n", lat, lon, hdg, siv, 
-			//	gs, (int)fixOk);
+			Serial.printf("GPS %+13.8f %+13.8f %+05.1f %.0f %.2f %d\n", lat, lon, hdg, siv, 
+				gs, (int)fixOk);
 			return fixOk;
 		}
 		return false;
@@ -2421,7 +2428,7 @@ CMD			SD3					SDD			CLK
  *
  * 	18 (PWM)	19 (LED)
  * 	33 (PWM)	RST
- * 	27 backlight 32  (KNOB)
+ * 	27 backlght 32  (KNOB)
  * 	GND(GND)	26  (ROT)
  * 	0 (ROT)		GND
  * 	GND			3.3V
