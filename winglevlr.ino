@@ -119,7 +119,7 @@ float desRoll = 0, pitchToStick = 0.15, desPitch = 0, desAlt = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
-float bankStick = 0.3, bankPitch = .2;
+float bankStick = 0.3, bankPitch = 0.2;
 float servoGain = 1.5;
 int g5LineCount = 0;
 int serialLogMode = 0x1;
@@ -1071,6 +1071,119 @@ void startMakeoutSess()
 		logItem.flags |= LogFlags::wptNav;
 	}
 }
+
+
+// Button synopsis:
+//	TOP:  1 short: delete wpNav, alternate b/w wings-level and hold current track/pitch
+//        1 long :  arm servo if needed, step through servoSetupMode
+//        2 short: increment hdgSelect
+//        3 short: startMakeoutSession();
+// MIDDLE:1 short: hdg -10 degrees
+//        1 long : start/stop logging
+//		  2 short: pitch + .2 degrees
+// BOTTOM:1 short: hdg +10 degrees 
+//        2 short: pitch - .2 degrees
+//        3 short: activate test turns 
+//        1 long : arm/disarm servo, reset servoSetupMode to 0  
+// KNOB   1 long : arm/disarm servo
+//        1 short: GUI select
+
+void doButtons() { 
+	const float pitchInc = .2, hdgInc = 10;
+	buttonISR();
+	if (butFilt3.newEvent()) { // TOP or RIGHT button
+		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) { 
+			// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
+			apMode = 1;
+			if (0 && wpNav != NULL) {
+				delete wpNav;
+				wpNav = NULL;
+			}
+			if (desiredTrk == -1) {
+				desPitch = ahrs.pitch;
+				setDesiredTrk(ahrsInput.selTrack);
+			} else {
+				setDesiredTrk(-1);
+			}
+		}
+		if (butFilt3.wasCount == 1 && butFilt3.wasLong == true) {
+			if (armServo) {
+				armServo = false;
+				servoSetupMode = 0;
+			} else {
+				servoSetupMode = (servoSetupMode + 1) % 6;
+			}
+			Serial.printf("Servo setup mode %d\n", servoSetupMode);
+		}
+		if (butFilt3.wasCount == 2 && butFilt3.wasLong == false) {
+			// double press - hdg select
+			hdgSelect = (hdgSelect + 1) % 4;
+		}
+		if (butFilt3.wasCount == 3) {
+			startMakeoutSess();
+		}
+	}
+	if (butFilt.newEvent()) { // MIDDLE BUTTON
+		if (!butFilt.wasLong && butFilt.wasCount == 1) {
+				setDesiredTrk(constrain360(desiredTrk - hdgInc));
+				apMode = 1;
+		}
+		if (butFilt.wasCount == 2) {
+				desPitch += pitchInc;
+		}
+		if (butFilt.wasLong) { 
+			if (!logChanging && (immediateLogStart != true || millis() > 10000)) {
+				logChanging = true;
+				if (logFile == NULL) {
+					logFile = new SDCardBufferedLog<LogItem>(logFileName, 200 /*q size*/, 0 /*timeout*/, 5000 /*flushInterval*/, false /*textMode*/);
+					logFilename = logFile->currentFile;
+					logChanging = false;
+				} else {
+					delete logFile;
+					logFile = NULL;
+					logChanging = false;
+				}
+			}
+			immediateLogStart = false;
+		}
+	}
+	if (butFilt2.newEvent()) { // BOTTOM or LEFT button
+		if (butFilt2.wasCount == 1 && butFilt2.wasLong == true) {
+			armServo = !armServo;
+			servoSetupMode = 0;
+		}
+		if (butFilt2.wasCount == 1 && butFilt2.wasLong == false) {
+			setDesiredTrk(constrain360(desiredTrk + hdgInc));
+			apMode = 1;
+		} 
+		if (butFilt2.wasCount == 2) {
+			desPitch -= pitchInc;
+		}
+		if (butFilt2.wasCount == 3) {
+			testTurnActive = !testTurnActive;
+			testTurnAlternate = 0;
+			if (testTurnActive) {
+				logItem.flags |= LogFlags::ttaNav;
+			}
+		}
+	}
+
+	if (butFilt4.newEvent()) { // main knob button
+		if (butFilt4.wasCount == 1 && butFilt4.wasLong) {
+			Display::jde.buttonPress(butFilt4.wasLong);
+		}
+		if (butFilt4.wasLong && butFilt4.wasCount == 1) {
+			armServo = !armServo;
+			servoSetupMode = 0;
+		}
+		if (butFilt4.wasCount == 3)	{
+			tttt = .1;
+			ttlt = .1;
+			armServo = testTurnActive = true;
+		}
+	}
+}
+
 void loop()
 {
 	esp_task_wdt_reset();
@@ -1151,132 +1264,8 @@ void loop()
 		immediateLogStart = true;
 	}
 	firstLoop = false;
-	if (buttonCheckTimer.tick())
-	{
-		buttonISR();
-		if (butFilt3.newEvent())
-		{ // TOP or RIGHT button
-			if (butFilt3.wasCount == 1 && butFilt3.wasLong == false)
-			{ // SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
-				apMode = 1;
-				if (0 && wpNav != NULL)
-				{
-					delete wpNav;
-					wpNav = NULL;
-				}
-				if (desiredTrk == -1) {
-					desPitch = ahrs.pitch;
-					setDesiredTrk(ahrsInput.selTrack);
-				} else {
-					setDesiredTrk(-1);
-				}
-			}
-			if (butFilt3.wasCount == 1 && butFilt3.wasLong == true)
-			{
-				if (armServo)
-				{
-					armServo = false;
-					servoSetupMode = 0;
-				}
-				else
-				{
-					servoSetupMode = (servoSetupMode + 1) % 6;
-				}
-				Serial.printf("Servo setup mode %d\n", servoSetupMode);
-			}
-			if (butFilt3.wasCount == 2 && butFilt3.wasLong == false)
-			{
-				// double press - arm servos
-				armServo = !armServo;
-				servoSetupMode = 0;
-			}
-			if (butFilt3.wasCount == 3)
-			{
-				startMakeoutSess();
-			}
-		}
-		if (butFilt.newEvent())
-		{ // MIDDLE BUTTON
-			if (!butFilt.wasLong)
-			{
-				if (butFilt.wasCount == 1)
-				{
-					setDesiredTrk(constrain360(desiredTrk - 10));
-					apMode = 1;
-				}
-				else
-				{
-					hdgSelect = (hdgSelect + 1) % 4;
-				}
-			}
-			else
-			{
-				if (!logChanging && (immediateLogStart != true || millis() > 10000))
-				{
-					logChanging = true;
-					if (logFile == NULL)
-					{
-						logFile = new SDCardBufferedLog<LogItem>(logFileName, 200 /*q size*/, 0 /*timeout*/, 5000 /*flushInterval*/, false /*textMode*/);
-						logFilename = logFile->currentFile;
-						logChanging = false;
-					}
-					else
-					{
-						delete logFile;
-						logFile = NULL;
-						logChanging = false;
-					}
-				}
-				immediateLogStart = false;
-			}
-		}
-		if (butFilt2.newEvent())
-		{ // BOTTOM or LEFT button
-			if (butFilt2.wasCount == 1 && butFilt2.wasLong == true)
-			{
-				armServo = !armServo;
-				servoSetupMode = 0;
-				// rollPID.reset();
-			}
-			if (butFilt2.wasCount == 1 && butFilt2.wasLong == false)
-			{
-				setDesiredTrk(constrain360(desiredTrk + 10));
-				apMode = 1;
-				// desPitch += .5;
-			}
-			if (butFilt2.wasCount == 2)
-			{
-				testTurnActive = !testTurnActive;
-				testTurnAlternate = 0;
-				if (testTurnActive)
-				{
-					logItem.flags |= LogFlags::ttaNav;
-				}
-			}
-		}
-
-		if (butFilt4.newEvent())
-		{ // main knob button
-			if (butFilt4.wasCount == 1 && butFilt4.wasLong != true)
-			{
-				Display::jde.buttonPress(butFilt4.wasLong);
-			}
-			if (butFilt4.wasLong && butFilt4.wasCount == 1)
-			{
-				armServo = !armServo;
-				servoSetupMode = 0;
-				// rollPID.reset();
-				// hdgPID.reset();
-				// pitchPID.reset();
-				// ahrs.reset();
-			}
-			if (butFilt4.wasCount == 3)
-			{
-				tttt = .1;
-				ttlt = .1;
-				armServo = testTurnActive = true;
-			}
-		}
+	if (buttonCheckTimer.tick()) {
+		doButtons();
 	}
 
 	if (testTurnActive)
@@ -1650,7 +1639,8 @@ void loop()
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations.
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values
 			stickX = pids.rollPID.corr * servoGain;
-			stickY = (pids.pitchPID.corr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick + (desPitch * pitchToStick)) * servoGain;
+			//stickY = (pids.pitchPID.corr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick + (desPitch * pitchToStick)) * servoGain;
+			stickY = pids.pitchPID.corr * servoGain;
 			// stickY = 0;
 			// stickX += cos(millis() / 100.0) * .04;
 			// stickY += sin(millis() / 100.0) * .04;
