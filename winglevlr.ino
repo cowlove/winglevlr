@@ -1055,10 +1055,10 @@ void startMakeoutSess()
 			waypointList = sfmt(
 				"REPEAT 1\n"
 				"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
-				"HDG %f\nWAIT 10\nHDG %f\nWAIT 30\n"
+				"HDG %f\nWAIT 10\nHDG %f\nWAIT 60\n"
 				"%f, %f\n"
 				"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
-				"HDG %f\nWAIT 10\nHDG %f\nWAIT 30\n"
+				"HDG %f\nWAIT 10\nHDG %f\nWAIT 60\n"
 				"%f, %f\n",
 				constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 180),
 				constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 0),
