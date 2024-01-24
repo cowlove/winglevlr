@@ -30,7 +30,7 @@ simplot:	test.out
 
 #.PHONY:	winglevlr_ubuntu
 winglevlr_ubuntu:	winglevlr.cpp WaypointNav.h RollAHRS.h PidControl.h GDL90Parser.h ServoVisualizer.h
-	g++ -x c++ -g $< -o $@ -DAHRS_RATE=${AHRS_RATE} -DESP32 -DUBUNTU -I./ -I${HOME}/Arduino/libraries/TinyGPSPlus-1.0.2/src/ -I ${HOME}/Arduino/libraries/*jimlib/src/ -I${HOME}/Arduino/libraries/TinyGPSPlus/src/  -lGL -lglut 
+	g++ -x c++ -g $< -o $@ -DAHRS_RATE=${AHRS_RATE} -DESP32 -DUBUNTU -I./ -I${HOME}/Arduino/libraries/TinyGPSPlus-1.0.2/src/ -I ${HOME}/Arduino/libraries/jimlib/src/ -I${HOME}/Arduino/libraries/TinyGPSPlus/src/  -lGL -lglut 
 # add -pg to profile 
 CHIP=esp32
 OTA_ADDR=192.168.0.37
