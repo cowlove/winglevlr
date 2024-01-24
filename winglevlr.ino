@@ -1095,7 +1095,7 @@ void doButtons() {
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) { 
 			// SHORT: Stop tracking NMEA dest, toggle desired track between -1/current heading
 			apMode = 1;
-			if (0 && wpNav != NULL) {
+			if (wpNav != NULL) {
 				delete wpNav;
 				wpNav = NULL;
 			}
@@ -1754,8 +1754,8 @@ void loop()
 		// Display::navt = auxMPU.gy; //navDTK;
 		Display::obs = obs;
 		Display::obs.setInverse(false, (g5LineCount / 20) % 2 == 0);
-		Display::mode = servoSetupMode * 100000 + (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 + armServo * 100 +
-						hdgSelect * 10 + (int)testTurnActive;
+		Display::mode = servoSetupMode * 100000 + (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 
+						+ armServo * 100 + hdgSelect * 10 + (int)testTurnActive;
 		Display::gdl = (float)gpsTrackGDL90;
 		Display::g5hdg = ahrsInput.ubloxHdg;
 		Display::g5hdg.setInverse(false, (ublox.count / 10) % 2 == 0);
