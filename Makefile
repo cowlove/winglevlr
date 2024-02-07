@@ -1,6 +1,7 @@
 #BOARD=esp32doit-devkit-v1
-#BOARD=heltec_wifi_kit_32
+BOARD=ttgo-t1
 #BOARD=nodemcu-32s
+#BOARD=d1_mini32
 VERBOSE=1
 
 AHRS_RATE=50
