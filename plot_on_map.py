@@ -14,7 +14,8 @@ fileWpts = "./wpts.txt" if len(sys.argv) < 4 else sys.argv[3]
 
 
 apikey = 'AIzaSyC4_GZpzLJsbb_XgHka26mQQTa-QaO9d3w'
-gmap = gmplot.GoogleMapPlotter(47.45804489362055, -122.59075938584017, 13, apikey=apikey)
+gmap = gmplot.GoogleMapPlotter(47.490366884467925, -122.8146229910965, 13, apikey=apikey)
+#47.45804489362055, -122.59075938584017, 13, apikey=apikey)
 
 track1 = []
 track2 = []
@@ -57,8 +58,8 @@ with open(fileWpts) as f:
 if (len(waypoints) > 0):
     waypoints.append(waypoints[0])
 
-gmap.scatter(*zip(*waypoints), color='yellow')
-gmap.plot(*zip(*track1), edge_width=3, color='red')
-gmap.plot(*zip(*track2), edge_width=2, color='green')
+gmap.scatter(*zip(*waypoints), color='blue')
+gmap.plot(*zip(*track1), edge_width=1, color='yellow')
+gmap.plot(*zip(*track2), edge_width=4, color='yellow')
 gmap.draw('map.html')
 

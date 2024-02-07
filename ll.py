@@ -42,6 +42,8 @@ def addfile(fname, cols, diffArray = []):
     for x in map(lambda i: colnames.index(i), cols):
         dcn += [x, ]
 
+    print(dcn)
+    print(fname)
     array  = np.loadtxt(fname, usecols=dcn)
     if len(diffArray) == len(array[:,1]):
         array[:,1] = [(a - b) for a, b in zip(array[:,1], diffArray)]
@@ -132,7 +134,7 @@ def makeFile(ifile, replay, git, dargs):
 
         if not os.path.exists(ofile) or os.path.getctime(ofile) < os.path.getctime(prog):
             cmd = prog + " " + dargs + " --replay " + ifile + " --log " + ("-", "+")[replay]
-            cmd += "| grep LOG > '" + ofile + "'"
+            cmd += "| egrep '(LOG U$)|(LOG$)' > '" + ofile + "'"
             print(cmd)
             os.system(cmd)
 
