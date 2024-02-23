@@ -456,7 +456,7 @@ namespace ServoControlElbow
 		float length;
 		float angle;
 		// TODO: broken, only works if anchorPos.x == 0, arms are equal
-	} arms[] = {{1.8, DEG2RAD(225 + hinge)}, {1.8, DEG2RAD(90 - hinge * 2)}};
+	} arms[] = {{2.6, DEG2RAD(225 + hinge)}, {2.6, DEG2RAD(90 - hinge * 2)}};
 
 	XY anchorPos(0, -sqrt(
 						arms[0].length *arms[0].length +
