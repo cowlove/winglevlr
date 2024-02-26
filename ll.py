@@ -33,7 +33,10 @@ colnames = [
 
 # columns to place in the second Y axis
 ax2cols = ["hdgGPS", "hdgGDL90", "hdgVTG", "hdgRMC", "g5hdg", "ubloxhdg", "lat", "lon", "servo0", 
-    "servo1", "maghdg"]
+    "servo1", "maghdg", "stickX", "stickY"]
+
+# columns to place in the second Y axis
+negcols = ["roll"]
 
 # add specified columns from the data file to global ax1, ax2 exes 
 def addfile(fname, cols, diffArray = []): 
@@ -170,7 +173,7 @@ def diff(filename, replay, git, dargs, col):
     diffArray = np.loadtxt(f, usecols=[colnames.index(col),])
 
 #globals
-mpl.rcParams["lines.linewidth"] = .5
+mpl.rcParams["lines.linewidth"] = 1.5
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 ax2._get_lines.prop_cycler = ax1._get_lines.prop_cycler

@@ -1089,7 +1089,7 @@ void startMakeoutSess()
 //        1 short: GUI select
 
 void doButtons() { 
-	const float pitchInc = .2, hdgInc = 10;
+	const float pitchInc = 1, hdgInc = 10;
 	buttonISR();
 	if (butFilt3.newEvent()) { // TOP or RIGHT button
 		if (butFilt3.wasCount == 1 && butFilt3.wasLong == false) { 
