@@ -226,8 +226,8 @@ public:
 			fixOk = myGNSS.getGnssFixOk();
 			if (fixOk) 
 				count++;
-			Serial.printf("GPS %+13.8f %+13.8f %+05.1f %.0f %.2f %d\n", lat, lon, hdg, siv, 
-				gs, (int)fixOk);
+			//Serial.printf("GPS %+13.8f %+13.8f %+05.1f %.0f %.2f %d\n", lat, lon, hdg, siv, 
+			//	gs, (int)fixOk);
 			return fixOk;
 		}
 		return false;
@@ -446,17 +446,17 @@ namespace ServoControlElbow
 	// 4) (0,0) is stick neutral position
 	// 5) anchorPos is the x/y of the arm[0] hinge point
 
-	XY trim(0, -0.5), strim(-90, 50);
+	XY trim(0, -0.15), strim(-90, 50);
 	const float servoThrow = +1.5;
 	const float hinge = 15;
-	float maxChange = .06;
+	float maxChange = .12;
 
 	struct ArmInfo
 	{
 		float length;
 		float angle;
 		// TODO: broken, only works if anchorPos.x == 0, arms are equal
-	} arms[] = {{2.6, DEG2RAD(225 + hinge)}, {2.6, DEG2RAD(90 - hinge * 2)}};
+	} arms[] = {{2.1, DEG2RAD(225 + hinge)}, {2.1, DEG2RAD(90 - hinge * 2)}};
 
 	XY anchorPos(0, -sqrt(
 						arms[0].length *arms[0].length +
@@ -1206,7 +1206,7 @@ void loop()
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	PidControl *pid = &pids.rollPID;
-	if (false && serialReportTimer.tick() && (serialLogMode & 0x1))
+	if (serialReportTimer.tick() && (serialLogMode & 0x1))
 	{
 		// SERIAL STATUS line output
 		Serial.printf(
@@ -1216,7 +1216,7 @@ void loop()
 			"A%04.0f DA%04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"C %+06.2f %+05.1f %+05.1f %+05.1f "
-			"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d "
+			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d "
 			"a%d "
 			//"s%04d %04d "
 			"\n",
@@ -1226,8 +1226,8 @@ void loop()
 			ahrsInput.alt, desAlt,
 			// 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr,
-			buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), Display::jde.re.count,
-			logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
+			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), Display::jde.re.count,
+			//logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			ublox.count,
 			// servoOutput[0], servoOutput[1],
 			/*dummy*/ 0);
