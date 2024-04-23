@@ -1072,17 +1072,18 @@ void startMakeoutSess()
 	}
 }
 
-
 // Button synopsis:
 //	TOP:  1 short: delete wpNav, alternate b/w wings-level and hold current track/pitch
-//        1 long :  arm servo if needed, step through servoSetupMode
+//        1 long : arm servo if needed, step through servoSetupMode
 //        2 short: increment hdgSelect
 //        3 short: startMakeoutSession();
+//		boot hold: debugFastBoot (skip wifi, etc)
 // MIDDLE:1 short: hdg -10 degrees
 //        1 long : start/stop logging
-//		  2 short: pitch + .2 degrees
+//		  2 short: pitch - 1 degrees
+//      boot hold: immediate log start 
 // BOTTOM:1 short: hdg +10 degrees 
-//        2 short: pitch - .2 degrees
+//        2 short: pitch + 1 degrees
 //        3 short: activate test turns 
 //        1 long : arm/disarm servo, reset servoSetupMode to 0  
 // KNOB   1 long : arm/disarm servo
@@ -1129,7 +1130,7 @@ void doButtons() {
 				apMode = 1;
 		}
 		if (butFilt.wasCount == 2) {
-				desPitch += pitchInc;
+				desPitch -= pitchInc;
 		}
 		if (butFilt.wasLong) { 
 			if (!logChanging && (immediateLogStart != true || millis() > 10000)) {
@@ -1157,7 +1158,7 @@ void doButtons() {
 			apMode = 1;
 		} 
 		if (butFilt2.wasCount == 2) {
-			desPitch -= pitchInc;
+			desPitch += pitchInc;
 		}
 		if (butFilt2.wasCount == 3) {
 			testTurnActive = !testTurnActive;
@@ -1212,7 +1213,7 @@ void loop()
 		Serial.printf(
 			"%06.2f "
 			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"%+05.2f,%+05.2f R%+05.1f P%+05.1f DP%+05.1f "
+			"%+05.2f,%+05.2f R%+05.1f P%+05.1f DR%+05.1f DP%+05.1f "
 			"A%04.0f DA%04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"C %+06.2f %+05.1f %+05.1f %+05.1f "
@@ -1222,7 +1223,7 @@ void loop()
 			"%d\n",
 			millis() / 1000.0,
 			// roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),
-			stickX, stickY, roll, pitch, desPitch,
+			stickX, stickY, roll, pitch, desRoll, desPitch,
 			ahrsInput.alt, desAlt,
 			// 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr,
@@ -1238,21 +1239,6 @@ void loop()
 		serialLogFlags = 0;
 		auxMpuPacketCount = 0;
 	}
-
-	/////////////////////////////////////////////////////////////////////////////
-	// KNOB/BUTTON INTERFACE
-	//
-	// TOP:    short   - apMode = 1, toggle between wing level and hdg hold
-	//         long    - servo setup mode 1, 2, 3, 4
-	//         triple  - zero sensors
-	// MIDDLE: short   - left 10 degrees
-	//         double  - hdg select mode
-	//         long    - start/stop log
-	// BOTTOM: short   - right 10 degrees
-	//		   long    - alt hold
-	//         double  - active test turn sequence
-	// KNOB    long    - arm servo
-	//         triple  - servo test mode
 
 	// ed.re.check();
 	if (firstLoop == true && (digitalRead(buttonMid.pin) == 0 /* || debugFastBoot*/))
