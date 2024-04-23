@@ -255,9 +255,10 @@ public:
 
 //ZERO SENSORS gyro 1.567909 0.214304 -0.009128 accel 0.006692 0.003586 2.031624
 //ZERO SENSORS gyro 0.476272 1.088531 -0.026562 accel -0.024028 -0.031612 2.004098
+float gyrOffX=+1.357, gyrOffY=-0.028, gyrOffZ=-1.816, accOffX=-0.037, accOffY=-0.072, accOffZ=+0.013;
 
-	float gyrOffX = +0.476, gyrOffY = +1.080, gyrOffZ = -0.026;
-	float accOffX = -0.024, accOffY = -0.031, accOffZ = +0.005;
+	//float gyroOffX = +0.476, gyrOffY = +1.080, gyrOffZ = -0.026;
+	//float accOffX = -0.024, accOffY = -0.031, accOffZ = +0.005;
 
 
 	float compRatio1 = AHRS_RATE_CR_SCALE(0.00072);  // roll comp filter ratio 

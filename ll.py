@@ -33,7 +33,7 @@ colnames = [
 
 # columns to place in the second Y axis
 ax2cols = ["hdgGPS", "hdgGDL90", "hdgVTG", "hdgRMC", "g5hdg", "ubloxhdg", "lat", "lon", "servo0", 
-    "servo1", "maghdg", "stickX", "stickY"]
+    "servo1", "maghdg", "stickX", "stickY", "g5ias", "ubloxgs"]
 
 # columns to place in the second Y axis
 negcols = ["roll"]
@@ -54,6 +54,12 @@ def addfile(fname, cols, diffArray = []):
         l=cols[i - 1]
         if len(diffArray) and i == 1:
             l += " (DIFFERENCE)"
+        try: 
+            negcols.index(cols[i - 1])
+            print("NEGATIVE")
+            array[:,i] = np.negative(array[:,i])
+        except:
+            0
         try: 
             ax2cols.index(cols[i - 1])
             ax2.plot(array[:, 0], array[:, i], label=l)
@@ -186,10 +192,12 @@ argv.pop(0)
 while(len(argv) > 0):
     a = argv.pop(0)
     m = re.match("^[-]*([xy2]+)range=([-+]?[0-9.]+),([-+]?[0-9.]+)", a)
-    if (m):   # handle -xrange, -yrange, -y2range=xxx,xxx  
-        if m[1] == "x": plt.xlim([m[2], m[3]])
-        if m[1] == "y": ax1.set_ylim(m[2], m[3])
-        if m[1] == "y2": ax2.set_ylim(m[2], m[3])
+    if (m):   # handle -xrange, -yrange, -y2range=xxx,xxx 
+        lo = float(m[2]);
+        hi = float(m[3])  
+        if m[1] == "x": plt.xlim(lo,hi)
+        if m[1] == "y": ax1.set_ylim(lo,hi)
+        if m[1] == "y2": ax2.set_ylim(lo,hi)
     elif re.match("^[-]*args", a):
         run(filename, replay, git, cmdargs)
         cmdargs = argv.pop(0)

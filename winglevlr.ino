@@ -1217,9 +1217,9 @@ void loop()
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"C %+06.2f %+05.1f %+05.1f %+05.1f "
 			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d "
-			"a%d "
+			//"a%d "
 			//"s%04d %04d "
-			"\n",
+			"%d\n",
 			millis() / 1000.0,
 			// roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),
 			stickX, stickY, roll, pitch, desPitch,
@@ -1228,9 +1228,9 @@ void loop()
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr,
 			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), Display::jde.re.count,
 			//logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
-			ublox.count,
+			//ublox.count,
 			// servoOutput[0], servoOutput[1],
-			/*dummy*/ 0);
+			0);
 		if (logFile != NULL)
 		{
 			logFile->maxWaiting = 0;
