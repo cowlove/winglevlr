@@ -120,7 +120,7 @@ static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float bankStick = 0.3, bankPitch = 0.2;
-float servoGain = 1.5;
+float servoGain = 0.8;
 int g5LineCount = 0;
 int serialLogMode = 0x1;
 
@@ -446,7 +446,7 @@ namespace ServoControlElbow
 	// 4) (0,0) is stick neutral position
 	// 5) anchorPos is the x/y of the arm[0] hinge point
 
-	XY trim(0, -0.15), strim(-90, 50);
+	XY trim(0, +0.15), strim(-90, 50);
 	const float servoThrow = +1.5;
 	const float hinge = 15;
 	float maxChange = .12;
@@ -973,16 +973,14 @@ void parseSerialCommandInput(const char *buf, int n)
 		else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
 		else if (sscanf(line, "knobturn %f", &f) == 1) { 
 			Display::jde.re.change((int)f); 
-			//serialOutput(Display::jd.dump());
+			serialOutput(Display::jd.dump());
 		}
 		else if (sscanf(line, "knobpress %f", &f) == 1) { 
 			Display::jde.buttonPress((int)f); 
-			//serialOutput(Display::jd.dump());
-		}
-		else if (sscanf(line, "smode %f", &f) == 1) { 
+			serialOutput(Display::jd.dump());
+		} else if (sscanf(line, "smode %f", &f) == 1) { 
 			serialLogMode = f;
 		}
-
 		else {
 			OUT("UNKNOWN COMMAND: %s", line);
 		} });
