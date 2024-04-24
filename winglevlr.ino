@@ -585,7 +585,7 @@ namespace Display
 	F gdl(&jd, c1x, y += 10, " GDL:", "%05.1f ");    		F g5hdg(&jd, c2x, y, " HDG:", "%05.1f ");
 	JDisplayItem<const char *> log(&jd, c1x, y += 10, " LOG:", "%s-"); F drop(&jd, c2x + 30, y, "", "%03.0f ");
 	E pidpl(&jd, c1x, y += 10, "PL:", "%04.2f ", ed, .01);	E sg(&jd, c2x, y, "  SG:", "%04.2f ", ed, 0.01, &servoGain);
-	E pidph(&jd, c1x, y += 10, "PH:", "%04.2f ", ed, .01);	E sty(&jd, c2x, y, " STY:", "%04.2f ", ed, 0.01, &ServoControl::trim.y);
+	E pidph(&jd, c1x, y += 10, "PH:", "%04.2f ", ed, .01);	E sty(&jd, c2x, y, " STY:", "%+05.2f ", ed, 0.01, &ServoControl::trim.y);
 	E pidi(&jd, c1x, y += 10, " I:", "%05.4f ", ed, .0001);	E maxb(&jd, c2x, y, "MAXB:", "%04.1f ", ed, 0.1);
 	E pidd(&jd, c1x, y += 10, " D:", "%04.2f ", ed, .01);	E maxi(&jd, c2x, y, "MAXI:", "%04.1f ", ed, 0.1);
 	E pidg(&jd, c1x, y += 10, " G:", "%04.2f ", ed, .01);	E pidot(&jd, c2x, y, "POTR:", "%+5.2f ", ed, 0.01);	
@@ -973,11 +973,11 @@ void parseSerialCommandInput(const char *buf, int n)
 		else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
 		else if (sscanf(line, "knobturn %f", &f) == 1) { 
 			Display::jde.re.change((int)f); 
-			serialOutput(Display::jd.dump());
+			//serialOutput(Display::jd.dump());
 		}
 		else if (sscanf(line, "knobpress %f", &f) == 1) { 
 			Display::jde.buttonPress((int)f); 
-			serialOutput(Display::jd.dump());
+			//serialOutput(Display::jd.dump());
 		} else if (sscanf(line, "smode %f", &f) == 1) { 
 			serialLogMode = f;
 		}
