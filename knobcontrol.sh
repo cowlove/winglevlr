@@ -17,10 +17,10 @@ while true; do
         echo knobturn -1 | $SENDCMD
     fi
     if [ "$input" = $'\x43' ]; then
-        echo knobturn +1 | $SENDCMD
+        echo knobturn +10 | $SENDCMD
     fi
     if [ "$input" = $'\x44' ]; then
-        echo knobturn -1 | $SENDCMD
+        echo knobturn -10 | $SENDCMD
     fi
     if [ "$input" = $'\x0' ]; then
         echo knobpress 0 | $SENDCMD

@@ -29,11 +29,7 @@ void noprintf(const char *, ...) {}
 #include "WaypointNav.h"
 #include "ServoVisualizer.h"
 
-#ifndef UBUNTU
 bool debugFastBoot = false;
-#else
-bool debugFastBoot = false;
-#endif
 
 using WaypointNav::magToTrue;
 using WaypointNav::trueToMag;
@@ -86,7 +82,7 @@ struct PIDS
 		xtePID.finalGain = 20.0;
 
 		pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
-		pitchPID.finalGain = 1.7;
+		pitchPID.finalGain = 0;// 1.7;
 		pitchPID.maxerr.i = .5; // degrees
 		pitchPID.outputTrim = -0.0;
 		pitchPID.inputTrim = +0;
@@ -324,8 +320,6 @@ void halInit()
 	imu->beginAccel(ACC_FULL_SCALE_4_G);
 	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
 	imu->beginMag(MAG_MODE_CONTINUOUS_100HZ);
-
-	ublox.init();
 }
 
 float ubloxHdgCr = 0.0023;
@@ -576,6 +570,7 @@ namespace Display
 
 	typedef JDisplayItem<float> F;
 	typedef JDisplayEditableItem E;
+
 	int y = 0;
 	const int c1x = 00, c2x = 70;
 	F ip(&jd, c1x, y, "WIFI:", "%.0f");	F stickX(&jd, c2x, y, "ST:", "%+.2f");F stickY(&jd, c2x + 50, y, "/", "%+.2f");
@@ -586,12 +581,14 @@ namespace Display
 	JDisplayItem<const char *> log(&jd, c1x, y += 10, " LOG:", "%s-"); F drop(&jd, c2x + 30, y, "", "%03.0f ");
 	E pidpl(&jd, c1x, y += 10, "PL:", "%04.2f ", ed, .01);	E sg(&jd, c2x, y, "  SG:", "%04.2f ", ed, 0.01, &servoGain);
 	E pidph(&jd, c1x, y += 10, "PH:", "%04.2f ", ed, .01);	E sty(&jd, c2x, y, " STY:", "%+05.2f ", ed, 0.01, &ServoControl::trim.y);
-	E pidi(&jd, c1x, y += 10, " I:", "%05.4f ", ed, .0001);	E maxb(&jd, c2x, y, "MAXB:", "%04.1f ", ed, 0.1);
-	E pidd(&jd, c1x, y += 10, " D:", "%04.2f ", ed, .01);	E maxi(&jd, c2x, y, "MAXI:", "%04.1f ", ed, 0.1);
+	E pidi(&jd, c1x, y += 10, " I:", "%05.4f ", ed, .0001);	E stx(&jd, c2x, y, " STX:", "%+05.2f ", ed, 0.01, &ServoControl::trim.x);
+	E pidd(&jd, c1x, y += 10, " D:", "%04.2f ", ed, .01);	E maxb(&jd, c2x, y, "MAXB:", "%04.1f ", ed, 0.1);
 	E pidg(&jd, c1x, y += 10, " G:", "%04.2f ", ed, .01);	E pidot(&jd, c2x, y, "POTR:", "%+5.2f ", ed, 0.01);	
-	E dead(&jd, c1x, y += 10, "DZ:", "%04.1f ", ed, .1);  	E pidit(&jd, c2x, y, "PITR:", "%+5.2f ", ed, 0.01); 	E p2s(&jd, c1x, y += 10, "PS:", "%04.2f ", ed, .01, &pitchToStick);
+	E dead(&jd, c1x, y += 10, "DZ:", "%04.1f ", ed, .1);  	E pidit(&jd, c2x, y, "PITR:", "%+5.2f ", ed, 0.01); 	
+	E p2s (&jd, c1x, y += 10, "PS:", "%04.2f ", ed, .01, &pitchToStick);
 	E pidsel = JDisplayEditableItem(&jd, c2x, y, " PID:", "%1.0f", ed, 1, NULL, 0, 4);
 
+	//E maxi(&jd, c2x, y, "MAXI:", "%04.1f ", ed, 0.1);
 	// E dalt(NULL,c1x,y+=0,"DALT:", "%05.0f ", NULL, 20, &desAlt);
 	// F navt(NULL,10,y+=10,"NAVT:", "%05.1f ");
 	F logw(NULL, c1x, y += 10, "LOGW:", "%05.0f ");
@@ -694,6 +691,7 @@ void setup()
 	Display::jd.clear();
 
 	halInit();
+
 	// ugh: redo pin assignments, hal may have changed them
 	buttonTop.pin = pins.topButton;
 	buttonBot.pin = pins.botButton;
@@ -704,7 +702,13 @@ void setup()
 	buttonMid.read();
 	buttonKnob.read();
 
-	j.jw.enabled = !buttonTop.read();
+	debugFastBoot = buttonTop.read();
+	//debugFastBoot = true;
+	j.jw.enabled = !debugFastBoot;
+
+	if (!debugFastBoot) 
+		ublox.init();
+
 	j.mqtt.active = false;
 	
 	j.begin();
@@ -852,7 +856,7 @@ void setKnobPid(int f)
 	Display::pidd.setValue(knobPID->gain.d);
 	// Display::pidl.setValue(knobPID->gain.l);
 	Display::pidg.setValue(knobPID->finalGain);
-	Display::maxi.setValue(knobPID->maxerr.i);
+	//Display::maxi.setValue(knobPID->maxerr.i);
 	Display::dead.setValue(knobPID->hiGainTrans.p);
 	Display::pidot.setValue(knobPID->outputTrim);
 	Display::pidit.setValue(knobPID->inputTrim);
@@ -1214,7 +1218,7 @@ void loop()
 			"%+05.2f,%+05.2f R%+05.1f P%+05.1f DR%+05.1f DP%+05.1f "
 			"A%04.0f DA%04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
-			"C %+06.2f %+05.1f %+05.1f %+05.1f "
+			"PIDC %+06.2f %+05.1f %+05.1f %+05.1f "
 			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d "
 			//"a%d "
 			//"s%04d %04d "
@@ -1724,7 +1728,7 @@ void loop()
 		knobPID->gain.i = Display::pidi.value;
 		knobPID->gain.d = Display::pidd.value;
 		// knobPID->gain.l = Display::pidl.value;
-		knobPID->maxerr.i = Display::maxi.value;
+		//knobPID->maxerr.i = Display::maxi.value;
 		knobPID->finalGain = Display::pidg.value;
 		knobPID->hiGainTrans.p = Display::dead.value;
 		knobPID->outputTrim = Display::pidot.value;
