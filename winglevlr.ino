@@ -28,6 +28,7 @@ void noprintf(const char *, ...) {}
 #include "GDL90Parser.h"
 #include "WaypointNav.h"
 #include "ServoVisualizer.h"
+#include "confPanel.h"
 
 bool debugFastBoot = false;
 
@@ -36,6 +37,9 @@ using WaypointNav::trueToMag;
 
 // WiFiMulti wifi;
 JStuff j;
+
+ConfPanelClient cpc(0);
+ConfPanelUdpTransport cup;
 
 // SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
 int logFileNumber = 0;
@@ -678,14 +682,16 @@ void printMag()
 }
 
 void parseSerialCommandInput(const char *buf, int n);
-void parseSerialLine(const char *buf)
-{
+void parseSerialLine(const char *buf) {
 	parseSerialCommandInput(buf, strlen(buf));
 	parseSerialCommandInput("\n", 1);
 }
+void setupCp();
 
 void setup()
 {
+	cup.add(&cpc);
+
 	Display::jd.begin();
 	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
 	Display::jd.clear();
@@ -806,6 +812,7 @@ void setup()
 	ledcAttachPin(pins.pwm_roll, 1);  // GPIO 33 assigned to channel 1
 
 	// ArduinoOTA.begin();
+	setupCp();
 }
 
 void udpSendString(const char *b)
@@ -1192,6 +1199,7 @@ void loop()
 	esp_task_wdt_reset();
 	// ArduinoOTA.handle();
 	j.run();
+	cup.run();
 	delayMicroseconds(100);
 
 #ifndef UBUNTU
@@ -1793,6 +1801,10 @@ void loop()
 	logItem.flags = 0;
 }
 
+
+void setupCp() { 
+	cpc.addFloat(&desRoll, "Desired Roll");
+}
 #ifdef UBUNTU
 ///////////////////////////////////////////////////////////////////////////////
 // Code below this point is used in compiling/running ESP32sim simulation
