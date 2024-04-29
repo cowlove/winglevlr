@@ -1826,11 +1826,11 @@ void setupCp() {
 	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::strim.x, "STrim X", 1, "%.0f");
 	cpc.addFloat(&ServoControl::strim.y, "STrim Y", 1, "%.0f");
-	//ADDPID(rollPID);
-	//ADDPID(pitchPID);
-	//ADDPID(xtePID);
-	//ADDPID(hdgPID);
-	//ADDPID(altPID);
+	ADDPID(rollPID);
+	ADDPID(pitchPID);
+	ADDPID(xtePID);
+	ADDPID(hdgPID);
+	ADDPID(altPID);
 	serialLogMode = 0;
 }
 #ifdef UBUNTU
