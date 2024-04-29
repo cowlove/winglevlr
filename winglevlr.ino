@@ -28,6 +28,7 @@ void noprintf(const char *, ...) {}
 #include "GDL90Parser.h"
 #include "WaypointNav.h"
 #include "ServoVisualizer.h"
+#include "AsyncTCP.h"
 #include "confPanel.h"
 
 bool debugFastBoot = false;
@@ -38,8 +39,6 @@ using WaypointNav::trueToMag;
 // WiFiMulti wifi;
 JStuff j;
 
-ConfPanelClient cpc(0);
-ConfPanelUdpTransport cup;
 
 // SPIFFSVariable<int> logFileNumber("/winglevlr.logFileNumber", 1);
 int logFileNumber = 0;
@@ -1194,11 +1193,14 @@ void doButtons() {
 	}
 }
 
+float loopCount10Hz = 0;
+
 void loop()
 {
 	esp_task_wdt_reset();
 	// ArduinoOTA.handle();
 	j.run();
+	if(j.hz(10)) loopCount10Hz++;
 	cup.run();
 	delayMicroseconds(100);
 
@@ -1731,16 +1733,18 @@ void loop()
 	if (screenTimer.tick() && screenEnabled)
 	{
 		Display::jde.update();
-		knobPID->gain.p = Display::pidpl.value;
-		knobPID->hiGain.p = Display::pidph.value;
-		knobPID->gain.i = Display::pidi.value;
-		knobPID->gain.d = Display::pidd.value;
-		// knobPID->gain.l = Display::pidl.value;
-		//knobPID->maxerr.i = Display::maxi.value;
-		knobPID->finalGain = Display::pidg.value;
-		knobPID->hiGainTrans.p = Display::dead.value;
-		knobPID->outputTrim = Display::pidot.value;
-		knobPID->inputTrim = Display::pidit.value;
+		if (0)  {
+			knobPID->gain.p = Display::pidpl.value;
+			knobPID->hiGain.p = Display::pidph.value;
+			knobPID->gain.i = Display::pidi.value;
+			knobPID->gain.d = Display::pidd.value;
+			// knobPID->gain.l = Display::pidl.value;
+			//knobPID->maxerr.i = Display::maxi.value;
+			knobPID->finalGain = Display::pidg.value;
+			knobPID->hiGainTrans.p = Display::dead.value;
+			knobPID->outputTrim = Display::pidot.value;
+			knobPID->inputTrim = Display::pidit.value;
+		}
 
 		Display::ip = WiFi.localIP()[3];
 		Display::stickX = stickX;
@@ -1802,8 +1806,32 @@ void loop()
 }
 
 
+#define ADDPID(x) if (1) { \
+	cpc.addFloat(&pids.x.gain.p, "ALT PID P Gain", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.gain.p, #x " P Gain", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.gain.i, #x " I Gain", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.gain.d, #x " D Gain", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.hiGain.p, #x " PH Gain", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.hiGainTrans.p, #x " PH Trans", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.finalGain, #x " Final Gain", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.inputTrim, #x " Input Trim", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.outputTrim, #x " Output Trim", 0.01, "%.2f");\
+}
+
 void setupCp() { 
+	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
 	cpc.addFloat(&desRoll, "Desired Roll");
+	cpc.addFloat(&desAlt, "Desired Altitude");
+	cpc.addFloat(&ServoControl::trim.x, "Trim X", 0.01, "%.2f");
+	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
+	cpc.addFloat(&ServoControl::strim.x, "STrim X", 1, "%.0f");
+	cpc.addFloat(&ServoControl::strim.y, "STrim Y", 1, "%.0f");
+	//ADDPID(rollPID);
+	//ADDPID(pitchPID);
+	//ADDPID(xtePID);
+	//ADDPID(hdgPID);
+	//ADDPID(altPID);
+	serialLogMode = 0;
 }
 #ifdef UBUNTU
 ///////////////////////////////////////////////////////////////////////////////

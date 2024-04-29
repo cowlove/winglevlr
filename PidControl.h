@@ -8,7 +8,7 @@ public:
 
 class PID {
 public:
-	PID(double ap, double ai, double ad, double aj, double al) {
+	PID(float ap, float ai, float ad, float aj, float al) {
 		p = ap;
 		i = ai;
 		d = ad;
@@ -16,7 +16,7 @@ public:
 		l = al;
 	}
 	PID() { p = i = d = j = l = 0; } 
-	double p, i, d, j,  l;
+	float p, i, d, j,  l;
 	String toString(String pref) { return String(""); }
 	//	return String.format("%sp=%.2f, %si=%.2f, %sd=%.2f, %sj=%.2f, %sl=%.2f" +
 	//			pref, p, pref, i, pref, d, pref, j, pref, l); }
@@ -38,9 +38,9 @@ public:
       	gain.l = gl;
     }
     PID err, gain, maxerr, hiGain, hiGainTrans;
-    double finalGain = 1.0, finalScale = 1.0;
-	double outputTrim = 0.0; 			// post-finalGain output trim 
-	double inputTrim = 0.0; 
+    float finalGain = 1.0, finalScale = 1.0;
+	float outputTrim = 0.0; 			// post-finalGain output trim 
+	float inputTrim = 0.0; 
 	float calcGain(float err, float loGain, float hiGain, float transition) {
 		float c =  err * loGain;
 		if (hiGain > 0 && (abs(err) > transition))
@@ -49,7 +49,7 @@ public:
 	}
 
     // these values are set in reset() method
-    double i;
+    float i;
     RollingLeastSquares histError, histMeasurement, histCorrection;
 	   
     long starttime = 0;
