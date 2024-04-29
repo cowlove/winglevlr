@@ -28,7 +28,6 @@ void noprintf(const char *, ...) {}
 #include "GDL90Parser.h"
 #include "WaypointNav.h"
 #include "ServoVisualizer.h"
-#include "AsyncTCP.h"
 #include "confPanel.h"
 
 bool debugFastBoot = false;
@@ -660,6 +659,7 @@ void setDesiredTrk(float f)
 {
 	desiredTrk = f; // round(f);
 	Display::dtrk.setValue(desiredTrk);
+	desRoll = 0;
 }
 
 void sdLog()
@@ -711,7 +711,7 @@ void setup()
 	//debugFastBoot = true;
 	j.jw.enabled = !debugFastBoot;
 
-	if (!debugFastBoot) 
+	if (false && !debugFastBoot) 
 		ublox.init();
 
 	j.mqtt.active = false;
@@ -1623,7 +1623,7 @@ void loop()
 			}
 			else if (!testTurnActive)
 			{
-				desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something
+				//desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something
 			}
 		}
 
@@ -1807,21 +1807,21 @@ void loop()
 
 
 #define ADDPID(x) if (1) { \
-	cpc.addFloat(&pids.x.gain.p, "ALT PID P Gain", 0.01, "%.2f");\
 	cpc.addFloat(&pids.x.gain.p, #x " P Gain", 0.01, "%.2f");\
 	cpc.addFloat(&pids.x.gain.i, #x " I Gain", 0.01, "%.2f");\
 	cpc.addFloat(&pids.x.gain.d, #x " D Gain", 0.01, "%.2f");\
 	cpc.addFloat(&pids.x.hiGain.p, #x " PH Gain", 0.01, "%.2f");\
 	cpc.addFloat(&pids.x.hiGainTrans.p, #x " PH Trans", 0.01, "%.2f");\
 	cpc.addFloat(&pids.x.finalGain, #x " Final Gain", 0.01, "%.2f");\
-	cpc.addFloat(&pids.x.inputTrim, #x " Input Trim", 0.01, "%.2f");\
-	cpc.addFloat(&pids.x.outputTrim, #x " Output Trim", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.inputTrim, #x " In Trim", 0.01, "%.2f");\
+	cpc.addFloat(&pids.x.outputTrim, #x " Out Trim", 0.01, "%.2f");\
 }
 
 void setupCp() { 
 	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
-	cpc.addFloat(&desRoll, "Desired Roll");
-	cpc.addFloat(&desAlt, "Desired Altitude");
+	cpc.addFloat(&desiredTrk, "Command Trk", 1, "%03.0f True");
+	cpc.addFloat(&desRoll, "Command Roll");
+	cpc.addFloat(&desAlt, "Command Alt", 10, "%.0f'");
 	cpc.addFloat(&ServoControl::trim.x, "Trim X", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::strim.x, "STrim X", 1, "%.0f");

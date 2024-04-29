@@ -1,8 +1,5 @@
-#BOARD=esp32doit-devkit-v1
 BOARD=ttgo-t1
-#BOARD=nodemcu-32s
-#BOARD=d1_mini32
-VERBOSE=1
+#VERBOSE=1
 
 AHRS_RATE=50
 GIT_VERSION := "$(shell git describe --abbrev=4 --dirty --always --tags)"
