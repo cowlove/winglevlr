@@ -689,8 +689,6 @@ void setupCp();
 
 void setup()
 {
-	cup.add(&cpc);
-
 	Display::jd.begin();
 	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
 	Display::jd.clear();
@@ -711,7 +709,7 @@ void setup()
 	//debugFastBoot = true;
 	j.jw.enabled = !debugFastBoot;
 
-	if (false && !debugFastBoot) 
+	if (!debugFastBoot) 
 		ublox.init();
 
 	j.mqtt.active = false;
@@ -1194,6 +1192,11 @@ void doButtons() {
 }
 
 float loopCount10Hz = 0;
+ReliableTcpServer server(4444);
+ConfPanelTransportEmbedded cup(&server);
+//ConfPanelUdpTransport cup;
+ConfPanelClient cpc(0, &cup);
+//ReliableTcpClient client("192.168.4.1", 4444);
 
 void loop()
 {
@@ -1817,21 +1820,25 @@ void loop()
 	cpc.addFloat(&pids.x.outputTrim, #x " Out Trim", 0.01, "%.2f");\
 }
 
+int foo = 1;
 void setupCp() { 
 	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
 	cpc.addFloat(&desiredTrk, "Command Trk", 1, "%03.0f True");
-	cpc.addFloat(&desRoll, "Command Roll");
 	cpc.addFloat(&desAlt, "Command Alt", 10, "%.0f'");
+	cpc.addFloat(&desRoll, "Command Roll", 0.1, "%.2f");
+	cpc.addFloat(&desPitch, "Command Pitch", 0.1, "%.2f");
+	cpc.addEnum(&hdgSelect, "Heading Source", "GDL90/G5/GPS/MAG");
+	cpc.addFloat(&servoGain, "Servo Gain", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::trim.x, "Trim X", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::strim.x, "STrim X", 1, "%.0f");
 	cpc.addFloat(&ServoControl::strim.y, "STrim Y", 1, "%.0f");
 	ADDPID(rollPID);
-	ADDPID(pitchPID);
-	ADDPID(xtePID);
 	ADDPID(hdgPID);
+	ADDPID(pitchPID);
 	ADDPID(altPID);
-	serialLogMode = 0;
+	//ADDPID(xtePID);
+	//serialLogMode = 0;
 }
 #ifdef UBUNTU
 ///////////////////////////////////////////////////////////////////////////////
