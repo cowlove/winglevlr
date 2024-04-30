@@ -20,7 +20,7 @@ test.out:	winglevlr_ubuntu
 	./winglevlr_ubuntu  --serial --seconds 1000  | uniq | tee $@
 
 backtrace:
-	tr ' ' '\n' | /home/jim/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/*/bin/xtensa-esp32-elf-addr2line -f -i -e /tmp/mkESP/winglevlr_esp32/*.elf
+	tr ' ' '\n' | /home/jim/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/*/bin/xtensa-esp32-elf-addr2line -f -i -e /tmp/mkESP/winglevlr_ttgo-t1/*.elf
 	
 
 	
