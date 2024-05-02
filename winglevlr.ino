@@ -1192,7 +1192,8 @@ void doButtons() {
 }
 
 float loopCount10Hz = 0;
-ReliableTcpServer server(4444);
+//ReliableTcpServer server(4444);
+ReliableStreamESPNow server;
 ConfPanelTransportEmbedded cup(&server);
 //ConfPanelUdpTransport cup;
 ConfPanelClient cpc(0, &cup);
