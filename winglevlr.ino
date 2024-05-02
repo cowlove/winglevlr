@@ -113,7 +113,8 @@ const char *logFileName = "AHRSD%03d.DAT";
 static StaleData<float> gpsTrackGDL90(3000, -1), gpsTrackRMC(5000, -1), gpsTrackVTG(5000, -1);
 static StaleData<int> canMsgCount(3000, -1);
 static float desiredTrk = -1;
-float desRoll = 0, pitchToStick = 0.15, desPitch = 0, desAlt = 0;
+static float cmdRoll = 0, pitchToStick = 0.15, desPitch = 0, cmdPitch = 0, desAlt = 0;
+static float stickXYTransNeg = 0, stickXYTransPos = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
@@ -659,7 +660,7 @@ void setDesiredTrk(float f)
 {
 	desiredTrk = f; // round(f);
 	Display::dtrk.setValue(desiredTrk);
-	desRoll = 0;
+	cmdRoll = 0;
 }
 
 void sdLog()
@@ -955,7 +956,7 @@ void parseSerialCommandInput(const char *buf, int n)
 		else if (sscanf(line, "strimy %f", &f) == 1) { ServoControl::strim.y = f; }
 		else if (sscanf(line, "sgain %f", &f) == 1) { servoGain = f; }
 		else if (sscanf(line, "maxb %f", &f) == 1) { Display::maxb.setValue(f); }
-		else if (sscanf(line, "roll %f", &f) == 1) { desRoll = f; }
+		else if (sscanf(line, "roll %f", &f) == 1) { cmdRoll = f; }
 		else if (sscanf(line, "pidp %f", &f) == 1) { pids.pitchPID.gain.p = f; }
 		else if (sscanf(line, "pidi %f", &f) == 1) { pids.pitchPID.gain.i = f; }
 		else if (sscanf(line, "pidd %f", &f) == 1) { pids.pitchPID.gain.d = f; }
@@ -1239,7 +1240,7 @@ void loop()
 			"%d\n",
 			millis() / 1000.0,
 			// roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),
-			stickX, stickY, roll, pitch, desRoll, desPitch,
+			stickX, stickY, roll, pitch, cmdRoll, desPitch,
 			ahrsInput.alt, desAlt,
 			// 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr,
@@ -1281,9 +1282,9 @@ void loop()
 				testTurnAlternate = (testTurnAlternate + 1) % 3;
 			}
 			if (nowSec - testTurnLastTurnTime <= tttt)
-				desRoll = Display::maxb.value * (testTurnAlternate == 0 ? -1 : 1);
+				cmdRoll = Display::maxb.value * (testTurnAlternate == 0 ? -1 : 1);
 			else
-				desRoll = 0;
+				cmdRoll = 0;
 		}
 		else
 		{
@@ -1622,8 +1623,8 @@ void loop()
 					pids.hdgPID.resetI();
 					pids.xtePID.resetI();
 				}
-				desRoll = -pids.hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
-				desRoll = max(-Display::maxb.value, min(+Display::maxb.value, desRoll));
+				cmdRoll = -pids.hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
+				cmdRoll = max(-Display::maxb.value, min(+Display::maxb.value, cmdRoll));
 			}
 			else if (!testTurnActive)
 			{
@@ -1631,18 +1632,23 @@ void loop()
 			}
 		}
 
-		pids.rollPID.add(roll - desRoll, roll, ahrsInput.sec);
-		float altCorr = 0;//max(min(pids.altPID.corr, 3.0), -3.0);
-		float p = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
-		pids.pitchPID.add(ahrs.pitch - p, ahrs.pitch - p, ahrsInput.sec);
+		pids.rollPID.add(roll - cmdRoll, roll, ahrsInput.sec);
+		float altCorr = max(min(pids.altPID.corr, 5.0), -5.0);
+		cmdPitch = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
+		pids.pitchPID.add(ahrs.pitch - cmdPitch, ahrs.pitch - cmdPitch, ahrsInput.sec);
 
 		if (armServo == true)
 		{
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations.
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values
 			stickX = pids.rollPID.corr * servoGain;
-			//stickY = (pids.pitchPID.corr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick + (desPitch * pitchToStick)) * servoGain;
-			stickY = pids.pitchPID.corr * servoGain;
+			float xytrans = abs(stickX) * (stickX < 0 ? stickXYTransNeg : stickXYTransPos);
+			stickY = (pids.pitchPID.corr  
+				+ abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick 
+				+ (desPitch * pitchToStick) 
+				+ xytrans
+			) * servoGain;
+			// stickY = pids.pitchPID.corr * servoGain;
 			// stickY = 0;
 			// stickX += cos(millis() / 100.0) * .04;
 			// stickY += sin(millis() / 100.0) * .04;
@@ -1712,7 +1718,7 @@ void loop()
 
 		logItem.pwmOutput0 = servoOutput[0];
 		logItem.pwmOutput1 = servoOutput[1];
-		logItem.desRoll = desRoll;
+		logItem.desRoll = cmdRoll;
 		logItem.desAlt = (apMode == 3) ? desAlt : -1000;
 		logItem.desPitch = desPitch;
 		logItem.roll = roll;
@@ -1826,10 +1832,13 @@ void setupCp() {
 	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
 	cpc.addFloat(&desiredTrk, "Command Trk", 1, "%03.0f True");
 	cpc.addFloat(&desAlt, "Command Alt", 10, "%.0f'");
-	cpc.addFloat(&desRoll, "Command Roll", 0.1, "%.2f");
-	cpc.addFloat(&desPitch, "Command Pitch", 0.1, "%.2f");
-	cpc.addEnum(&hdgSelect, "Heading Source", "GDL90/G5/GPS/MAG");
+	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
+	cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
+	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
 	cpc.addFloat(&servoGain, "Servo Gain", 0.01, "%.2f");
+	cpc.addFloat(&stickXYTransPos, "Stick XY Transfer +", 0.01, "%.2f");
+	cpc.addFloat(&stickXYTransNeg, "Stick XY Transfer -", 0.01, "%.2f");
+	cpc.addEnum(&hdgSelect, "Heading Source", "GDL90/G5/GPS/MAG");
 	cpc.addFloat(&ServoControl::trim.x, "Trim X", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::strim.x, "STrim X", 1, "%.0f");
@@ -1906,7 +1915,7 @@ public:
 		if (1 && floor(lastMillis / 100) != floor(millis() / 100))
 		{ // 10hz
 			printf("%08.3f servo %05d/%05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis() / 1000.0,
-				   ESP32sim_currentPwm[0], ESP32sim_currentPwm[1], track, desRoll, bank, imu->gy);
+				   ESP32sim_currentPwm[0], ESP32sim_currentPwm[1], track, cmdRoll, bank, imu->gy);
 		}
 		imu->gz = ahrs.gyrOffZ + tan(bank * M_PI / 180) / speed * 1091;
 		imu->gz *= -1;
