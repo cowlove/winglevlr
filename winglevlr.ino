@@ -118,7 +118,7 @@ static float stickXYTransNeg = 0, stickXYTransPos = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
-float bankStick = 0.3, bankPitch = 0.2;
+float rollToStick = 0.3, bankToPitch = 0.2;
 float servoGain = 0.8;
 int g5LineCount = 0;
 int serialLogMode = 0x1;
@@ -1634,7 +1634,7 @@ void loop()
 
 		pids.rollPID.add(roll - cmdRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(pids.altPID.corr, 5.0), -5.0);
-		cmdPitch = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankPitch);
+		cmdPitch = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankToPitch);
 		pids.pitchPID.add(ahrs.pitch - cmdPitch, ahrs.pitch - cmdPitch, ahrsInput.sec);
 
 		if (armServo == true)
@@ -1644,7 +1644,7 @@ void loop()
 			stickX = pids.rollPID.corr * servoGain;
 			float xytrans = abs(stickX) * (stickX < 0 ? stickXYTransNeg : stickXYTransPos);
 			stickY = (pids.pitchPID.corr  
-				+ abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * bankStick 
+				+ abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * rollToStick 
 				+ (desPitch * pitchToStick) 
 				+ xytrans
 			) * servoGain;
@@ -1830,12 +1830,14 @@ void loop()
 int foo = 1;
 void setupCp() { 
 	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
-	cpc.addFloat(&desiredTrk, "Command Trk", 1, "%03.0f True");
-	cpc.addFloat(&desAlt, "Command Alt", 10, "%.0f'");
+	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f True");
+	cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
+	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
 	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
 	cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
-	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
 	cpc.addFloat(&servoGain, "Servo Gain", 0.01, "%.2f");
+	cpc.addFloat(&pitchToStick, "Pitch->StickY", 0.01, "%.2f");
+	cpc.addFloat(&rollToStick, "Roll->StickY", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransPos, "Stick XY Transfer +", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransNeg, "Stick XY Transfer -", 0.01, "%.2f");
 	cpc.addEnum(&hdgSelect, "Heading Source", "GDL90/G5/GPS/MAG");
