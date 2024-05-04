@@ -5,7 +5,7 @@ AHRS_RATE=50
 GIT_VERSION := "$(shell git describe --abbrev=4 --dirty --always --tags)"
 BUILD_EXTRA_FLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 BUILD_EXTRA_FLAGS += -DAHRS_RATE=${AHRS_RATE}
-EXCLUDE_DIRS=/home/jim/Arduino/libraries/TFT_eSPI/
+EXCLUDE_DIRS=/home/jim/Arduino/libraries/TFT_eSPI/|/home/jim/Arduino/libraries/LovyanGFX
 
 plot:	winglevlr_ubuntu
 	./winglevlr_ubuntu --jdisplay --serial --seconds 700 | grep DTK | tr ':' ' ' > out.dat \
