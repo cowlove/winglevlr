@@ -113,12 +113,12 @@ const char *logFileName = "AHRSD%03d.DAT";
 static StaleData<float> gpsTrackGDL90(3000, -1), gpsTrackRMC(5000, -1), gpsTrackVTG(5000, -1);
 static StaleData<int> canMsgCount(3000, -1);
 static float desiredTrk = -1;
-static float cmdRoll = 0, pitchToStick = 0.15, desPitch = 0, cmdPitch = 0, desAlt = 0;
+static float cmdRoll = 0, pitchToStick = 0.0, desPitch = 0, cmdPitch = 0, desAlt = 0;
 static float stickXYTransNeg = 0, stickXYTransPos = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
-float rollToStick = 0.3, bankToPitch = 0.2;
+float rollToStick = 0.0, rollToPitch = 0.0;
 float servoGain = 0.8;
 int g5LineCount = 0;
 int serialLogMode = 0x1;
@@ -443,8 +443,8 @@ namespace ServoControlElbow
 	// 4) (0,0) is stick neutral position
 	// 5) anchorPos is the x/y of the arm[0] hinge point
 
-	XY trim(0, +0.15), strim(-90, 50);
-	const float servoThrow = +1.5;
+	XY trim(0, -0.95), strim(30, -30);
+	const float servoThrow = +1.2;
 	const float hinge = 15;
 	float maxChange = .12;
 
@@ -478,6 +478,10 @@ namespace ServoControlElbow
 		// y = 0;
 		float x = ox + trim.x;
 		float y = oy + trim.y;
+
+		// move stickXYTrans here 
+		y += abs(x) * (x < 0 ? stickXYTransNeg : stickXYTransPos);
+
 		x = min(servoThrow, max(-servoThrow, x));
 		y = min(servoThrow, max(-servoThrow, y));
 
@@ -1634,7 +1638,7 @@ void loop()
 
 		pids.rollPID.add(roll - cmdRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(pids.altPID.corr, 5.0), -5.0);
-		cmdPitch = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * bankToPitch);
+		cmdPitch = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * rollToPitch);
 		pids.pitchPID.add(ahrs.pitch - cmdPitch, ahrs.pitch - cmdPitch, ahrsInput.sec);
 
 		if (armServo == true)
@@ -1642,11 +1646,11 @@ void loop()
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations.
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values
 			stickX = pids.rollPID.corr * servoGain;
-			float xytrans = abs(stickX) * (stickX < 0 ? stickXYTransNeg : stickXYTransPos);
+			//float xytrans = abs(stickX) * (stickX < 0 ? stickXYTransNeg : stickXYTransPos);
 			stickY = (pids.pitchPID.corr  
 				+ abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * rollToStick 
 				+ (desPitch * pitchToStick) 
-				+ xytrans
+			//	+ xytrans
 			) * servoGain;
 			// stickY = pids.pitchPID.corr * servoGain;
 			// stickY = 0;
