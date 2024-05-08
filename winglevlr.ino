@@ -1330,11 +1330,41 @@ void loop()
 		char buf[1024];
 		static LineBuffer lb;
 		int n = udpNMEA.read((uint8_t *)buf, sizeof(buf));
-		lb.add((char *)buf, n, [](const char *line)
-			   { 
-			if (auxMPU.fromString(line)) {
-				auxMpuPacketCount++;
-			} });
+		// TODO - get rid of TinyGPSPlus, just use pattern matchine
+		for (int i = 0; i < n; i++)
+		{
+			gps.encode(buf[i]);
+			if (buf[i] == '\r' || buf[i] == '\n')
+			{
+				if (vtgCourse.isUpdated())
+				{ // VTG typically from G5 NMEA serial output
+					gpsTrackVTG = trueToMag(gps.parseDecimal(vtgCourse.value()) * 0.01);
+				}
+				if (gps.course.isUpdated())
+				{ // RMC typically from ifly NMEA output
+					gpsTrackRMC = trueToMag(gps.course.deg());
+					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07);
+					logItem.flags |= LogFlags::HdgRMC;
+				}
+				if (desiredHeading.isUpdated())
+				{
+					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
+					if (navDTK < 0)
+						navDTK += 360;
+					//if (canMsgCount.isValid() == false)
+					{
+						apMode = 4;
+					}
+				}
+				if (xte.isUpdated() && xteLR.isUpdated())
+				{
+					float err = 0.01 * gps.parseDecimal(xte.value());
+					if (strcmp(xteLR.value(), "L") == 0)
+						err *= -1;
+					crossTrackError.add(err);
+				}
+			}
+		}
 	}
 
 	if (udpCmd.parsePacket() > 0)
@@ -1439,41 +1469,6 @@ void loop()
 				canMsgCount = canMsgCount + 1;
 			} });
 
-		// TODO - get rid of TinyGPSPlus, just use pattern matchine
-		for (int i = 0; i < n; i++)
-		{
-			gps.encode(buf[i]);
-			if (buf[i] == '\r' || buf[i] == '\n')
-			{
-				if (vtgCourse.isUpdated())
-				{ // VTG typically from G5 NMEA serial output
-					gpsTrackVTG = trueToMag(gps.parseDecimal(vtgCourse.value()) * 0.01);
-				}
-				if (gps.course.isUpdated())
-				{ // RMC typically from ifly NMEA output
-					gpsTrackRMC = trueToMag(gps.course.deg());
-					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07);
-					logItem.flags |= LogFlags::HdgRMC;
-				}
-				if (desiredHeading.isUpdated())
-				{
-					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
-					if (navDTK < 0)
-						navDTK += 360;
-					if (canMsgCount.isValid() == false)
-					{
-						apMode = 4;
-					}
-				}
-				if (xte.isUpdated() && xteLR.isUpdated())
-				{
-					float err = 0.01 * gps.parseDecimal(xte.value());
-					if (strcmp(xteLR.value(), "L") == 0)
-						err *= -1;
-					crossTrackError.add(err);
-				}
-			}
-		}
 	}
 
 	if (ublox.check())
