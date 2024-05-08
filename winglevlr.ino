@@ -73,11 +73,11 @@ struct PIDS
 		rollPID.finalGain = 16.8;
 		rollPID.finalScale = 0.001;
 
-		hdgPID.setGains(0.5, 0.0003, 0.05); // input in degrees hdg err, output in degrees desired bank
+		hdgPID.setGains(0.5, 0.0003, 0.25); // input in degrees hdg err, output in degrees desired bank
 		hdgPID.hiGain.p = 10;
 		hdgPID.hiGainTrans.p = 8.0;
 		hdgPID.maxerr.i = 20; // degrees hdg err
-		hdgPID.finalGain = 0.70;
+		hdgPID.finalGain = 2.0;
 
 		xtePID.setGains(8.0, 0.0003, 0.20); // input in NM xte error, output in degrees desired hdg change
 		xtePID.maxerr.i = 1.0;
@@ -119,7 +119,7 @@ static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float rollToStick = 0.0, rollToPitch = 0.0;
-float servoGain = 0.8;
+float servoGain = 2.0;
 int g5LineCount = 0;
 int serialLogMode = 0x1;
 
@@ -548,25 +548,26 @@ namespace ServoControlElbow
 
 namespace ServoControlLinear
 {
-	const float servoThrow = +8.0;
-	XY trim(0, 0);
+	const float servoThrow = +20.0;
+	XY trim(0, 0), strim(-50, 0);
+	float maxChange = 0; // unimplemented
 	pair<int, int> stickToServo(float x, float y)
 	{
-		float s1 = x / servoThrow * 2000 + 1500;
-		float s0 = y / servoThrow * 2000 + 1500;
+		float s1 = (x + trim.x) / servoThrow * 2000 + 1500 + strim.x;
+		float s0 = (y + trim.y) / servoThrow * 2000 + 1500 + strim.y;
 		return pair<int, int>(s0, s1);
 	}
 
 	pair<float, float> servoToStick(int s0, int s1)
 	{
-		float x = (s1 - 1500) / 2000.0 * servoThrow;
-		float y = (s0 - 1500) / 2000.0 * servoThrow;
+		float x = (s1 - 1500 - strim.x) / 2000.0 * servoThrow - trim.x;
+		float y = (s0 - 1500 - strim.y) / 2000.0 * servoThrow - trim.y;
 
 		return pair<float, float>(x, y);
 	}
 };
 
-#define ServoControl ServoControlElbow
+#define ServoControl ServoControlLinear
 
 namespace Display
 {
