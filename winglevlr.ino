@@ -73,11 +73,11 @@ struct PIDS
 		rollPID.finalGain = 16.8;
 		rollPID.finalScale = 0.001;
 
-		hdgPID.setGains(0.5, 0.0003, 0.25); // input in degrees hdg err, output in degrees desired bank
+		hdgPID.setGains(0.5, 0.0003, 0.50); // input in degrees hdg err, output in degrees desired bank
 		hdgPID.hiGain.p = 10;
 		hdgPID.hiGainTrans.p = 8.0;
 		hdgPID.maxerr.i = 20; // degrees hdg err
-		hdgPID.finalGain = 2.0;
+		hdgPID.finalGain = 1.0;
 
 		xtePID.setGains(8.0, 0.0003, 0.20); // input in NM xte error, output in degrees desired hdg change
 		xtePID.maxerr.i = 1.0;
@@ -119,7 +119,7 @@ static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float rollToStick = 0.0, rollToPitch = 0.0;
-float servoGain = 2.0;
+float servoGain = 0.40;
 int g5LineCount = 0;
 int serialLogMode = 0x1;
 
@@ -548,13 +548,15 @@ namespace ServoControlElbow
 
 namespace ServoControlLinear
 {
-	const float servoThrow = +20.0;
-	XY trim(0, 0), strim(-50, 0);
+	const float servoThrow = +1;
+	XY trim(0, 0), strim(+575, 0);
 	float maxChange = 0; // unimplemented
 	pair<int, int> stickToServo(float x, float y)
 	{
-		float s1 = (x + trim.x) / servoThrow * 2000 + 1500 + strim.x;
-		float s0 = (y + trim.y) / servoThrow * 2000 + 1500 + strim.y;
+		x = min(servoThrow, max(-servoThrow, x + trim.x));
+		y = min(servoThrow, max(-servoThrow, y + trim.y));
+		float s1 = x / servoThrow * 450 + 1500 + strim.x;
+		float s0 = x / servoThrow * 450 + 1500 + strim.y;
 		return pair<int, int>(s0, s1);
 	}
 
@@ -1351,7 +1353,7 @@ void loop()
 					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
 					if (navDTK < 0)
 						navDTK += 360;
-					//if (canMsgCount.isValid() == false)
+					if (canMsgCount.isValid() == false)  // if we never got a can message, just hop straight to NAV mode 
 					{
 						apMode = 4;
 					}
