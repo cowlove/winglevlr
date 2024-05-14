@@ -120,6 +120,7 @@ static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float rollToStick = 0.0, rollToPitch = 0.0;
+float maxRollRate = 5.0; // deg/sec 
 float servoGain = 0.40;
 int g5LineCount = 0;
 int serialLogMode = 0x1;
@@ -1640,8 +1641,9 @@ void loop()
 					pids.hdgPID.resetI();
 					pids.xtePID.resetI();
 				}
-				cmdRoll = -pids.hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
-				cmdRoll = max(-Display::maxb.value, min(+Display::maxb.value, cmdRoll));
+				float newRoll = -pids.hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
+				newRoll = max(-Display::maxb.value, min(+Display::maxb.value, newRoll));
+				cmdRoll = max(cmdRoll - maxRollRate / 20, min(cmdRoll + maxRollRate / 20, newRoll));
 			}
 			else if (!testTurnActive)
 			{
@@ -1853,6 +1855,8 @@ void setupCp() {
 	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
 	cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
 	cpc.addFloat(&servoGain, "Servo Gain", 0.01, "%.2f");
+	cpc.addFloat(&maxRollRate, "Max Roll Rate", 0.1, "%.1f");
+	cpc.addFloat(&Display::maxb.value, "Max Bank", 0.1, "%.1f");
 	cpc.addFloat(&pitchToStick, "Pitch->StickY", 0.01, "%.2f");
 	cpc.addFloat(&rollToStick, "Roll->StickY", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransPos, "Stick XY Transfer +", 0.01, "%.2f");
@@ -1864,9 +1868,9 @@ void setupCp() {
 	cpc.addFloat(&ServoControl::strim.y, "STrim Y", 1, "%.0f");
 	ADDPID(rollPID);
 	ADDPID(hdgPID);
+	ADDPID(xtePID);
 	ADDPID(pitchPID);
 	ADDPID(altPID);
-	//ADDPID(xtePID);
 	//serialLogMode = 0;
 }
 #ifdef UBUNTU
