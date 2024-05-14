@@ -28,6 +28,7 @@ void noprintf(const char *, ...) {}
 #include "GDL90Parser.h"
 #include "WaypointNav.h"
 #include "ServoVisualizer.h"
+#include "espNowMux.h"
 #include "confPanel.h"
 
 bool debugFastBoot = false;
@@ -694,6 +695,7 @@ void parseSerialLine(const char *buf) {
 	parseSerialCommandInput("\n", 1);
 }
 void setupCp();
+void parseG5Line(const char *);
 
 void setup()
 {
@@ -818,6 +820,15 @@ void setup()
 
 	// ArduinoOTA.begin();
 	setupCp();
+
+	espNowMux.registerReadCallback("g5", 
+        [](const uint8_t *mac, const uint8_t *data, int len){
+			string s;
+			s.assign((const char *)data, len);
+			//Serial.printf("G5 data: %s\n", s.c_str());
+			parseG5Line(s.c_str()); 
+    });
+ 
 }
 
 void udpSendString(const char *b)
@@ -1199,6 +1210,96 @@ void doButtons() {
 	}
 }
 
+void parseG5Line(const char *line) { 
+	g5LineCount++;
+	vector<string> l = split(string(line), ' ');
+	float v, knobSel = 0;
+	for (vector<string>::iterator it = l.begin(); it != l.end(); it++)
+	{
+		if (sscanf(it->c_str(), "P=%f", &v) == 1)
+		{
+			ahrsInput.g5Pitch = v;
+			canMsgCount = canMsgCount + 1;
+			logItem.flags |= LogFlags::g5Ins;
+		}
+		else if (sscanf(it->c_str(), "R=%f", &v) == 1)
+		{
+			ahrsInput.g5Roll = v;
+			logItem.flags |= LogFlags::g5Ins;
+		}
+		else if (sscanf(it->c_str(), "SL=%f", &v) == 1)
+		{
+			ahrsInput.g5Slip = v;
+			logItem.flags |= LogFlags::g5Ins;
+		}
+		else if (sscanf(it->c_str(), "IAS=%f", &v) == 1)
+		{
+			ahrsInput.g5Ias = v;
+			logItem.flags |= LogFlags::g5Ps;
+		}
+		else if (sscanf(it->c_str(), "TAS=%f", &v) == 1)
+		{
+			ahrsInput.g5Tas = v;
+			logItem.flags |= LogFlags::g5Ps;
+		}
+		else if (sscanf(it->c_str(), "PALT=%f", &v) == 1)
+		{
+			ahrsInput.g5Palt = v;
+			logItem.flags |= LogFlags::g5Ps;
+		}
+		else if (sscanf(it->c_str(), "HDG=%f", &v) == 1)
+		{
+			ahrsInput.g5Hdg = v;
+			logItem.flags |= LogFlags::g5Nav;
+			ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
+		}
+		else if (sscanf(it->c_str(), "TRK=%f", &v) == 1)
+		{
+			ahrsInput.g5Track = v;
+			logItem.flags |= LogFlags::g5Nav;
+		}
+		else if (sscanf(it->c_str(), "MODE=%f", &v) == 1)
+		{
+			Serial.printf("G5 MODE %f\n", v);
+			apMode = v;
+			if (apMode == 5)
+			{
+				startMakeoutSess();
+			}
+		}
+		else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1)
+		{
+			knobSel = v;
+		}
+		else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1)
+		{
+			setObsKnob(knobSel, v);
+		}
+	}
+
+
+	float pit, roll, magHdg, magTrack, knobVal, ias, tas, palt, age;
+	int mode = 0;
+	// printf("LINE %s\n", line);
+	if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", &pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt, &knobSel, &knobVal, &age, &mode) == 11 && (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) && (magTrack > -7 && magTrack < 7) && (knobSel >= 0 && knobSel < 6)) {
+		// Serial.printf("CAN: %s\n", line);
+		ahrsInput.g5Pitch = pit * 180 / M_PI;
+		ahrsInput.g5Roll = roll * 180 / M_PI;
+		ahrsInput.g5Hdg = magHdg * 180 / M_PI;
+		ahrsInput.g5Track = magTrack * 180 / M_PI;
+		ahrsInput.g5Palt = palt / 3.2808;
+		ahrsInput.g5Ias = ias / 0.5144;
+		ahrsInput.g5Tas = tas / 0.5144;
+		// ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
+		apMode = mode;
+		ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
+		logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
+		setObsKnob(knobSel, knobVal);
+		// Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
+		canMsgCount = canMsgCount + 1;
+	}
+}
+
 float loopCount10Hz = 0;
 //ReliableTcpServer server(4444);
 ReliableStreamESPNow server;
@@ -1377,99 +1478,13 @@ void loop()
 		parseSerialCommandInput("\n", 1);
 	}
 
-	if (udpSL30.parsePacket() > 0)
-	{
+	if (udpSL30.parsePacket() > 0) {
 		uint8_t buf[1024];
 		static LineBuffer lb;
 		int n = udpSL30.read(buf, sizeof(buf));
 		lb.add(buf, n, [](const char *line) {
-			g5LineCount++;
-			vector<string> l = split(string(line), ' ');
-			float v, knobSel = 0;
-			for (vector<string>::iterator it = l.begin(); it != l.end(); it++)
-			{
-				if (sscanf(it->c_str(), "P=%f", &v) == 1)
-				{
-					ahrsInput.g5Pitch = v;
-					canMsgCount = canMsgCount + 1;
-					logItem.flags |= LogFlags::g5Ins;
-				}
-				else if (sscanf(it->c_str(), "R=%f", &v) == 1)
-				{
-					ahrsInput.g5Roll = v;
-					logItem.flags |= LogFlags::g5Ins;
-				}
-				else if (sscanf(it->c_str(), "SL=%f", &v) == 1)
-				{
-					ahrsInput.g5Slip = v;
-					logItem.flags |= LogFlags::g5Ins;
-				}
-				else if (sscanf(it->c_str(), "IAS=%f", &v) == 1)
-				{
-					ahrsInput.g5Ias = v;
-					logItem.flags |= LogFlags::g5Ps;
-				}
-				else if (sscanf(it->c_str(), "TAS=%f", &v) == 1)
-				{
-					ahrsInput.g5Tas = v;
-					logItem.flags |= LogFlags::g5Ps;
-				}
-				else if (sscanf(it->c_str(), "PALT=%f", &v) == 1)
-				{
-					ahrsInput.g5Palt = v;
-					logItem.flags |= LogFlags::g5Ps;
-				}
-				else if (sscanf(it->c_str(), "HDG=%f", &v) == 1)
-				{
-					ahrsInput.g5Hdg = v;
-					logItem.flags |= LogFlags::g5Nav;
-					ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
-				}
-				else if (sscanf(it->c_str(), "TRK=%f", &v) == 1)
-				{
-					ahrsInput.g5Track = v;
-					logItem.flags |= LogFlags::g5Nav;
-				}
-				else if (sscanf(it->c_str(), "MODE=%f", &v) == 1)
-				{
-					Serial.printf("G5 MODE %f\n", v);
-					apMode = v;
-					if (apMode == 5)
-					{
-						startMakeoutSess();
-					}
-				}
-				else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1)
-				{
-					knobSel = v;
-				}
-				else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1)
-				{
-					setObsKnob(knobSel, v);
-				}
-			}
-
-			float pit, roll, magHdg, magTrack, knobVal, ias, tas, palt, age;
-			int mode = 0;
-			// printf("LINE %s\n", line);
-			if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", &pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt, &knobSel, &knobVal, &age, &mode) == 11 && (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) && (magTrack > -7 && magTrack < 7) && (knobSel >= 0 && knobSel < 6))
-			{
-				// Serial.printf("CAN: %s\n", line);
-				ahrsInput.g5Pitch = pit * 180 / M_PI;
-				ahrsInput.g5Roll = roll * 180 / M_PI;
-				ahrsInput.g5Hdg = magHdg * 180 / M_PI;
-				ahrsInput.g5Track = magTrack * 180 / M_PI;
-				ahrsInput.g5Palt = palt / 3.2808;
-				ahrsInput.g5Ias = ias / 0.5144;
-				ahrsInput.g5Tas = tas / 0.5144;
-				// ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
-				apMode = mode;
-				ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
-				logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
-				setObsKnob(knobSel, knobVal);
-				// Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
-				canMsgCount = canMsgCount + 1;
-			} });
+			parseG5Line(line);
+		});
 
 	}
 
@@ -1831,7 +1846,7 @@ void loop()
 
 int foo = 1;
 void setupCp() { 
-	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
+	cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
 	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f True");
 	cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
 	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
