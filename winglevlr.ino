@@ -29,6 +29,7 @@ void noprintf(const char *, ...) {}
 #include "WaypointNav.h"
 #include "ServoVisualizer.h"
 #include "espNowMux.h"
+#include "reliableStream.h"
 #include "confPanel.h"
 
 bool debugFastBoot = false;
@@ -123,7 +124,7 @@ float rollToStick = 0.0, rollToPitch = 0.0;
 float maxRollRate = 5.0; // deg/sec 
 float servoGain = 0.40;
 int g5LineCount = 0;
-int serialLogMode = 0x1;
+int serialLogMode = 0x0;
 
 #define LED_PIN 22
 /* Old hardwarinput pins: I2C pins/variant seems to determine layout
@@ -669,7 +670,7 @@ void setDesiredTrk(float f)
 {
 	desiredTrk = f; // round(f);
 	Display::dtrk.setValue(desiredTrk);
-	cmdRoll = 0;
+	//cmdRoll = 0;
 }
 
 void sdLog()
@@ -822,6 +823,7 @@ void setup()
 	// ArduinoOTA.begin();
 	setupCp();
 
+#if 0 
 	espNowMux.registerReadCallback("g5", 
         [](const uint8_t *mac, const uint8_t *data, int len){
 			string s;
@@ -829,6 +831,7 @@ void setup()
 			//Serial.printf("G5 data: %s\n", s.c_str());
 			parseG5Line(s.c_str()); 
     });
+#endif
  
 }
 
@@ -898,7 +901,7 @@ static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int, 40, 40> loopTime;
 static EggTimer serialReportTimer(200), loopTimer(AHRS_RATE_INV_SCALE(5)), buttonCheckTimer(10);
-static int armServo = 0;
+static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 static int hdgSelect = 2;	   //  0 use fusion magHdg
@@ -1063,36 +1066,24 @@ void startMakeoutSess()
 	else
 	{
 		Display::maxb.setValue(15);
-		if (0)
-		{
-			waypointList =
-				"REPEAT 1\n"
-				"47.46781184528505, -122.62479628528624\n"
-				"47.42959741100363, -122.55173591135885\n"
-				"47.4331127570086, -122.66209866008706\n"
-				"47.476968122716066, -122.54582666728088\n";
-		}
-		else
-		{
-			WaypointNav::LatLon curPos(ublox.lat, ublox.lon);
-			WaypointNav::LatLon nextPos =
-				WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 6300);
+		WaypointNav::LatLon curPos(ublox.lat, ublox.lon);
+		WaypointNav::LatLon nextPos =
+			WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 6300);
 
-			waypointList = sfmt(
-				"REPEAT 1\n"
-				"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
-				"HDG %f\nWAIT 10\nHDG %f\nWAIT 60\n"
-				"%f, %f\n"
-				"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
-				"HDG %f\nWAIT 10\nHDG %f\nWAIT 60\n"
-				"%f, %f\n",
-				constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 180),
-				constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 0),
-				curPos.lat, curPos.lon,
-				constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 180),
-				constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 0),
-				curPos.lat, curPos.lon);
-		}
+		waypointList = sfmt(
+			"REPEAT 1\n"
+			"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
+			"HDG %f\nWAIT 10\nHDG %f\nWAIT 60\n"
+			"%f, %f\n"
+			"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
+			"HDG %f\nWAIT 10\nHDG %f\nWAIT 60\n"
+			"%f, %f\n",
+			constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 180),
+			constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 0),
+			curPos.lat, curPos.lon,
+			constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 180),
+			constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 0),
+			curPos.lat, curPos.lon);
 		wpNav = new WaypointsSequencerString(waypointList);
 		logItem.flags |= LogFlags::wptNav;
 	}
@@ -1303,7 +1294,9 @@ void parseG5Line(const char *line) {
 
 float loopCount10Hz = 0;
 //ReliableTcpServer server(4444);
-ReliableStreamESPNow server;
+ReliableStreamESPNow server("CP");
+ReliableStreamESPNow g5("G5");
+
 ConfPanelTransportEmbedded cup(&server);
 //ConfPanelUdpTransport cup;
 ConfPanelClient cpc(0, &cup);
@@ -1407,6 +1400,10 @@ void loop()
 		}
 	}
 
+	string g5input = g5.read();
+	if (g5input.length() > 0) { 
+		parseG5Line(g5input.c_str()); 
+	}
 	if (udpG90.parsePacket() > 0)
 	{
 		unsigned char buf[1024];
