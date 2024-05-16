@@ -1400,8 +1400,8 @@ void loop()
 		}
 	}
 
-	string g5input = g5.read();
-	if (g5input.length() > 0) { 
+	if (g5input.availble()) { 
+		string g5input = g5.read();
 		parseG5Line(g5input.c_str()); 
 	}
 	if (udpG90.parsePacket() > 0)
