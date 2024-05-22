@@ -1400,8 +1400,8 @@ void loop()
 		}
 	}
 
-	if (g5input.availble()) { 
-		string g5input = g5.read();
+	string g5input = g5.read();
+	if (g5input.length() > 0) { 
 		parseG5Line(g5input.c_str()); 
 	}
 	if (udpG90.parsePacket() > 0)
@@ -1846,11 +1846,13 @@ void loop()
 int foo = 1;
 void setupCp() { 
 	cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
-	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f True");
-	cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
-	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
+	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f Mag");
+	cpc.addFloat(&ahrsInput.selTrack, "Heading", 1, "%.1f");
+	//cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
+	//cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
 	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
-	cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
+	cpc.addFloat(&roll, "Roll", 1, "%.2f");
+	//cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
 	cpc.addFloat(&servoGain, "Servo Gain", 0.01, "%.2f");
 	cpc.addFloat(&maxRollRate, "Max Roll Rate", 0.1, "%.1f");
 	cpc.addFloat(&Display::maxb.value, "Max Bank", 0.1, "%.1f");
