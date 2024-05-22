@@ -699,6 +699,68 @@ void parseSerialLine(const char *buf) {
 void setupCp();
 void parseG5Line(const char *);
 
+
+//ReliableTcpServer server(4444);
+ReliableStreamESPNow server("CP");
+ReliableStreamESPNow g5("G5");
+
+ConfPanelTransportEmbedded cup(&server);
+//ConfPanelUdpTransport cup;
+ConfPanelClient cpc(0, &cup);
+
+
+class PidControlUI {
+	ConfPanelClient cpc;
+public:
+	PidControlUI(int i, ConfPanelTransportEmbedded *s) : cpc(i, s) {}
+	vector<PidControl *> pids;
+	vector<string> pidNames;
+	int selectedIndex = 0, previousIndex = -1;
+	PID errs, gains;
+	float finalGain, totalErr;
+	void add(PidControl *p, const char *name) { 
+		pids.push_back(p);
+		pidNames.push_back(string(name));
+	}
+	void begin() { 
+		string names;
+		for(auto i = pidNames.begin(); i != pidNames.end(); i++) { 
+			if (i != pidNames.begin())
+				names += "/";
+			names += *i;
+		}
+		cpc.addEnum(&selectedIndex, "Selected PID", names.c_str());
+		cpc.addFloat(&gains.p, "P Gain", 0.01, "%.2f");
+		cpc.addFloat(&gains.i, "I Gain", 0.01, "%.2f");
+		cpc.addFloat(&gains.d, "D Gain", 0.01, "%.2f");
+		cpc.addFloat(&finalGain, "Final Gain", 0.01, "%.2f");
+		cpc.addFloat(&errs.p, "P Err", 1, "%.2f");
+		cpc.addFloat(&errs.i, "I Err", 1, "%.2f");
+		cpc.addFloat(&errs.d, "D Err", 1, "%.2f");
+		cpc.addFloat(&totalErr, "Total Err", 1, "%.2f");
+	}
+	int index() { 
+		return min((int)pids.size() - 1, max(0, selectedIndex));
+	}
+	void run() { 
+		if (selectedIndex != previousIndex) { 
+			previousIndex = selectedIndex;
+			gains = pids[index()]->gain;
+			finalGain = pids[index()]->finalGain;
+		}
+		errs = pids[index()]->err;
+		totalErr = pids[index()]->corr;
+		pids[index()]->gain = gains;
+		pids[index()]->finalGain = finalGain;
+	}
+};	
+
+
+ConfPanelClient cpc2(1, &cup);
+PidControlUI cpc3(2, &cup);
+//ReliableTcpClient client("192.168.4.1", 4444);
+
+
 void setup()
 {
 	Display::jd.begin();
@@ -822,6 +884,14 @@ void setup()
 
 	// ArduinoOTA.begin();
 	setupCp();
+
+	cpc3.add(&pids.rollPID, "ROLL");
+	cpc3.add(&pids.hdgPID, "HDG");
+	cpc3.add(&pids.xtePID, "XTE");
+	//cpc3.add(&pids.pitchPID, "PIT");
+	//cpc3.add(&pids.altPID, "ALT");
+	cpc3.begin();
+	cpc2.schemaFlags = 0x1;
 
 #if 0 
 	espNowMux.registerReadCallback("g5", 
@@ -1293,14 +1363,6 @@ void parseG5Line(const char *line) {
 }
 
 float loopCount10Hz = 0;
-//ReliableTcpServer server(4444);
-ReliableStreamESPNow server("CP");
-ReliableStreamESPNow g5("G5");
-
-ConfPanelTransportEmbedded cup(&server);
-//ConfPanelUdpTransport cup;
-ConfPanelClient cpc(0, &cup);
-//ReliableTcpClient client("192.168.4.1", 4444);
 
 void loop()
 {
@@ -1309,6 +1371,7 @@ void loop()
 	j.run();
 	if(j.hz(10)) loopCount10Hz++;
 	cup.run();
+	cpc3.run();
 	delayMicroseconds(100);
 
 #ifndef UBUNTU
@@ -1845,6 +1908,7 @@ void loop()
 
 int foo = 1;
 void setupCp() { 
+	cpc2.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
 	cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
 	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f Mag");
 	cpc.addFloat(&ahrsInput.selTrack, "Heading", 1, "%.1f");
