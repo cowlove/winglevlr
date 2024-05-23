@@ -55,16 +55,14 @@ GDL90Parser::State state;
 
 RollAHRS ahrs;
 
-struct PIDS
-{
+struct PIDS {
 	PidControl rollPID = PidControl(AHRS_RATE_SCALE(30)) /*200Hz*/,
 			   pitchPID = PidControl(AHRS_RATE_SCALE(10), 6),
 			   hdgPID = PidControl(50) /*20Hz*/,
 			   xtePID = PidControl(100) /*5hz*/,
 			   altPID = PidControl(25); /*5Hz*/
 
-	PIDS()
-	{
+	PIDS() {
 		// Set up PID gains
 		rollPID.setGains(7.52, 0.01, 0.11); // input in degrees bank err, output in stickThrow units
 		rollPID.hiGain.p = 2;
@@ -138,8 +136,7 @@ struct {
 } pins;
 */
 
-struct
-{
+struct {
 	int topButton = 36;
 	int midButton = 37;
 	int botButton = 39;
@@ -155,18 +152,15 @@ struct
 	int serial2_tx = 27;
 	int gps_rx = 19;
 	int gps_tx = 27;
-
 } pins;
 
 MPU9250_asukiaaa *imu = NULL;
 
-class UbloxGPS
-{
+class UbloxGPS {
 public:
 	SFE_UBLOX_GPS myGNSS;
 	int gpsGood = 0;
-	void init()
-	{
+	void init() {
 		int bps = 38400;
 		// myGNSS.enableDebugging(Serial, false);
 		Serial.printf("Trying %d BPS...\n", bps);
@@ -178,16 +172,13 @@ public:
 			}
 			delay(5);
 		}
-		if (myGNSS.begin(Serial2) == false)
-		{
+		if (myGNSS.begin(Serial2) == false) {
 			Serial.printf("Trying 9.6K BPS...\n");
 			Serial2.begin(9600, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
-			if (myGNSS.begin(Serial2) == false)
-			{
+			if (myGNSS.begin(Serial2) == false) {
 				Serial.printf("Trying 115K BPS...\n");
 				Serial2.begin(115200, SERIAL_8N1, pins.gps_rx, pins.gps_tx);
-				if (myGNSS.begin(Serial2) == false)
-				{
+				if (myGNSS.begin(Serial2) == false) {
 					Serial.println("u-blox GNSS not detected. Please check wiring");
 					return;
 				}
@@ -214,10 +205,8 @@ public:
 	float hdg, hac, gs, siv, alt;
 	bool fixOk;
 	int count = 0;
-	bool check()
-	{
-		if (gpsGood && myGNSS.getPVT(10))
-		{
+	bool check() {
+		if (gpsGood && myGNSS.getPVT(10)) {
 			lon = myGNSS.getLongitude() / 10000000.0;
 			hdg = myGNSS.getHeading() / 100000.0;
 			lat = myGNSS.getLatitude() / 10000000.0;
@@ -235,8 +224,7 @@ public:
 		return false;
 	}
 #ifdef UBUNTU
-	void fakeValues(double lat, double lon, float hdg, float hac, float gs, float alt, float siv)
-	{
+	void fakeValues(double lat, double lon, float hdg, float hac, float gs, float alt, float siv) {
 		myGNSS.lon = lon * 10000000.0;
 		myGNSS.lat = lat * 10000000.0;
 		myGNSS.hdg = hdg * 100000;
@@ -249,8 +237,7 @@ public:
 #endif
 } ublox;
 
-void halInit()
-{
+void halInit() {
 	Serial.begin(921600, SERIAL_8N1);
 	Serial.setTimeout(1);
 
@@ -259,13 +246,11 @@ void halInit()
 	Wire.begin(21, 22);
 	// Wire.setClock(400000);
 	Serial.println("Scanning I2C bus on pins 21,22");
-	if (scanI2c() == 0)
-	{
+	if (scanI2c() == 0) {
 		Wire.begin(19, 18);
 		// Wire.setClock(400000);
 		Serial.println("Scanning I2C bus on pins 19,18");
-		if (scanI2c() == 0)
-		{
+		if (scanI2c() == 0) {
 			Serial.println("No I2C devices found, rebooting...");
 			ESP.restart();
 		}
@@ -280,32 +265,26 @@ void halInit()
 		//  TODO: IMU is inverted on these boards
 	}
 
-	for (int addr = 0x68; addr <= 0x69; addr++)
-	{
+	for (int addr = 0x68; addr <= 0x69; addr++) {
 		imu = new MPU9250_asukiaaa(addr);
 		// imu.address = addr;
 		uint8_t sensorId;
 		Serial.printf("Checking MPU addr 0x%x: ", (int)imu->address);
-		if (imu->readId(&sensorId) == 0)
-		{
+		if (imu->readId(&sensorId) == 0) {
 			Serial.printf("Found MPU sensor id: 0x%x\n", (int)sensorId);
 			break;
-		}
-		else
-		{
+		} else {
 			Serial.println("Cannot read sensorId");
 			delete imu;
 		}
 	}
 
-	if (0)
-	{
+	if (0) {
 		pinMode(pins.tft_backlight, OUTPUT); // TFT backlight
 		digitalWrite(pins.tft_backlight, 1);
 	}
 
-	while (0)
-	{ // basic hardware testing - halt here and debug pins
+	while (0) { // basic hardware testing - halt here and debug pins
 		static int alternate = 0;
 		delay(100);
 		printPins();
@@ -316,8 +295,7 @@ void halInit()
 		digitalWrite(pins.tft_backlight, !alternate);
 	}
 
-	if (ahrs.rotate180 == false)
-	{
+	if (ahrs.rotate180 == false) {
 		int temp = pins.botButton;
 		pins.botButton = pins.topButton;
 		pins.topButton = temp;
@@ -347,8 +325,7 @@ LongShortFilter butFilt4(1500, 600);
 
 void setKnobPid(int f);
 
-void buttonISR()
-{
+void buttonISR() {
 	buttonMid.check();
 	buttonBot.check();
 	buttonTop.check();
@@ -359,10 +336,8 @@ void buttonISR()
 	butFilt4.check(buttonKnob.duration());
 }
 
-void serialOutput(const String &s)
-{
-	for (int n = 0; n < 30; n++)
-	{
+void serialOutput(const String &s) {
+	for (int n = 0; n < 30; n++) {
 		udpCmd.beginPacket("255.255.255.255", 9000);
 		udpCmd.write((uint8_t *)s.c_str(), s.length());
 		udpCmd.endPacket();
@@ -371,8 +346,7 @@ void serialOutput(const String &s)
 	Serial.write((uint8_t *)s.c_str(), s.length());
 }
 
-namespace LogFlags
-{
+namespace LogFlags {
 	static const int g5Nav = 0x01;
 	static const int g5Ins = 0x02;
 	static const int g5Ps = 0x04;
@@ -383,8 +357,7 @@ namespace LogFlags
 	static const int ttaNav = 0x80;
 }
 
-namespace ServoControlString
-{
+namespace ServoControlString {
 	const float servoThrow = 2.0;
 	const float leftStringX = 14;
 	const float leftStringY = 7;
@@ -398,8 +371,7 @@ namespace ServoControlString
 	float xScale = +1.0;
 	float yScale = +1.0;
 
-	pair<int, int> stickToServo(float x, float y)
-	{
+	pair<int, int> stickToServo(float x, float y) {
 		float x1 = leftStringX + xScale * x;
 		float y1 = leftStringY + yScale * y;
 		float leftNewLen = sqrt(x1 * x1 + y1 * y1);
@@ -414,8 +386,7 @@ namespace ServoControlString
 		return pair<int, int>(s0, s1);
 	}
 
-	pair<float, float> servoToStick(int s0, int s1)
-	{
+	pair<float, float> servoToStick(int s0, int s1) {
 		float a = leftStringX + rightStringX;
 		float b = (s0 - 1500.0) / 2000 * servoThrow + rightLen;
 		float c = (s1 - 1500.0) / 2000 * servoThrow + leftLen;
@@ -432,14 +403,12 @@ namespace ServoControlString
 };
 
 ServoVisualizer *svis = nullptr;
-struct XY
-{
+struct XY {
 	XY(float x1, float y1) : x(x1), y(y1) {}
 	float x;
 	float y;
 };
-namespace ServoControlElbow
-{
+namespace ServoControlElbow {
 	// 1) arm angles start with 0 degrees is forward, so sin/cos usage may seem reversed
 	// 2) arm[0].angle is absolute angle of the first arm
 	// 3) arm[1].angle is the relative angle of the second arm to the first
@@ -451,8 +420,7 @@ namespace ServoControlElbow
 	const float hinge = 15;
 	float maxChange = .12;
 
-	struct ArmInfo
-	{
+	struct ArmInfo {
 		float length;
 		float angle;
 		// TODO: broken, only works if anchorPos.x == 0, arms are equal
@@ -465,18 +433,15 @@ namespace ServoControlElbow
 
 	XY oldPos(0, 0);
 	float srvPerDeg = -6.2;
-	float ang2servo(float a)
-	{
+	float ang2servo(float a) {
 		return 1500.0 + a * srvPerDeg;
 	}
-	float servo2ang(float s)
-	{
+	float servo2ang(float s) {
 		return (s - 1500.0) / srvPerDeg;
 	}
 
 	pair<float, float> servoToStick(float s0, float s1);
-	pair<int, int> stickToServo(float ox, float oy)
-	{
+	pair<int, int> stickToServo(float ox, float oy) {
 		// x  = .05;
 		// y = 0;
 		float x = ox + trim.x;
@@ -517,8 +482,7 @@ namespace ServoControlElbow
 		pair<float, float> servo;
 		servo.first = ang2servo(ang0) + strim.x;
 		servo.second = ang2servo(ang1) + strim.y;
-		if (svis != nullptr && (svis->startTime == 0 || millis() / 1000.0 > svis->startTime))
-		{
+		if (svis != nullptr && (svis->startTime == 0 || millis() / 1000.0 > svis->startTime)) {
 			svis->scale = svis->len0 / arms[0].length;
 			svis->yoffset = -anchorPos.y * svis->scale;
 			vector<pair<float, float>> pts;
@@ -536,8 +500,7 @@ namespace ServoControlElbow
 		return pair<int, int>(servo.first, servo.second);
 	}
 
-	pair<float, float> servoToStick(float s0, float s1)
-	{
+	pair<float, float> servoToStick(float s0, float s1) {
 		float a0 = DEG2RAD(servo2ang(s0 - strim.x)) + arms[0].angle;
 		float a1 = a0 - M_PI + arms[1].angle + DEG2RAD(servo2ang(s1 - strim.y));
 		// CSIM_PRINTF("a0:%6.3f a1:%6.3f\n", RAD2DEG(a0), RAD2DEG(a1));
@@ -549,13 +512,11 @@ namespace ServoControlElbow
 	}
 };
 
-namespace ServoControlLinear
-{
+namespace ServoControlLinear {
 	const float servoThrow = +1;
 	XY trim(0, 0), strim(+575, 0);
 	float maxChange = 0; // unimplemented
-	pair<int, int> stickToServo(float x, float y)
-	{
+	pair<int, int> stickToServo(float x, float y) {
 		x = min(servoThrow, max(-servoThrow, x + trim.x));
 		y = min(servoThrow, max(-servoThrow, y + trim.y));
 		float s1 = x / servoThrow * 450 + 1500 + strim.x;
@@ -563,8 +524,7 @@ namespace ServoControlLinear
 		return pair<int, int>(s0, s1);
 	}
 
-	pair<float, float> servoToStick(int s0, int s1)
-	{
+	pair<float, float> servoToStick(int s0, int s1) {
 		float x = (s1 - 1500 - strim.x) / 2000.0 * servoThrow - trim.x;
 		float y = (s0 - 1500 - strim.y) / 2000.0 * servoThrow - trim.y;
 
@@ -574,8 +534,7 @@ namespace ServoControlLinear
 
 #define ServoControl ServoControlLinear
 
-namespace Display
-{
+namespace Display {
 	JDisplay jd;
 	JDisplayEditor jde(26, 0);
 
@@ -613,13 +572,11 @@ void imuLog();
 
 static AhrsInput ahrsInput, lastAhrsInput, lastAhrsGoodG5;
 
-bool imuRead()
-{
+bool imuRead() {
 	AhrsInput &x = ahrsInput;
 	x.sec = micros() / 1000000.0;
 	// TODO fix this in a less gross way.
-	while (x.sec < lastAhrsInput.sec)
-	{
+	while (x.sec < lastAhrsInput.sec) {
 		x.sec += 65536.0 * 65536.0 / 1000000.0;
 	}
 #ifdef USE_ACCEL
@@ -635,16 +592,14 @@ bool imuRead()
 
 	// limit magnometer update to 100Hz
 	static uint64_t lastUsec = 0;
-	if (lastUsec / 10000 != micros() / 10000)
-	{
+	if (lastUsec / 10000 != micros() / 10000) {
 		imu->magUpdate();
 		x.mx = imu->magX();
 		x.my = imu->magY();
 		x.mz = imu->magZ();
 	}
 	// disable mpu logging
-	if (false && lastUsec / 10000 != micros() / 10000)
-	{
+	if (false && lastUsec / 10000 != micros() / 10000) {
 		AuxMpuData a;
 		a.ax = x.ax;
 		a.ay = x.ay;
@@ -666,8 +621,7 @@ bool imuRead()
 	return true;
 }
 
-void setDesiredTrk(float f)
-{
+void setDesiredTrk(float f) {
 	desiredTrk = f; // round(f);
 	Display::dtrk.setValue(desiredTrk);
 	//cmdRoll = 0;
@@ -754,9 +708,7 @@ ConfPanelClient cpc2(&cup);
 PidControlUI cpc3(&cup);
 //ReliableTcpClient client("192.168.4.1", 4444);
 
-
-void setup()
-{
+void setup() {
 	Display::jd.begin();
 	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
 	Display::jd.clear();
@@ -785,10 +737,6 @@ void setup()
 	j.begin();
 	j.mqtt.active = false;
 	j.run();
-	j.mqtt.active = false;
-	// j.jw.aps = {{"Ping-582B", ""},
-	//			{"ChloeNet", "niftyprairie7"}};
-
 	j.mqtt.active = false;
 	j.cli.on(".*", parseSerialLine);
 
@@ -824,11 +772,9 @@ void setup()
 	wifi.addAP("Tip of the Spear", "51a52b5354");
 	wifi.addAP("ChloeNet", "niftyprairie7");
 #endif
-	if (j.jw.enabled && !debugFastBoot && !buttonKnob.read() && !buttonTop.read())
-	{ // skip long setup stuff if we're debugging
+	if (j.jw.enabled && !debugFastBoot && !buttonKnob.read() && !buttonTop.read()) { // skip long setup stuff if we're debugging
 		uint64_t startms = millis();
-		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/)
-		{
+		while (WiFi.status() != WL_CONNECTED /*&& digitalRead(button.pin) != 0*/) {
 			j.run();
 			delay(10);
 		}
@@ -845,8 +791,7 @@ void setup()
 	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = -1;
 
 	// make PID select knob display text from array instead of 0-3
-	Display::pidsel.toString = [](float v)
-	{
+	Display::pidsel.toString = [](float v) {
 		return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >= 0 && v <= 4) ? (int)v : 0]);
 	};
 	Display::jde.begin();
@@ -859,8 +804,7 @@ void setup()
 	Display::pidsel.setValue(1);
 	Display::dtrk.setValue(desiredTrk);
 	setKnobPid(Display::pidsel.value);
-	if (debugFastBoot)
-	{
+	if (debugFastBoot) {
 		Display::ip.color.lb = Display::ip.color.vb = ST7735_RED;
 	}
 	Display::jde.update();
@@ -899,15 +843,12 @@ void setup()
  
 }
 
-void udpSendString(const char *b)
-{
-	for (int repeat = 0; repeat < 3; repeat++)
-	{
+void udpSendString(const char *b) {
+	for (int repeat = 0; repeat < 3; repeat++) {
 		udpG90.beginPacket("255.255.255.5", 7892);
 		udpG90.write((uint8_t *)b, strlen(b));
 		udpG90.endPacket();
-		for (int n = 100; n < 103; n++)
-		{
+		for (int n = 100; n < 103; n++) {
 			char ip[32];
 			snprintf(ip, sizeof(ip), "192.168.4.%d", n);
 			udpG90.beginPacket(ip, 7892);
@@ -917,27 +858,17 @@ void udpSendString(const char *b)
 	}
 }
 
-void setKnobPid(int f)
-{
+void setKnobPid(int f) {
 	Serial.printf("Knob PID %d\n", f);
-	if (f == 0)
-	{
+	if (f == 0) {
 		knobPID = &pids.pitchPID;
-	}
-	else if (f == 1)
-	{
+	} else if (f == 1) {
 		knobPID = &pids.altPID;
-	}
-	else if (f == 2)
-	{
+	} else if (f == 2) {
 		knobPID = &pids.rollPID;
-	}
-	else if (f == 3)
-	{
+	} else if (f == 3) {
 		knobPID = &pids.xtePID;
-	}
-	else if (f == 4)
-	{
+	} else if (f == 4) {
 		knobPID = &pids.hdgPID;
 	}
 
@@ -973,36 +904,30 @@ static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 
 #ifdef UBUNTU
-struct ErrorChannel
-{
+struct ErrorChannel {
 	vector<float> hist;
 	double sum = 0;
-	void add(double a)
-	{
+	void add(double a) {
 		hist.push_back(a);
 		sum += a;
 	}
-	void clear()
-	{
+	void clear() {
 		sum = 0;
 		hist.clear();
 	}
-	double err()
-	{
+	double err() {
 		double absSum = 0;
 		double avg = sum / hist.size();
-		for (vector<float>::iterator it = hist.begin(); it != hist.end(); it++)
-		{
+		for (vector<float>::iterator it = hist.begin(); it != hist.end(); it++) {
 			absSum += abs(*it - avg);
 		}
 		return absSum / hist.size();
 	}
 };
-struct
-{
+
+struct {
 	ErrorChannel roll, pitch, hdg;
-	void clear()
-	{
+	void clear() {
 		roll.clear();
 		pitch.clear();
 		hdg.clear();
@@ -1024,11 +949,9 @@ Windup360 currentHdg;
 ChangeTimer g5HdgChangeTimer;
 void startMakeoutSess();
 
-void parseSerialCommandInput(const char *buf, int n)
-{
+void parseSerialCommandInput(const char *buf, int n) {
 	static LineBuffer lb;
-	lb.add(buf, n, [](const char *line)
-		   { 
+	lb.add(buf, n, [](const char *line) { 
 		OUT("RECEIVED COMMAND: %s", line);
 		float f, f2;
 		int relay, ms;
@@ -1064,42 +987,34 @@ void parseSerialCommandInput(const char *buf, int n)
 		else if (strstr(line, "wpstart") == line && wpNav == NULL) { 
 			wpNav = new WaypointsSequencerString(waypointList); 
 			logItem.flags |= LogFlags::wptNav;
-		}
-		else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
+		} else if (strstr(line, "wpstop") == line && wpNav != NULL ) { delete wpNav; wpNav = NULL; }
 		else if (sscanf(line, "knobturn %f", &f) == 1) { 
 			Display::jde.re.change((int)f); 
 			//serialOutput(Display::jd.dump());
-		}
-		else if (sscanf(line, "knobpress %f", &f) == 1) { 
+		} else if (sscanf(line, "knobpress %f", &f) == 1) { 
 			Display::jde.buttonPress((int)f); 
 			//serialOutput(Display::jd.dump());
 		} else if (sscanf(line, "smode %f", &f) == 1) { 
 			serialLogMode = f;
-		}
-		else {
+		} else {
 			OUT("UNKNOWN COMMAND: %s", line);
 		} });
 }
 
-void setObsKnob(float knobSel, float v)
-{
-	if (knobSel == 2)
-	{
+void setObsKnob(float knobSel, float v) {
+	if (knobSel == 2) {
 		desAlt = v * FEET_PER_METER;
 	}
-	if (knobSel == 1 /*|| knobSel == 4*/)
-	{
+	if (knobSel == 1 /*|| knobSel == 4*/) {
 		obs = v * 180.0 / M_PI;
 		if (obs <= 0)
 			obs += 360;
-		if (obs != lastObs)
-		{
+		if (obs != lastObs) {
 			setDesiredTrk(obs);
 			crossTrackError.reset();
 			testTurnActive = false;
 			pids.xtePID.reset();
-			if (abs(obs - lastObs) > 5 && wpNav != NULL)
-			{
+			if (abs(obs - lastObs) > 5 && wpNav != NULL) {
 				delete wpNav;
 				wpNav = NULL;
 			}
@@ -1108,8 +1023,7 @@ void setObsKnob(float knobSel, float v)
 	}
 }
 
-void setServos(float x, float y)
-{
+void setServos(float x, float y) {
 	pair<int, int> s = ServoControl::stickToServo(x, y);
 	servoOutput[0] = max(900, min(2100, s.first));
 	servoOutput[1] = max(450, min(2550, s.second));
@@ -1119,16 +1033,12 @@ bool firstLoop = true;
 int imuReadCount = 0;
 bool immediateLogStart = false;
 
-void startMakeoutSess()
-{
+void startMakeoutSess() {
 	Serial.printf("makeout sess %x\n", wpNav);
-	if (wpNav != NULL)
-	{
+	if (wpNav != NULL) {
 		delete wpNav;
 		wpNav = NULL;
-	}
-	else
-	{
+	} else {
 		Display::maxb.setValue(15);
 		WaypointNav::LatLon curPos(ublox.lat, ublox.lon);
 		WaypointNav::LatLon nextPos =
@@ -1270,65 +1180,43 @@ void parseG5Line(const char *line) {
 	g5LineCount++;
 	vector<string> l = split(string(line), ' ');
 	float v, knobSel = 0;
-	for (vector<string>::iterator it = l.begin(); it != l.end(); it++)
-	{
-		if (sscanf(it->c_str(), "P=%f", &v) == 1)
-		{
+	for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
+		if (sscanf(it->c_str(), "P=%f", &v) == 1) {
 			ahrsInput.g5Pitch = v;
 			canMsgCount = canMsgCount + 1;
 			logItem.flags |= LogFlags::g5Ins;
-		}
-		else if (sscanf(it->c_str(), "R=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "R=%f", &v) == 1) {
 			ahrsInput.g5Roll = v;
 			logItem.flags |= LogFlags::g5Ins;
-		}
-		else if (sscanf(it->c_str(), "SL=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "SL=%f", &v) == 1) {
 			ahrsInput.g5Slip = v;
 			logItem.flags |= LogFlags::g5Ins;
-		}
-		else if (sscanf(it->c_str(), "IAS=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "IAS=%f", &v) == 1) {
 			ahrsInput.g5Ias = v;
 			logItem.flags |= LogFlags::g5Ps;
-		}
-		else if (sscanf(it->c_str(), "TAS=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "TAS=%f", &v) == 1) {
 			ahrsInput.g5Tas = v;
 			logItem.flags |= LogFlags::g5Ps;
-		}
-		else if (sscanf(it->c_str(), "PALT=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) {
 			ahrsInput.g5Palt = v;
 			logItem.flags |= LogFlags::g5Ps;
-		}
-		else if (sscanf(it->c_str(), "HDG=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) {
 			ahrsInput.g5Hdg = v;
 			logItem.flags |= LogFlags::g5Nav;
 			ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
-		}
-		else if (sscanf(it->c_str(), "TRK=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) {
 			ahrsInput.g5Track = v;
 			logItem.flags |= LogFlags::g5Nav;
-		}
-		else if (sscanf(it->c_str(), "MODE=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) {
 			Serial.printf("G5 MODE %f\n", v);
 			apMode = v;
-			if (apMode == 5)
-			{
+			if (apMode == 5) {
 				startMakeoutSess();
 			}
 		}
-		else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1)
-		{
+		else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) {
 			knobSel = v;
-		}
-		else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1)
-		{
+		} else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) {
 			setObsKnob(knobSel, v);
 		}
 	}
@@ -1358,8 +1246,7 @@ void parseG5Line(const char *line) {
 
 float loopCount10Hz = 0;
 
-void loop()
-{
+void loop() {
 	esp_task_wdt_reset();
 	// ArduinoOTA.handle();
 	j.run();
@@ -1376,15 +1263,13 @@ void loop()
 	uint64_t now = micros();
 	double nowSec = millis() / 1000.0;
 
-	if (debugFastBoot && nowSec > 3600)
-	{
+	if (debugFastBoot && nowSec > 3600) {
 		ESP.restart();
 	}
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	PidControl *pid = &pids.rollPID;
-	if (serialReportTimer.tick() && (serialLogMode & 0x1))
-	{
+	if (serialReportTimer.tick() && (serialLogMode & 0x1)) {
 		// SERIAL STATUS line output
 		Serial.printf(
 			"%06.2f "
@@ -1408,16 +1293,14 @@ void loop()
 			//ublox.count,
 			// servoOutput[0], servoOutput[1],
 			0);
-		if (logFile != NULL)
-		{
+		if (logFile != NULL) {
 			logFile->maxWaiting = 0;
 		}
 		serialLogFlags = 0;
 	}
 
 	// ed.re.check();
-	if (firstLoop == true && (digitalRead(buttonMid.pin) == 0 /* || debugFastBoot*/))
-	{
+	if (firstLoop == true && (digitalRead(buttonMid.pin) == 0 /* || debugFastBoot*/)) {
 		// if (debugFastBoot && nowSec > 60 && logFile == NULL) {
 		logFile = new SDCardBufferedLog<LogItem>(logFileName, 200 /*q size*/, 0 /*timeout*/, 500 /*flushInterval*/, false /*textMode*/);
 		logFilename = logFile->currentFile;
@@ -1429,26 +1312,20 @@ void loop()
 		doButtons();
 	}
 
-	if (testTurnActive)
-	{
-		if (desiredTrk == -1)
-		{
+	if (testTurnActive) {
+		if (desiredTrk == -1) {
 			// roll mode, test turns are fixed time at maxb degrees
-			if (nowSec - testTurnLastTurnTime > tttt + ttlt)
-			{
+			if (nowSec - testTurnLastTurnTime > tttt + ttlt) {
 				testTurnLastTurnTime = nowSec;
 				testTurnAlternate = (testTurnAlternate + 1) % 3;
-			}
+			} 
 			if (nowSec - testTurnLastTurnTime <= tttt)
 				cmdRoll = Display::maxb.value * (testTurnAlternate == 0 ? -1 : 1);
 			else
 				cmdRoll = 0;
-		}
-		else
-		{
+		} else {
 			// hdg mode, test turn is fixed number of degrees
-			if (nowSec - testTurnLastTurnTime > tttt)
-			{
+			if (nowSec - testTurnLastTurnTime > tttt) {
 				testTurnLastTurnTime = nowSec;
 				testTurnAlternate = (testTurnAlternate + 1) % 3;
 				setDesiredTrk(desiredTrk + ttlt * (testTurnAlternate == 2 ? -1 : 1));
@@ -1460,16 +1337,13 @@ void loop()
 	if (g5input.length() > 0) { 
 		parseG5Line(g5input.c_str()); 
 	}
-	if (udpG90.parsePacket() > 0)
-	{
+	if (udpG90.parsePacket() > 0) {
 		unsigned char buf[1024];
 		int n = udpG90.read(buf, sizeof(buf));
-		for (int i = 0; i < n; i++)
-		{
+		for (int i = 0; i < n; i++) {
 			gdl90.add(buf[i]);
 			GDL90Parser::State s = gdl90.getState();
-			if (s.valid && s.updated)
-			{
+			if (s.valid && s.updated) {
 				gpsTrackGDL90 = trueToMag(s.track);
 				ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.05);
 				logItem.flags |= LogFlags::HdgGDL;
@@ -1482,39 +1356,34 @@ void loop()
 		}
 	}
 
-	if (udpNMEA.parsePacket() > 0)
-	{
+	if (udpNMEA.parsePacket() > 0) {
 		char buf[1024];
 		static LineBuffer lb;
 		int n = udpNMEA.read((uint8_t *)buf, sizeof(buf));
 		// TODO - get rid of TinyGPSPlus, just use pattern matchine
-		for (int i = 0; i < n; i++)
-		{
+		for (int i = 0; i < n; i++) {
 			gps.encode(buf[i]);
-			if (buf[i] == '\r' || buf[i] == '\n')
-			{
-				if (vtgCourse.isUpdated())
-				{ // VTG typically from G5 NMEA serial output
+			if (buf[i] == '\r' || buf[i] == '\n') {
+				if (vtgCourse.isUpdated()) { 
+					// VTG typically from G5 NMEA serial output
 					gpsTrackVTG = trueToMag(gps.parseDecimal(vtgCourse.value()) * 0.01);
 				}
-				if (gps.course.isUpdated())
-				{ // RMC typically from ifly NMEA output
+				if (gps.course.isUpdated()) { 
+					// RMC typically from ifly NMEA output
 					gpsTrackRMC = trueToMag(gps.course.deg());
 					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07);
 					logItem.flags |= LogFlags::HdgRMC;
 				}
-				if (desiredHeading.isUpdated())
-				{
+				if (desiredHeading.isUpdated()) {
 					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
 					if (navDTK < 0)
 						navDTK += 360;
-					if (canMsgCount.isValid() == false)  // if we never got a can message, just hop straight to NAV mode 
-					{
+					if (canMsgCount.isValid() == false) {
+						// if we never got a can message, just hop straight to NAV mode 
 						apMode = 4;
 					}
 				}
-				if (xte.isUpdated() && xteLR.isUpdated())
-				{
+				if (xte.isUpdated() && xteLR.isUpdated()) {
 					float err = 0.01 * gps.parseDecimal(xte.value());
 					if (strcmp(xteLR.value(), "L") == 0)
 						err *= -1;
@@ -1524,8 +1393,7 @@ void loop()
 		}
 	}
 
-	if (udpCmd.parsePacket() > 0)
-	{
+	if (udpCmd.parsePacket() > 0) {
 		char buf[1024];
 		int n = udpCmd.read((uint8_t *)buf, sizeof(buf));
 		parseSerialCommandInput(buf, n);
@@ -1542,8 +1410,7 @@ void loop()
 
 	}
 
-	if (ublox.check())
-	{
+	if (ublox.check()) {
 		logItem.flags |= LogFlags::ublox;
 		ahrsInput.ubloxHdg = trueToMag(ublox.hdg);
 		ahrsInput.ubloxHdgAcc = ublox.hac;
@@ -1551,23 +1418,19 @@ void loop()
 		ahrsInput.ubloxGroundSpeed = ublox.gs;
 		ahrsInput.lat = ublox.lat;
 		ahrsInput.lon = ublox.lon;
-		if (ublox.hac < 7)
-		{
+		if (ublox.hac < 7) {
 			ahrs.mComp.addAux(ahrsInput.ubloxHdg, 10, ubloxHdgCr);
 		}
 	}
 
 	// printMag();
-	if (imuRead())
-	{
+	if (imuRead()) {
 		bool tick1HZ = floor(ahrsInput.sec) != floor(lastAhrsInput.sec);
 		bool tick20HZ = floor(ahrsInput.sec * 20.0) != floor(lastAhrsInput.sec * 20.0);
 		bool tick5HZ = floor(ahrsInput.sec * 5.0) != floor(lastAhrsInput.sec * 5.0);
 
-		if (tick5HZ)
-		{
-			if (wpNav != NULL)
-			{
+		if (tick5HZ) {
+			if (wpNav != NULL) {
 				apMode = 3;
 				wpNav->wptTracker.curPos.loc.lat = ublox.lat;
 				wpNav->wptTracker.curPos.loc.lon = ublox.lon;
@@ -1575,17 +1438,14 @@ void loop()
 				wpNav->wptTracker.speed = ahrsInput.ubloxGroundSpeed;
 				wpNav->wptTracker.curPos.valid = true;
 				wpNav->run(0.2);
-				if (wpNav->didWaypointChange)
-				{
+				if (wpNav->didWaypointChange) {
 					crossTrackError.reset();
 					pids.xtePID.reset();
 				}
-				if (tick1HZ)
-				{
+				if (tick1HZ) {
 					crossTrackError.add(wpNav->wptTracker.xte * .0005);
 				}
-				if (abs(crossTrackError.average()) > 0.2)
-				{
+				if (abs(crossTrackError.average()) > 0.2) {
 					pids.xtePID.resetI();
 				}
 				static const double xteCorr = 20;
@@ -1593,36 +1453,27 @@ void loop()
 				xteCorrection = max(-xteCorr, min(xteCorr, (double)xteCorrection));
 
 				setDesiredTrk(trueToMag(wpNav->wptTracker.commandTrack) + xteCorrection);
-				if (wpNav->wptTracker.commandAlt > -1000)
-				{
+				if (wpNav->wptTracker.commandAlt > -1000) {
 					desAlt = wpNav->wptTracker.commandAlt * FEET_PER_METER;
 				}
 				ahrsInput.dtk = desiredTrk;
 				Serial.printf("wptNav %06.1f ct:%06.1f trk:%06.1f %03.1f %010.5f %010.5f\n", wpNav->wptTracker.distToWaypoint,
 							  wpNav->wptTracker.commandTrack, magToTrue(ahrsInput.selTrack), wpNav->waitTime, ublox.lat, ublox.lon);
-			}
-			else if (apMode == 4)
-			{
+			} else if (apMode == 4) {
 				xteCorrection = -pids.xtePID.add(crossTrackError.average(), crossTrackError.average(), ahrsInput.sec);
 				xteCorrection = max(-40.0, min(40.0, (double)xteCorrection));
 				setDesiredTrk(navDTK + xteCorrection);
 				ahrsInput.dtk = desiredTrk;
-			}
-			else
-			{
+			} else {
 				xteCorrection = 0;
 			}
-			if (desAlt > 1000)
-			{
+			if (desAlt > 1000) {
 				float altErr = desAlt - ahrsInput.ubloxAlt;
-				if (abs(altErr) > 500)
-				{
+				if (abs(altErr) > 500) {
 					pids.altPID.resetI();
 				}
 				pids.altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
-			}
-			else
-			{
+			} else {
 				pids.altPID.reset();
 			}
 		}
@@ -1635,36 +1486,30 @@ void loop()
 		roll = ahrs.add(ahrsInput);
 		pitch = ahrs.pitch;
 
-		if (hdgSelect == 0)
-		{ // mode 0, use GDL90 until first can message, then switch to G5
+		if (hdgSelect == 0) { 
+			// mode 0, use GDL90 until first can message, then switch to G5
 			ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
 			if (ahrsInput.g5Hdg != -1) // canMsgCount.isValid() == true) // switch to G5 on first CAN msg
 				hdgSelect = 1;
 		}
-		if (hdgSelect == 1)
-		{ // hybrid G5/GDL90 data
-			if (ahrsInput.g5Hdg != -1 && g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0)
-			{ // use g5 data if it's not stale
+		if (hdgSelect == 1) { // hybrid G5/GDL90 data
+			if (ahrsInput.g5Hdg != -1 && g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { 
+				// use g5 data if it's not stale
 				// if (ahrsInput.gpsTrackGDL90 != -1 || ahrsInput.gpsTrackRMC != -1) {
 				ahrsInput.selTrack = ahrsInput.g5Hdg;
 				//}
 				lastAhrsGoodG5 = ahrsInput;
-			}
-			else if (lastAhrsGoodG5.selTrack != -1 && ahrsInput.gpsTrackGDL90 != -1 && ahrsInput.gpsTrackRMC != -1 && lastAhrsGoodG5.gpsTrackGDL90 != -1 && lastAhrsGoodG5.gpsTrackRMC != -1)
-			{
+			} else if (lastAhrsGoodG5.selTrack != -1 && ahrsInput.gpsTrackGDL90 != -1 && ahrsInput.gpsTrackRMC != -1 && lastAhrsGoodG5.gpsTrackGDL90 != -1 && lastAhrsGoodG5.gpsTrackRMC != -1) {
 				ahrsInput.selTrack = constrain360(lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90) / 2 +
 												  angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC) / 2);
-			}
-			else if (lastAhrsGoodG5.selTrack != -1 && ahrsInput.gpsTrackGDL90 != -1 && lastAhrsGoodG5.gpsTrackGDL90 != -1)
-			{ // otherwise use change in GDL90 data
+			} else if (lastAhrsGoodG5.selTrack != -1 && ahrsInput.gpsTrackGDL90 != -1 && lastAhrsGoodG5.gpsTrackGDL90 != -1) { 
+				// otherwise use change in GDL90 data
 				ahrsInput.selTrack = constrain360(lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackGDL90 - lastAhrsGoodG5.gpsTrackGDL90));
 			}
 			else if (lastAhrsGoodG5.selTrack != -1 && ahrsInput.gpsTrackRMC != -1 && lastAhrsGoodG5.gpsTrackRMC != -1)
 			{ // otherwise use change in VTG data
 				ahrsInput.selTrack = constrain360(lastAhrsGoodG5.selTrack + angularDiff(ahrsInput.gpsTrackRMC - lastAhrsGoodG5.gpsTrackRMC));
-			}
-			else
-			{ // otherwise, no available heading/track data
+			} else { // otherwise, no available heading/track data
 				ahrsInput.selTrack = -1;
 			}
 		}
@@ -1674,32 +1519,24 @@ void loop()
 			ahrsInput.selTrack = ahrs.magHdg;
 
 		// TODO:  it seems hdgPID was tuned for 20Hz.   Accidently moved into 5hz loop?
-		if (tick20HZ)
-		{
-			if (ahrsInput.dtk != -1)
-			{
+		if (tick20HZ) {
+			if (ahrsInput.dtk != -1) {
 				double hdgErr = 0;
-				if (ahrs.valid() != false && ahrsInput.selTrack != -1)
-				{
+				if (ahrs.valid() != false && ahrsInput.selTrack != -1) {
 					hdgErr = angularDiff(ahrsInput.selTrack - ahrsInput.dtk);
 					currentHdg = ahrsInput.selTrack;
-				}
-				else
-				{
+				} else {
 					// lost course guidance, just keep wings level by leaving currentHdg unchanged and no error
 					hdgErr = 0;
 				}
-				if (abs(hdgErr) > 15.0)
-				{
+				if (abs(hdgErr) > 15.0) {
 					pids.hdgPID.resetI();
 					pids.xtePID.resetI();
 				}
 				float newRoll = -pids.hdgPID.add(hdgErr, currentHdg, ahrsInput.sec);
 				newRoll = max(-Display::maxb.value, min(+Display::maxb.value, newRoll));
 				cmdRoll = max(cmdRoll - maxRollRate / 20, min(cmdRoll + maxRollRate / 20, newRoll));
-			}
-			else if (!testTurnActive)
-			{
+			} else if (!testTurnActive) {
 				//desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something
 			}
 		}
@@ -1709,8 +1546,7 @@ void loop()
 		cmdPitch = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * rollToPitch);
 		pids.pitchPID.add(ahrs.pitch - cmdPitch, ahrs.pitch - cmdPitch, ahrsInput.sec);
 
-		if (armServo == true)
-		{
+		if (armServo == true) {
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations.
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values
 			stickX = pids.rollPID.corr * servoGain;
@@ -1725,22 +1561,18 @@ void loop()
 			// stickX += cos(millis() / 100.0) * .04;
 			// stickY += sin(millis() / 100.0) * .04;
 			setServos(stickX, stickY);
-		}
-		else
-			switch (servoSetupMode)
-			{
+		} else
+			switch (servoSetupMode) {
 			case 0:
 				// leave servos where they are
 				break;
-			case 1:
-			{
+			case 1: {
 				stickX = cos(millis() / 300.0) * ServoControl::servoThrow * .04;
 				stickY = sin(millis() / 300.0) * ServoControl::servoThrow * .04;
 				setServos(stickX, stickY);
 				break;
 			}
-			case 2:
-			{
+			case 2: {
 				float speed = 500.0;
 				stickX = sin(millis() / speed) * ServoControl::servoThrow * 1;
 				stickY = sin(millis() / speed) * ServoControl::servoThrow * 1;
@@ -1755,8 +1587,7 @@ void loop()
 				setServos(stickX, stickY);
 				break;
 			}
-			case 3:
-			{
+			case 3: {
 				float speed = 500.0;
 				stickX = cos(millis() / speed) * ServoControl::servoThrow;
 				stickY = cos(millis() / speed) * ServoControl::servoThrow;
@@ -1806,13 +1637,11 @@ void loop()
 
 	// digitalWrite(pins.servo_enable, !armServo);
 
-	if (Display::pidsel.changed())
-	{
+	if (Display::pidsel.changed()) {
 		setKnobPid(Display::pidsel.value);
 	}
 
-	if (screenTimer.tick() && screenEnabled)
-	{
+	if (screenTimer.tick() && screenEnabled) {
 		Display::jde.update();
 		if (0)  {
 			knobPID->gain.p = Display::pidpl.value;
@@ -1862,8 +1691,8 @@ void loop()
 #endif
 #ifdef UBUNTU
 	static bool errorsCleared = false;
-	if (errorsCleared == false && millis() < 200000)
-	{ // don't count error during the first 200 sec, let AHRS stabilize
+	if (errorsCleared == false && millis() < 200000) { 
+		// don't count error during the first 200 sec, let AHRS stabilize
 		totalError.clear();
 		errorsCleared = true;
 	}
@@ -1872,14 +1701,12 @@ void loop()
 	totalError.pitch.add(pitch - ahrsInput.g5Pitch);
 
 	// special logfile name "+", write out log with computed values from the current simulation
-	if (strcmp(logFilename.c_str(), "+") == 0)
-	{
+	if (strcmp(logFilename.c_str(), "+") == 0) {
 		pair<float, float> stick = ServoControl::servoToStick(servoOutput[0], servoOutput[1]);
 		cout << logItem.toString().c_str() << strfmt("%f %f	LOG U", stick.first, stick.second) << endl;
 	}
 #endif
-	if (logFile != NULL)
-	{
+	if (logFile != NULL) {
 		sdLog();
 	}
 	logItem.flags = 0;
@@ -1933,11 +1760,9 @@ void setupCp() {
 
 void ESP32sim_done();
 
-class ESP32sim_winglevlr : public ESP32sim_Module
-{
+class ESP32sim_winglevlr : public ESP32sim_Module {
 public:
 	IntervalTimer hz100 = IntervalTimer(100 /*msec*/);
-
 	string wpFile;
 	ifstream ifile;
 	const char *replayFile = NULL;
@@ -1956,8 +1781,7 @@ public:
 	RollingAverage<float, (int)AHRS_RATE_SCALE(120)> delayRoll;
 	RollingAverage<float, (int)AHRS_RATE_SCALE(40)> delayBank;
 
-	void flightSim(MPU9250_DMP *imu)
-	{
+	void flightSim(MPU9250_DMP *imu) {
 		// TODO: flightSim is very fragile/unstable.  Poke values into the
 		//  main loop code to make sure things work.
 		// hdgPID.finalGain = 0.5;
@@ -1989,8 +1813,8 @@ public:
 		imu->gy *= -1;
 		bank += imu->gy * (AHRS_RATE_INV_SCALE(5000.0) / 1000000.0);
 		bank = max(-20.0, min(20.0, (double)bank));
-		if (1 && floor(lastMillis / 100) != floor(millis() / 100))
-		{ // 10hz
+		if (1 && floor(lastMillis / 100) != floor(millis() / 100)) { 
+			// 10hz
 			printf("%08.3f servo %05d/%05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis() / 1000.0,
 				   ESP32sim_currentPwm[0], ESP32sim_currentPwm[1], track, cmdRoll, bank, imu->gy);
 		}
@@ -1998,8 +1822,7 @@ public:
 		imu->gz *= -1;
 
 		uint64_t now = millis();
-		if (j.hz(10))
-		{
+		if (j.hz(10)) {
 			delayBank.add(max(-0.5, abs(bank - 2.3)) * bank / abs(bank));
 			float dbank = delayBank.average();
 			// TODO wind effect on ground track change
@@ -2010,8 +1833,7 @@ public:
 		// hdg = track - 35.555; // simluate mag var and arbitrary WCA
 		// if (hdg < 0) hdg += 360;
 
-		if (0)
-		{
+		if (0) {
 			printf("SIM %08.3f (%+04.1f,%+04.1f) %+05.2f %+05.2f %+05.2f %+05.2f\n",
 				   (float)(millis() / 1000.0), stickX, stickY, imu->gx, cmdPitch, pitch, (double)logItem.pitch);
 		}
@@ -2028,8 +1850,7 @@ public:
 		ahrs.magBankTrim = 0; // TODO simulate mag so this doesn't oscillate
 		// ahrs.magHdg = hdg;
 
-		if (j.hz(.01))
-		{
+		if (j.hz(.01)) {
 			wind = windVel;
 			if (windGust > 0)
 				wind += random() * 1.0 / RAND_MAX * (windGust - windVel);
@@ -2044,8 +1865,7 @@ public:
 
 		lastMillis = now;
 
-		if (ahrs.rotate180 == false)
-		{
+		if (ahrs.rotate180 == false) {
 			imu->ax *= -1;
 			imu->ay *= -1;
 			imu->mx *= -1;
@@ -2056,19 +1876,16 @@ public:
 	}
 
 	bool ESP32csim_useAuxMpu = false;
-	bool ESP32sim_replayLogItem(ifstream &i)
-	{
+	bool ESP32sim_replayLogItem(ifstream &i) {
 		LogItem l;
 		static uint64_t logfileMicrosOffset = 0;
 		int logFlags = 0;
-		for (int n = 0; n < replayReduce; n++)
-		{
+		for (int n = 0; n < replayReduce; n++) {
 			i.read((char *)&l, sizeof(l));
 			logFlags |= l.flags;
 		}
 
-		if (i.read((char *)&l, sizeof(l)))
-		{
+		if (i.read((char *)&l, sizeof(l))) {
 			l.flags |= logFlags;
 			if (logfileMicrosOffset == 0)
 				logfileMicrosOffset = (l.ai.sec * 1000000 - _micros);
@@ -2087,20 +1904,16 @@ public:
 			l.ai.g5Pitch = min(max(-45.0, (double)l.ai.g5Pitch), 45.0);
 			l.ai.g5Roll = min(max(-45.0, (double)l.ai.g5Roll), 45.0);
 			// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs
-			if ((l.flags & LogFlags::g5Ps) /*|| l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt*/)
-			{
+			if ((l.flags & LogFlags::g5Ps) /*|| l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt*/) {
 				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", (double)l.ai.g5Ias, (double)l.ai.g5Tas, (double)l.ai.g5Palt));
 			}
-			if ((l.flags & LogFlags::g5Nav) /* || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track*/)
-			{
+			if ((l.flags & LogFlags::g5Nav) /* || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track*/) {
 				ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", (double)l.ai.g5Hdg, (double)l.ai.g5Track));
 			}
-			if ((l.flags & LogFlags::g5Ins) /* || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch*/)
-			{
+			if ((l.flags & LogFlags::g5Ins) /* || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch*/) {
 				ESP32sim_udpInput(7891, strfmt("R=%f P=%f SL=%f\n", (double)l.ai.g5Roll, (double)l.ai.g5Pitch, (double)l.ai.g5Slip));
 			}
-			if ((l.flags & LogFlags::ublox) || abs(l.ai.ubloxHdg != ahrsInput.ubloxHdg) < .01)
-			{
+			if ((l.flags & LogFlags::ublox) || abs(l.ai.ubloxHdg != ahrsInput.ubloxHdg) < .01) {
 				ublox.myGNSS.hdg = magToTrue(l.ai.ubloxHdg) * 100000.0;
 				ublox.myGNSS.hac = l.ai.ubloxHdgAcc * 100000.0;
 				ublox.myGNSS.alt = l.ai.ubloxAlt * 1000.0 / FEET_PER_METER;
@@ -2109,20 +1922,17 @@ public:
 				ublox.myGNSS.lon = l.ai.lon * 10000000.0;
 				ublox.myGNSS.fresh = true;
 			}
-			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0)
-			{
+			if (abs(angularDiff(ahrsInput.gpsTrackRMC - l.ai.gpsTrackRMC)) > .1 || (l.flags & LogFlags::HdgRMC) != 0) {
 				char buf[128];
 				snprintf(buf, sizeof(buf), "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E",
 						 magToTrue(l.ai.gpsTrackRMC));
 				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
 			if ( // abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || ahrsInput.gspeed != l.ai.gspeed ||
-				(l.flags & LogFlags::HdgGDL) != 0)
-			{
+				(l.flags & LogFlags::HdgGDL) != 0) {
 				unsigned char buf[64];
 				GDL90Parser::State s;
-				if (l.ai.gpsTrackGDL90 != -1)
-				{
+				if (l.ai.gpsTrackGDL90 != -1) {
 					s.track = magToTrue(l.ai.gpsTrackGDL90);
 					s.hvel = l.ai.gspeed;
 					s.palt = l.ai.palt;
@@ -2138,8 +1948,7 @@ public:
 			setDesiredTrk(l.ai.dtk);
 
 			// special logfile name "-", just replay existing log back out to stdout
-			if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0)
-			{
+			if (strcmp(logFilename.c_str(), "-") == 0 && l.ai.sec != 0) {
 				l.ai.sec = _micros / 1000000.0;
 				cout << l.toString().c_str() << " -1 LOG" << endl;
 			}
@@ -2149,17 +1958,14 @@ public:
 	}
 
 	float gpsTrackFuzz = 0.00;
-	void set_gpsTrack(float t)
-	{
+	void set_gpsTrack(float t) {
 		// hdgSelect = 2;
 		float t1 = -1, t2 = -1;
-		if (t != -1)
-		{
+		if (t != -1) {
 			t1 = random01() < gpsTrackFuzz ? -1 : constrain360(t + 0.1 * random01());
 			t2 = random01() < gpsTrackFuzz ? -1 : constrain360(t + 0.1 * random01());
 		}
-		if (1)
-		{
+		if (1) {
 			// Broken
 			GDL90Parser::State s;
 			s.lat = curPos.loc.lat;
@@ -2189,9 +1995,7 @@ public:
 			ESP32sim_udpInput(4000, buf);
 			;
 			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", trueToMag(t2), trueToMag(t2)));
-		}
-		else
-		{
+		} else {
 			// TODO needs both set?  Breaks with only GDL90
 			gpsTrackGDL90 = t1;
 			ahrsInput.g5Hdg = t2;
@@ -2207,49 +2011,37 @@ public:
 	std::vector<char> trackSimFileContents;
 	// wrap_vector_as_istream tsf;
 	ifstream gdl90file;
-	void parseArg(char **&a, char **la) override
-	{
+	void parseArg(char **&a, char **la) override {
 		if (strcmp(*a, "--replay") == 0)
 			replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0)
 			logSkip = atoi(*(++a));
 		else if (strcmp(*a, "--replayReduce") == 0)
 			replayReduce = atoi(*(++a));
-		else if (strcmp(*a, "--log") == 0)
-		{
+		else if (strcmp(*a, "--log") == 0) {
 			// bm.addPress(pins.midButton, 1, 1, true);  // long press bottom button - start log 1 second in
 			logFilename = (*(++a));
-		}
-		else if (strcmp(*a, "--servovis") == 0)
-		{
+		} else if (strcmp(*a, "--servovis") == 0) {
 			float svisStartTime;
 			sscanf(*(++a), "%f", &svisStartTime);
 			svis = new ServoVisualizer();
 			svis->startTime = svisStartTime;
 			servoSetupMode = 3;
-		}
-		else if (strcmp(*a, "--wind") == 0)
-		{
+		} else if (strcmp(*a, "--wind") == 0) {
 			sscanf(*(++a), "%f@%fG%f", &windDir, &windVel, &windGust);
-		}
-		else if (strcmp(*a, "--startpos") == 0)
-		{
+		} else if (strcmp(*a, "--startpos") == 0) {
 			sscanf(*(++a), "%lf,%lf,%f,%f,%f", &curPos.loc.lat, &curPos.loc.lon, &curPos.alt, &track, &speed);
 			curPos.alt /= FEET_PER_METER;
 			gdl90State.lat = curPos.loc.lat;
 			gdl90State.lon = curPos.loc.lon; // HACK : stuff the main loops gld90State just so initial data logs have valid looking data
 			set_gpsTrack(track);
-		}
-		else if (strcmp(*a, "--plotcourse") == 0)
-		{
+		} else if (strcmp(*a, "--plotcourse") == 0) {
 			float hdg, dist, alt, repeat;
 			sscanf(*(++a), "%f", &repeat);
 			char **fa = a;
-			while (repeat-- > 0)
-			{
+			while (repeat-- > 0) {
 				a = fa;
-				while (sscanf(*(++a), "%f,%f,%f", &hdg, &dist, &alt) == 3)
-				{
+				while (sscanf(*(++a), "%f,%f,%f", &hdg, &dist, &alt) == 3) {
 					track += hdg;
 					curPos.loc = WaypointNav::locationBearingDistance(curPos.loc, track, dist);
 					curPos.alt += alt;
@@ -2257,36 +2049,25 @@ public:
 				}
 			}
 			exit(0);
-		}
-		else if (strcmp(*a, "--tracksim") == 0)
-		{
+		} else if (strcmp(*a, "--tracksim") == 0) {
 			wpFile = *(++a);
-		}
-		else if (strcmp(*a, "--button") == 0)
-		{
+		} else if (strcmp(*a, "--button") == 0) {
 			int pin, clicks, longclick;
 			float tim;
 			sscanf(*(++a), "%f,%d,%d,%d", &tim, &pin, &clicks, &longclick);
 			ESP32sim_pinManager::manager->addPress(pin, tim, clicks, longclick);
-		}
-		else if (strcmp(*a, "--logConvert") == 0)
-		{
+		} else if (strcmp(*a, "--logConvert") == 0) {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);
 			ESP32sim_convertLogOldToNew(i, o);
 			o.flush();
 			o.close();
 			exit(0);
-		}
-		else if (strcmp(*a, "--gdl") == 0)
-		{
+		} else if (strcmp(*a, "--gdl") == 0) {
 			gdl90file = ifstream(*(++a), ios_base::in | ios_base::binary);
-		}
-		else if (strcmp(*a, "--testStick") == 0)
-		{
+		} else if (strcmp(*a, "--testStick") == 0) {
 			using namespace ServoControl;
-			while (1)
-			{
+			while (1) {
 				for (float x = 0; x <= +servoThrow; x += servoThrow / 20)
 					setServos(x, 0);
 				for (float x = +servoThrow; x >= -servoThrow; x -= servoThrow / 20)
@@ -2300,119 +2081,70 @@ public:
 				for (float x = -servoThrow; x <= 0; x += servoThrow / 20)
 					setServos(0, x);
 			}
-		}
-		else if (strcmp(*a, "--testStick1") == 0)
-		{
+		} else if (strcmp(*a, "--testStick1") == 0) {
 			using namespace ServoControl;
 			float x, y;
 			sscanf(*(++a), "%f,%f", &x, &y);
 			setServos(x, y);
-			while (1)
-			{
+			while (1) {
 				sleep(1);
 			}
-		}
-		else if (strcmp(*a, "--debug") == 0)
-		{
+		} else if (strcmp(*a, "--debug") == 0) {
 			vector<string> l = split(string(*(++a)), ',');
 			float v;
-			for (vector<string>::iterator it = l.begin(); it != l.end(); it++)
-			{
-				if (sscanf(it->c_str(), "zeros.mx=%f", &v) == 1)
-				{
+			for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
+				if (sscanf(it->c_str(), "zeros.mx=%f", &v) == 1) {
 					ahrs.magOffX = v;
-				}
-				else if (sscanf(it->c_str(), "zeros.my=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "zeros.my=%f", &v) == 1) {
 					ahrs.magOffY = v;
-				}
-				else if (sscanf(it->c_str(), "zeros.mz=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "zeros.mz=%f", &v) == 1) {
 					ahrs.magOffZ = v;
-				}
-				else if (sscanf(it->c_str(), "zeros.gx=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "zeros.gx=%f", &v) == 1) {
 					ahrs.gyrOffX = v;
-				}
-				else if (sscanf(it->c_str(), "zeros.gy=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "zeros.gy=%f", &v) == 1) {
 					ahrs.gyrOffY = v;
-				}
-				else if (sscanf(it->c_str(), "zeros.gz=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "zeros.gz=%f", &v) == 1) {
 					ahrs.gyrOffZ = v;
-				}
-				else if (sscanf(it->c_str(), "ahrs.debug=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "ahrs.debug=%f", &v) == 1) {
 					ahrs.debugVar = v;
-				}
-				else if (sscanf(it->c_str(), "cr1=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "cr1=%f", &v) == 1) {
 					ahrs.compRatio1 = v;
-				}
-				else if (sscanf(it->c_str(), "dc1=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "dc1=%f", &v) == 1) {
 					ahrs.driftCorrCoeff1 = v;
-				}
-				else if (sscanf(it->c_str(), "ahrs.crhdg=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "ahrs.crhdg=%f", &v) == 1) {
 					ahrs.hdgCompRatio = v;
-				}
-				else if (sscanf(it->c_str(), "mbt.cr=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "mbt.cr=%f", &v) == 1) {
 					ahrs.magBankTrimCr = v;
-				}
-				else if (sscanf(it->c_str(), "mbt.maxerr=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "mbt.maxerr=%f", &v) == 1) {
 					ahrs.magBankTrimMaxBankErr = v;
-				}
-				else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "dipconstant=%f", &v) == 1) {
 					ahrs.magDipConstant = v;
-				}
-				else if (sscanf(it->c_str(), "ahrs.crpitch=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "ahrs.crpitch=%f", &v) == 1) {
 					ahrs.compRatioPitch = v;
-				}
-				else if (sscanf(it->c_str(), "ahrs.useauxmpu=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "ahrs.useauxmpu=%f", &v) == 1) {
 					ESP32csim_useAuxMpu = v;
-				}
-				else if (sscanf(it->c_str(), "ahrs.gxdecel=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "ahrs.gxdecel=%f", &v) == 1) {
 					ahrs.gXdecelCorrelation = v;
-				}
-				else if (sscanf(it->c_str(), "ahrs.bankanglescale=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "ahrs.bankanglescale=%f", &v) == 1) {
 					ahrs.bankAngleScale = v;
-				}
-				else if (sscanf(it->c_str(), "ubloxcr=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "ubloxcr=%f", &v) == 1) {
 					ubloxHdgCr = v;
-				}
-				else if (sscanf(it->c_str(), "pids.pitch.itrim=%f", &v) == 1)
-				{
+				} else if (sscanf(it->c_str(), "pids.pitch.itrim=%f", &v) == 1) {
 					pids.pitchPID.inputTrim = v;
-				}
-				else if (strlen(it->c_str()) > 0)
-				{
+				} else if (strlen(it->c_str()) > 0) {
 					//printf("Unknown debug parameter '%s'\n", it->c_str());
 					//exit(-1);
 				}
 			}
-		}
-		else
-		{
+		} else {
 			//printf("Unknown debug parameter '%s'\n", *a);
 			//exit(-1);
 		}
 	}
-	void setup() override
-	{
+	void setup() override {
 		setServos(1, 1);
 		ServoControl::servoToStick(servoOutput[0], servoOutput[1]);
-		if (replayFile == NULL)
-		{
+		if (replayFile == NULL) {
 			ESP32sim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 																				 // bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate
 																				 // bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode
@@ -2426,25 +2158,20 @@ public:
 	float now, lastTime = 0;
 	bool hz(float hz) { return floor(now * hz) != floor(lastTime * hz); }
 	bool at(float t) { return now > t && lastTime < t; }
-	void loop() override
-	{
+	void loop() override {
 		now = _micros / 1000000.0;
 
-		if (hz(100) && gdl90file)
-		{
+		if (hz(100) && gdl90file) {
 			std::vector<unsigned char> data(300);
 			gdl90file.read((char *)data.data(), data.size());
 			int n = gdl90file.gcount();
-			if (gdl90file && n > 0)
-			{
+			if (gdl90file && n > 0) {
 				ESP32sim_udpInput(4000, data);
 			}
 		}
 
-		if (replayFile == NULL)
-		{
-			if (floor(now / .1) != floor(lastTime / .1))
-			{
+		if (replayFile == NULL) {
+			if (floor(now / .1) != floor(lastTime / .1)) {
 				float g5hdg = DEG2RAD(track); // TODO mag/true
 				float g5roll = DEG2RAD(-bank);
 				float g5pitch = DEG2RAD(pitch);
@@ -2455,28 +2182,21 @@ public:
 			}
 			flightSim(imu);
 
-			if (at(5.0) && wpFile.length())
-			{
+			if (at(5.0) && wpFile.length()) {
 				wpNav = new WaypointsSequencerFile(wpFile.c_str());
 				hdgSelect = 3;
 			}
-			if (at(1.0))
-			{ // alt bug to ~1200 ft
+			if (at(1.0)) { // alt bug to ~1200 ft
 				ESP32sim_udpInput(7891, "KSEL=2 KVAL=350.0\n");
 			}
-		}
-		else
-		{
-			if (firstLoop == true)
-			{
+		} else {
+			if (firstLoop == true) {
 				ifile = ifstream(replayFile, ios_base::in | ios::binary);
 			}
-			while (logSkip > 0 && logSkip-- > 0)
-			{
+			while (logSkip > 0 && logSkip-- > 0) {
 				ESP32sim_replayLogItem(ifile);
 			}
-			if (ESP32sim_replayLogItem(ifile) == false)
-			{
+			if (ESP32sim_replayLogItem(ifile) == false) {
 				ESP32sim_exit();
 			}
 			logEntries++;
@@ -2487,8 +2207,7 @@ public:
 		firstLoop = false;
 		lastTime = now;
 	}
-	void done() override
-	{
+	void done() override {
 		printf("# %f %f %f avg roll/pitch/hdg errors, %d log entries, %.1f real time seconds\n",
 			   totalError.roll.err(), totalError.pitch.err(), totalError.hdg.err(), (int)totalError.hdg.hist.size(),
 			   millis() / 1000.0);
