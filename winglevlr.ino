@@ -699,20 +699,9 @@ void parseSerialLine(const char *buf) {
 void setupCp();
 void parseG5Line(const char *);
 
-
-//ReliableTcpServer server(4444);
-ReliableStreamESPNow server("CP");
-ReliableStreamESPNow g5("G5");
-
-ConfPanelTransportEmbedded cup(&server);
-//ConfPanelUdpTransport cup;
-ConfPanelClient cpc(0, &cup);
-
-
-class PidControlUI {
-	ConfPanelClient cpc;
+class PidControlUI : public ConfPanelClient {
 public:
-	PidControlUI(int i, ConfPanelTransportEmbedded *s) : cpc(i, s) {}
+	PidControlUI(ConfPanelTransportEmbedded *s) : ConfPanelClient(s) {}
 	vector<PidControl *> pids;
 	vector<string> pidNames;
 	int selectedIndex = 0, previousIndex = -1;
@@ -729,15 +718,15 @@ public:
 				names += "/";
 			names += *i;
 		}
-		cpc.addEnum(&selectedIndex, "Selected PID", names.c_str());
-		cpc.addFloat(&gains.p, "P Gain", 0.01, "%.2f");
-		cpc.addFloat(&gains.i, "I Gain", 0.01, "%.2f");
-		cpc.addFloat(&gains.d, "D Gain", 0.01, "%.2f");
-		cpc.addFloat(&finalGain, "Final Gain", 0.01, "%.2f");
-		cpc.addFloat(&errs.p, "P Err", 1, "%.2f");
-		cpc.addFloat(&errs.i, "I Err", 1, "%.2f");
-		cpc.addFloat(&errs.d, "D Err", 1, "%.2f");
-		cpc.addFloat(&totalErr, "Total Err", 1, "%.2f");
+		addEnum(&selectedIndex, "Selected PID", names.c_str());
+		addFloat(&gains.p, "P Gain", 0.01, "%.2f");
+		addFloat(&gains.i, "I Gain", 0.01, "%.2f");
+		addFloat(&gains.d, "D Gain", 0.01, "%.2f");
+		addFloat(&finalGain, "Final Gain", 0.01, "%.2f");
+		addFloat(&errs.p, "P Err", 0, "%.2f");
+		addFloat(&errs.i, "I Err", 0, "%.2f");
+		addFloat(&errs.d, "D Err", 0, "%.2f");
+		addFloat(&totalErr, "Total Err", 0, "%.2f");
 	}
 	int index() { 
 		return min((int)pids.size() - 1, max(0, selectedIndex));
@@ -756,8 +745,17 @@ public:
 };	
 
 
-ConfPanelClient cpc2(1, &cup);
-PidControlUI cpc3(2, &cup);
+
+//ReliableTcpServer server(4444);
+ReliableStreamESPNow server("CP");
+ReliableStreamESPNow g5("G5");
+
+ConfPanelTransportEmbedded cup(&server);
+//ConfPanelUdpTransport cup;
+ConfPanelClient cpc(&cup);
+
+ConfPanelClient cpc2(&cup);
+PidControlUI cpc3(&cup);
 //ReliableTcpClient client("192.168.4.1", 4444);
 
 
@@ -1371,7 +1369,7 @@ void loop()
 	j.run();
 	if(j.hz(10)) loopCount10Hz++;
 	cup.run();
-	cpc3.run();
+	//cpc3.run();
 	delayMicroseconds(100);
 
 #ifndef UBUNTU
