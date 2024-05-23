@@ -673,8 +673,7 @@ void setDesiredTrk(float f)
 	//cmdRoll = 0;
 }
 
-void sdLog()
-{
+void sdLog() {
 	// Serial.println(x.toString());
 	if (logFile != NULL)
 		logFile->add(&logItem, 0 /*timeout*/);
@@ -682,8 +681,7 @@ void sdLog()
 	logItem.flags = 0;
 }
 
-void printMag()
-{
+void printMag() {
 	// imu->updateCompass();
 	Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu->gyroX(), (float)imu->gyroY(), (float)imu->gyroZ());
 	Serial.printf("%+09.4f %+09.4f %+09.4f ", (float)imu->magX(), (float)imu->magY(), (float)imu->magZ());
@@ -743,8 +741,6 @@ public:
 		pids[index()]->finalGain = finalGain;
 	}
 };	
-
-
 
 //ReliableTcpServer server(4444);
 ReliableStreamESPNow server("CP");
@@ -1417,7 +1413,6 @@ void loop()
 			logFile->maxWaiting = 0;
 		}
 		serialLogFlags = 0;
-		auxMpuPacketCount = 0;
 	}
 
 	// ed.re.check();
@@ -1805,7 +1800,6 @@ void loop()
 		// logItem.magBank = ahrs.magBank;
 		logItem.pitch = ahrs.pitch;
 		logItem.ai = ahrsInput;
-		// logItem.auxMpu = auxMPU;
 
 		lastAhrsInput = ahrsInput;
 	}
@@ -1838,7 +1832,6 @@ void loop()
 		Display::stickY = stickY;
 		// Display::dtk = desiredTrk;
 		Display::trk = ahrsInput.selTrack;
-		// Display::navt = auxMPU.gy; //navDTK;
 		Display::obs = obs;
 		Display::obs.setInverse(false, (g5LineCount / 20) % 2 == 0);
 		Display::mode = servoSetupMode * 100000 + (canMsgCount.isValid() ? 10000 : 0) + apMode * 1000 
@@ -2089,27 +2082,7 @@ public:
 			imu->mx = l.ai.mx;
 			imu->my = l.ai.my;
 			imu->mz = l.ai.mz;
-			// auxMPU = l.auxMpu;
 			ahrsInput = l.ai;
-
-			if (ESP32csim_useAuxMpu)
-			{
-				float cksum = abs(auxMPU.ax) + abs(auxMPU.ay) + abs(auxMPU.az) +
-							  abs(auxMPU.gx) + abs(auxMPU.gy) + abs(auxMPU.gz) +
-							  abs(auxMPU.mx) + abs(auxMPU.my) + abs(auxMPU.mz);
-				if (cksum < 1000)
-				{
-					imu->ax = auxMPU.ax;
-					imu->ay = auxMPU.ay;
-					imu->az = auxMPU.az;
-					imu->gx = auxMPU.ax;
-					imu->gy = auxMPU.ay;
-					imu->gz = auxMPU.az;
-					imu->mx = auxMPU.ax;
-					imu->my = auxMPU.ay;
-					imu->mz = auxMPU.az;
-				}
-			}
 
 			l.ai.g5Pitch = min(max(-45.0, (double)l.ai.g5Pitch), 45.0);
 			l.ai.g5Roll = min(max(-45.0, (double)l.ai.g5Roll), 45.0);

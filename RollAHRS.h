@@ -130,7 +130,7 @@ struct AuxMpuData {
 	bool fromString(const char *s) { 
 		return sscanf(s, "MPU %f %f %f %f %f %f %f %f %f", &ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz) == 9;
 	}
-} auxMPU;
+};// auxMPU;
 
 inline float constrain360(float a) { 
 	if (abs(a) < 10000) { 
