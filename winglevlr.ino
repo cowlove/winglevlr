@@ -726,7 +726,9 @@ void setup() {
 	buttonKnob.read();
 
 	debugFastBoot = buttonTop.read();
-	//debugFastBoot = true;
+	Serial.printf(getMacAddress().c_str());
+	if (getMacAddress() == PROGMEM "C44F337F8AB9")
+		debugFastBoot = true;
 	j.jw.enabled = !debugFastBoot;
 
 	if (!debugFastBoot) 
@@ -2246,10 +2248,6 @@ CMD			SD3					SDD			CLK
  * 	RXD			22  (used by I2c?)
  * 	TXD			21	(used by I2c?)
  * 	VBAT		5V
- *
- *
- *
- *
  */
 
 /*  TTGO TS 1.2 old- buttons 39, 34, 35
