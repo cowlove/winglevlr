@@ -904,6 +904,7 @@ static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentence
 static int hdgSelect = 2;	   //  0 use fusion magHdg
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
+static int ahrsSource = 0;
 
 #ifdef UBUNTU
 struct ErrorChannel {
@@ -1485,8 +1486,13 @@ void loop() {
 		ahrsInput.gpsTrackRMC = gpsTrackRMC;
 		ahrsInput.dtk = desiredTrk;
 
-		roll = ahrs.add(ahrsInput);
-		pitch = ahrs.pitch;
+		if (ahrsSource == 0) {
+			roll = ahrs.add(ahrsInput);
+			pitch = ahrs.pitch;
+		} else { 
+			roll = -ahrsInput.g5Roll;
+			pitch = ahrsInput.g5Pitch;
+		}
 
 		if (hdgSelect == 0) { 
 			// mode 0, use GDL90 until first can message, then switch to G5
@@ -1729,7 +1735,7 @@ void loop() {
 int foo = 1;
 void setupCp() { 
 	cpc2.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
-	cpc.addFloat(&loopCount10Hz, "10hz Timer Count", 1, "%.0f");
+	cpc.addEnum(&ahrsSource, "AHRS Source", "INS/G5");
 	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f Mag");
 	cpc.addFloat(&ahrsInput.selTrack, "Heading", 1, "%.1f");
 	//cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
