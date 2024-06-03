@@ -901,10 +901,10 @@ static EggTimer serialReportTimer(200), loopTimer(AHRS_RATE_INV_SCALE(5)), butto
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 2;	   //  0 use fusion magHdg
+static int hdgSelect = 3;	   //  0 use fusion magHdg
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
-static int ahrsSource = 0;
+static int ahrsSource = 1;
 
 #ifdef UBUNTU
 struct ErrorChannel {
@@ -1178,7 +1178,7 @@ void doButtons() {
 		}
 	}
 }
-
+void ParseNMEAChar(const char *, int);
 void parseG5Line(const char *line) { 
 	g5LineCount++;
 	vector<string> l = split(string(line), ' ');
@@ -1216,11 +1216,12 @@ void parseG5Line(const char *line) {
 			if (apMode == 5) {
 				startMakeoutSess();
 			}
-		}
-		else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) {
+		} else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) {
 			knobSel = v;
 		} else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) {
 			setObsKnob(knobSel, v);
+		} else if (strstr(it->c_str(), "NMEA=") == it->c_str()) { 
+			ParseNMEAChar(it->c_str() + 5, strlen(it->c_str()) - 5);
 		}
 	}
 
@@ -1247,6 +1248,38 @@ void parseG5Line(const char *line) {
 	}
 }
 
+void ParseNMEAChar(const char *buf, int n) {
+	for (int i = 0; i < n; i++) {  
+		gps.encode(buf[i]);
+		if (buf[i] == '\r' || buf[i] == '\n') {
+			if (vtgCourse.isUpdated()) { 
+				// VTG typically from G5 NMEA serial output
+				gpsTrackVTG = trueToMag(gps.parseDecimal(vtgCourse.value()) * 0.01);
+			}
+			if (gps.course.isUpdated()) { 
+				// RMC typically from ifly NMEA output
+				gpsTrackRMC = trueToMag(gps.course.deg());
+				ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07);
+				logItem.flags |= LogFlags::HdgRMC;
+			}
+			if (desiredHeading.isUpdated()) {
+				navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
+				if (navDTK < 0)
+					navDTK += 360;
+				if (canMsgCount.isValid() == false) {
+					// if we never got a can message, just hop straight to NAV mode 
+					apMode = 4;
+				}
+			}
+			if (xte.isUpdated() && xteLR.isUpdated()) {
+				float err = 0.01 * gps.parseDecimal(xte.value());
+				if (strcmp(xteLR.value(), "L") == 0)
+					err *= -1;
+				crossTrackError.add(err);
+			}
+		}	
+	}
+}
 float loopCount10Hz = 0;
 
 void loop() {
@@ -1363,37 +1396,7 @@ void loop() {
 		char buf[1024];
 		static LineBuffer lb;
 		int n = udpNMEA.read((uint8_t *)buf, sizeof(buf));
-		// TODO - get rid of TinyGPSPlus, just use pattern matchine
-		for (int i = 0; i < n; i++) {
-			gps.encode(buf[i]);
-			if (buf[i] == '\r' || buf[i] == '\n') {
-				if (vtgCourse.isUpdated()) { 
-					// VTG typically from G5 NMEA serial output
-					gpsTrackVTG = trueToMag(gps.parseDecimal(vtgCourse.value()) * 0.01);
-				}
-				if (gps.course.isUpdated()) { 
-					// RMC typically from ifly NMEA output
-					gpsTrackRMC = trueToMag(gps.course.deg());
-					ahrs.mComp.addAux(gpsTrackRMC, 5, 0.07);
-					logItem.flags |= LogFlags::HdgRMC;
-				}
-				if (desiredHeading.isUpdated()) {
-					navDTK = trueToMag(0.01 * gps.parseDecimal(desiredHeading.value()));
-					if (navDTK < 0)
-						navDTK += 360;
-					if (canMsgCount.isValid() == false) {
-						// if we never got a can message, just hop straight to NAV mode 
-						apMode = 4;
-					}
-				}
-				if (xte.isUpdated() && xteLR.isUpdated()) {
-					float err = 0.01 * gps.parseDecimal(xte.value());
-					if (strcmp(xteLR.value(), "L") == 0)
-						err *= -1;
-					crossTrackError.add(err);
-				}
-			}
-		}
+		ParseNMEAChar(buf, n);
 	}
 
 	if (udpCmd.parsePacket() > 0) {
@@ -1524,7 +1527,7 @@ void loop() {
 		else if (hdgSelect == 2)
 			ahrsInput.selTrack = ahrsInput.ubloxHdg;
 		else if (hdgSelect == 3)
-			ahrsInput.selTrack = ahrs.magHdg;
+			ahrsInput.selTrack = ahrsInput.gpsTrackVTG;
 
 		// TODO:  it seems hdgPID was tuned for 20Hz.   Accidently moved into 5hz loop?
 		if (tick20HZ) {
