@@ -41,6 +41,7 @@ public:
     float finalGain = 1.0, finalScale = 1.0;
 	float outputTrim = 0.0; 			// post-finalGain output trim 
 	float inputTrim = 0.0; 
+	float iMaxChange = 0.0;  // change rate above which i-error will not be added
 	float calcGain(float err, float loGain, float hiGain, float transition) {
 		float c =  err * loGain;
 		if (hiGain > 0 && (abs(err) > transition))
@@ -88,7 +89,9 @@ public:
 		histError.add(time, error);
 		histMeasurement.add(time, measurement);
         err.p = calcGain(histError.predict(time), gain.p, hiGain.p, hiGainTrans.p);
-        i += calcGain(histError.predict(time), gain.i, hiGain.i, hiGainTrans.i) * dt;
+		if (iMaxChange > 0.0 && abs(histMeasurement.slope()) < iMaxChange) { 
+	        i += calcGain(histError.predict(time), gain.i, hiGain.i, hiGainTrans.i) * dt;
+		}
  	    if (maxerr.i > 0) 
 			i = min(maxerr.i, max(-maxerr.i, i));
  	    err.i = i;

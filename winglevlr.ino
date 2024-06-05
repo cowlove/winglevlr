@@ -73,28 +73,29 @@ struct PIDS {
 		rollPID.finalGain = 16.8;
 		rollPID.finalScale = 0.001;
 
-		hdgPID.setGains(0.5, 0.0003, 0.50); // input in degrees hdg err, output in degrees desired bank
+		hdgPID.setGains(0.5, 0.001, 0.50); // input in degrees hdg err, output in degrees desired bank
 		hdgPID.hiGain.p = 10;
 		hdgPID.hiGainTrans.p = 8.0;
 		hdgPID.maxerr.i = 20; // degrees hdg err
 		hdgPID.finalGain = 1.0;
 
-		xtePID.setGains(8.0, 0.0003, 0.20); // input in NM xte error, output in degrees desired hdg change
+		xtePID.setGains(8.0, 0.001, 0.20); // input in NM xte error, output in degrees desired hdg change
 		xtePID.maxerr.i = 1.0;
 		xtePID.finalGain = 20.0;
 
 		pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
-		pitchPID.finalGain = 0;// 1.7;
-		pitchPID.maxerr.i = .5; // degrees
+		pitchPID.finalGain = 5.0;
+		pitchPID.maxerr.i = 1; // degrees
 		pitchPID.outputTrim = -0.0;
 		pitchPID.inputTrim = +0;
 		pitchPID.finalScale = 0.001;
 
-		altPID.setGains(1.0, 0.002, 1.5); // input in feet of alt err, output in degrees of pitch change
-		altPID.finalGain = -0.10;
+		altPID.setGains(1.0, 0.050, 2.0); // input in feet of alt err, output in degrees of pitch change
+		altPID.finalGain = -5.00;
 		altPID.maxerr.i = 200; // feet
 		altPID.outputTrim = 0.0;
 		altPID.finalScale = 0.01;
+		altPID.iMaxChange = 3.0; /* feet/sec above which I-err wont be accumulated */
 	}
 } pids;
 
@@ -113,14 +114,14 @@ const char *logFileName = "AHRSD%03d.DAT";
 static StaleData<float> gpsTrackGDL90(3000, -1), gpsTrackRMC(5000, -1), gpsTrackVTG(5000, -1);
 static StaleData<int> canMsgCount(3000, -1);
 static float desiredTrk = -1;
-static float cmdRoll = 0, pitchToStick = 0.0, desPitch = 0, cmdPitch = 0, desAlt = 0;
+static float cmdRoll = 0, pitchToStick = -0.05 /*WHY negative?*/, desPitch = -4.0, cmdPitch = 0, desAlt = 0;
 static float stickXYTransNeg = 0, stickXYTransPos = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float rollToStick = 0.0, rollToPitch = 0.0;
 float maxRollRate = 5.0; // deg/sec 
-float servoGain = 0.40;
+float servoGain = 1.70;
 int g5LineCount = 0;
 int serialLogMode = 0x0;
 
@@ -514,19 +515,19 @@ namespace ServoControlElbow {
 
 namespace ServoControlLinear {
 	const float servoThrow = +1;
-	XY trim(0, 0), strim(+575, 0);
+	XY trim(0, 0), strim(0, 300), gain(1.0, -1.0);
 	float maxChange = 0; // unimplemented
 	pair<int, int> stickToServo(float x, float y) {
-		x = min(servoThrow, max(-servoThrow, x + trim.x));
-		y = min(servoThrow, max(-servoThrow, y + trim.y));
+		x = min(servoThrow, max(-servoThrow, x * gain.x + trim.x));
+		y = min(servoThrow, max(-servoThrow, y * gain.y + trim.y));
 		float s1 = x / servoThrow * 450 + 1500 + strim.x;
-		float s0 = x / servoThrow * 450 + 1500 + strim.y;
+		float s0 = y / servoThrow * 450 + 1500 + strim.y;
 		return pair<int, int>(s0, s1);
 	}
 
 	pair<float, float> servoToStick(int s0, int s1) {
-		float x = (s1 - 1500 - strim.x) / 2000.0 * servoThrow - trim.x;
-		float y = (s0 - 1500 - strim.y) / 2000.0 * servoThrow - trim.y;
+		float x = ((s1 - 1500 - strim.x) / 2000.0 * servoThrow - trim.x) / gain.x;
+		float y = ((s0 - 1500 - strim.y) / 2000.0 * servoThrow - trim.y) / gain.y;
 
 		return pair<float, float>(x, y);
 	}
@@ -658,7 +659,7 @@ public:
 	vector<string> pidNames;
 	int selectedIndex = 0, previousIndex = -1;
 	PID errs, gains;
-	float finalGain, totalErr;
+	float finalGain, totalErr, inputTrim, outputTrim, iMaxChange;
 	void add(PidControl *p, const char *name) { 
 		pids.push_back(p);
 		pidNames.push_back(string(name));
@@ -671,14 +672,17 @@ public:
 			names += *i;
 		}
 		addEnum(&selectedIndex, "Selected PID", names.c_str());
-		addFloat(&gains.p, "P Gain", 0.01, "%.2f");
-		addFloat(&gains.i, "I Gain", 0.01, "%.2f");
-		addFloat(&gains.d, "D Gain", 0.01, "%.2f");
-		addFloat(&finalGain, "Final Gain", 0.01, "%.2f");
 		addFloat(&errs.p, "P Err", 0, "%.2f");
-		addFloat(&errs.i, "I Err", 0, "%.2f");
+		addFloat(&errs.i, "I Err", 0, "%.3f");
 		addFloat(&errs.d, "D Err", 0, "%.2f");
 		addFloat(&totalErr, "Total Err", 0, "%.2f");
+		addFloat(&gains.p, "P Gain", 0.01, "%.2f");
+		addFloat(&gains.i, "I Gain", 0.001, "%.3f");
+		addFloat(&gains.d, "D Gain", 0.01, "%.2f");
+		addFloat(&finalGain, "Final Gain", 0.01, "%.2f");
+		addFloat(&inputTrim, "Input Trim", 0.01, "%.2f");
+		addFloat(&outputTrim, "Output Trim", 0.01, "%.2f");
+		addFloat(&iMaxChange, "I-Err Max Change", 0.01, "%.2f");
 	}
 	int index() { 
 		return min((int)pids.size() - 1, max(0, selectedIndex));
@@ -688,11 +692,17 @@ public:
 			previousIndex = selectedIndex;
 			gains = pids[index()]->gain;
 			finalGain = pids[index()]->finalGain;
+			inputTrim = pids[index()]->inputTrim;
+			outputTrim = pids[index()]->outputTrim;
+			iMaxChange = pids[index()]->iMaxChange;
 		}
 		errs = pids[index()]->err;
 		totalErr = pids[index()]->corr;
 		pids[index()]->gain = gains;
 		pids[index()]->finalGain = finalGain;
+		pids[index()]->inputTrim = inputTrim;
+		pids[index()]->outputTrim = outputTrim;
+		pids[index()]->iMaxChange = iMaxChange;
 	}
 };	
 
@@ -828,8 +838,8 @@ void setup() {
 	cpc3.add(&pids.rollPID, "ROLL");
 	cpc3.add(&pids.hdgPID, "HDG");
 	cpc3.add(&pids.xtePID, "XTE");
-	//cpc3.add(&pids.pitchPID, "PIT");
-	//cpc3.add(&pids.altPID, "ALT");
+	cpc3.add(&pids.pitchPID, "PIT");
+	cpc3.add(&pids.altPID, "ALT");
 	cpc3.begin();
 	cpc2.schemaFlags = 0x1;
 
@@ -901,7 +911,7 @@ static EggTimer serialReportTimer(200), loopTimer(AHRS_RATE_INV_SCALE(5)), butto
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 3;	   //  0 use fusion magHdg
+static int hdgSelect = 2;	   //  0 use fusion magHdg, 1 g5 can, 2 ublox, 3 VTG 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 static int ahrsSource = 1;
@@ -1555,17 +1565,17 @@ void loop() {
 		pids.rollPID.add(roll - cmdRoll, roll, ahrsInput.sec);
 		float altCorr = max(min(pids.altPID.corr, 5.0), -5.0);
 		cmdPitch = desPitch + altCorr + abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim)) * rollToPitch);
-		pids.pitchPID.add(ahrs.pitch - cmdPitch, ahrs.pitch - cmdPitch, ahrsInput.sec);
+		pids.pitchPID.add(pitch - cmdPitch, pitch - cmdPitch, ahrsInput.sec);
 
 		if (armServo == true) {
 			// TODO: pids were tuned and output results in units of relative uSec servo PWM durations.
 			// hack tmp: convert them back into inches so we can add in inch-specified trim values
 			stickX = pids.rollPID.corr * servoGain;
-			//float xytrans = abs(stickX) * (stickX < 0 ? stickXYTransNeg : stickXYTransPos);
+			float xytrans = abs(stickX) * (stickX < 0 ? stickXYTransNeg : stickXYTransPos);
 			stickY = (pids.pitchPID.corr  
 				+ abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * rollToStick 
 				+ (desPitch * pitchToStick) 
-			//	+ xytrans
+				+ xytrans
 			) * servoGain;
 			// stickY = pids.pitchPID.corr * servoGain;
 			// stickY = 0;
@@ -1640,7 +1650,7 @@ void loop() {
 		logItem.xte = crossTrackError.average();
 		// logItem.bankAngle = ahrs.bankAngle;
 		// logItem.magBank = ahrs.magBank;
-		logItem.pitch = ahrs.pitch;
+		logItem.pitch = pitch;
 		logItem.ai = ahrsInput;
 
 		lastAhrsInput = ahrsInput;
@@ -1742,10 +1752,11 @@ void setupCp() {
 	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f Mag");
 	cpc.addFloat(&ahrsInput.selTrack, "Heading", 1, "%.1f");
 	//cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
-	//cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
 	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
 	cpc.addFloat(&roll, "Roll", 1, "%.2f");
-	//cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
+	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
+	cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
+	cpc.addFloat(&pitch, "Pitch", 1, "%.2f");
 	cpc.addFloat(&servoGain, "Servo Gain", 0.01, "%.2f");
 	cpc.addFloat(&maxRollRate, "Max Roll Rate", 0.1, "%.1f");
 	cpc.addFloat(&Display::maxb.value, "Max Bank", 0.1, "%.1f");
