@@ -912,6 +912,7 @@ static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 static int hdgSelect = 2;	   //  0 use fusion magHdg, 1 g5 can, 2 ublox, 3 VTG 
+static int altSelect = 0;	   //  0 0blox, 1 g5palt 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 static int ahrsSource = 1;
@@ -1122,7 +1123,7 @@ void doButtons() {
 		}
 		if (butFilt3.wasCount == 2 && butFilt3.wasLong == false) {
 			// double press - hdg select
-			hdgSelect = (hdgSelect + 1) % 4;
+			hdgSelect = (hdgSelect + 1) % 6;
 		}
 		if (butFilt3.wasCount == 3) {
 			startMakeoutSess();
@@ -1211,7 +1212,7 @@ void parseG5Line(const char *line) {
 			ahrsInput.g5Tas = v;
 			logItem.flags |= LogFlags::g5Ps;
 		} else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) {
-			ahrsInput.g5Palt = v;
+			ahrsInput.g5Palt = v * 3.2808;
 			logItem.flags |= LogFlags::g5Ps;
 		} else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) {
 			ahrsInput.g5Hdg = v;
@@ -1245,7 +1246,7 @@ void parseG5Line(const char *line) {
 		ahrsInput.g5Roll = roll * 180 / M_PI;
 		ahrsInput.g5Hdg = magHdg * 180 / M_PI;
 		ahrsInput.g5Track = magTrack * 180 / M_PI;
-		ahrsInput.g5Palt = palt / 3.2808;
+		ahrsInput.g5Palt = palt;
 		ahrsInput.g5Ias = ias / 0.5144;
 		ahrsInput.g5Tas = tas / 0.5144;
 		// ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
@@ -1484,7 +1485,7 @@ void loop() {
 				xteCorrection = 0;
 			}
 			if (desAlt > 1000) {
-				float altErr = desAlt - ahrsInput.ubloxAlt;
+				float altErr = desAlt - (altSelect == 0) ? ahrsInput.ubloxAlt : ahrsInput.g5Palt));
 				if (abs(altErr) > 500) {
 					pids.altPID.resetI();
 				}
@@ -1537,7 +1538,11 @@ void loop() {
 		else if (hdgSelect == 2)
 			ahrsInput.selTrack = ahrsInput.ubloxHdg;
 		else if (hdgSelect == 3)
-			ahrsInput.selTrack = ahrsInput.gpsTrackVTG;
+			ahrsInput.selTrack = ahrsInput.g5Hdg;
+		else if (hdgSelect == 4)
+			ahrsInput.selTrack = ahrsInput.g5Track;
+		else if (hdgSelect == 5)
+			ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
 
 		// TODO:  it seems hdgPID was tuned for 20Hz.   Accidently moved into 5hz loop?
 		if (tick20HZ) {
@@ -1764,7 +1769,8 @@ void setupCp() {
 	cpc.addFloat(&rollToStick, "Roll->StickY", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransPos, "Stick XY Transfer +", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransNeg, "Stick XY Transfer -", 0.01, "%.2f");
-	cpc.addEnum(&hdgSelect, "Heading Source", "GDL90/G5/GPS/MAG");
+	cpc.addEnum(&hdgSelect, "Heading Source", "AUTO/HY/UBLOX/G5HD/G5TR/GDL90");
+	cpc.addEnum(&altSelect, "Altitude Source", "UBLOX/G5");
 	cpc.addFloat(&ServoControl::trim.x, "Trim X", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::strim.x, "STrim X", 1, "%.0f");

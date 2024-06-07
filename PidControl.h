@@ -89,7 +89,7 @@ public:
 		histError.add(time, error);
 		histMeasurement.add(time, measurement);
         err.p = calcGain(histError.predict(time), gain.p, hiGain.p, hiGainTrans.p);
-		if (iMaxChange > 0.0 && abs(histMeasurement.slope()) < iMaxChange) { 
+		if (iMaxChange <= 0.0 || abs(histMeasurement.slope()) < iMaxChange) { 
 	        i += calcGain(histError.predict(time), gain.i, hiGain.i, hiGainTrans.i) * dt;
 		}
  	    if (maxerr.i > 0) 
