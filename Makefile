@@ -34,7 +34,7 @@ simplot:	test.out
 
 .PHONY:	winglevlr_ubuntu
 CHIP=esp32
-OTA_ADDR=192.168.0.37
+OTA_ADDR=192.168.68.111
 IGNORE_STATE=1
 
 include ${HOME}/Arduino/libraries/makeEspArduino/makeEspArduino.mk

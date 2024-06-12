@@ -515,7 +515,7 @@ namespace ServoControlElbow {
 
 namespace ServoControlLinear {
 	const float servoThrow = +1;
-	XY trim(0, 0), strim(0, 300), gain(1.0, -1.0);
+	XY trim(0, 0), strim(0, 0), gain(1.0, 1.0);
 	float maxChange = 0; // unimplemented
 	pair<int, int> stickToServo(float x, float y) {
 		x = min(servoThrow, max(-servoThrow, x * gain.x + trim.x));
@@ -1485,7 +1485,7 @@ void loop() {
 				xteCorrection = 0;
 			}
 			if (desAlt > 1000) {
-				float altErr = desAlt - (altSelect == 0) ? ahrsInput.ubloxAlt : ahrsInput.g5Palt));
+				float altErr = desAlt - ((altSelect == 0) ? ahrsInput.ubloxAlt : ahrsInput.g5Palt);
 				if (abs(altErr) > 500) {
 					pids.altPID.resetI();
 				}
@@ -1579,7 +1579,7 @@ void loop() {
 			float xytrans = abs(stickX) * (stickX < 0 ? stickXYTransNeg : stickXYTransPos);
 			stickY = (pids.pitchPID.corr  
 				+ abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * rollToStick 
-				+ (desPitch * pitchToStick) 
+				+ (cmdPitch * pitchToStick) 
 				+ xytrans
 			) * servoGain;
 			// stickY = pids.pitchPID.corr * servoGain;
@@ -1771,15 +1771,14 @@ void setupCp() {
 	cpc.addFloat(&stickXYTransNeg, "Stick XY Transfer -", 0.01, "%.2f");
 	cpc.addEnum(&hdgSelect, "Heading Source", "AUTO/HY/UBLOX/G5HD/G5TR/GDL90");
 	cpc.addEnum(&altSelect, "Altitude Source", "UBLOX/G5");
+	cpc.addFloat(&ahrsInput.g5Palt, "G5 Altitude");
+	cpc.addFloat(&ahrsInput.ubloxAlt, "UBLOX Altitude");
 	cpc.addFloat(&ServoControl::trim.x, "Trim X", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::strim.x, "STrim X", 1, "%.0f");
 	cpc.addFloat(&ServoControl::strim.y, "STrim Y", 1, "%.0f");
-	ADDPID(rollPID);
-	ADDPID(hdgPID);
-	ADDPID(xtePID);
-	ADDPID(pitchPID);
-	ADDPID(altPID);
+	cpc.addInt(&servoOutput[0], "Servo0");
+	cpc.addInt(&servoOutput[1], "Servo1");
 	//serialLogMode = 0;
 }
 #ifdef UBUNTU
