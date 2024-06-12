@@ -114,7 +114,7 @@ const char *logFileName = "AHRSD%03d.DAT";
 static StaleData<float> gpsTrackGDL90(3000, -1), gpsTrackRMC(5000, -1), gpsTrackVTG(5000, -1);
 static StaleData<int> canMsgCount(3000, -1);
 static float desiredTrk = -1;
-static float cmdRoll = 0, pitchToStick = -0.05 /*WHY negative?*/, desPitch = -4.0, cmdPitch = 0, desAlt = 0;
+static float cmdRoll = 0, pitchToStick = +0.05 /*WHY negative?*/, desPitch = -4.0, cmdPitch = 0, desAlt = 0;
 static float stickXYTransNeg = 0, stickXYTransPos = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
@@ -515,7 +515,7 @@ namespace ServoControlElbow {
 
 namespace ServoControlLinear {
 	const float servoThrow = +1;
-	XY trim(0, 0), strim(0, 0), gain(1.0, 1.0);
+	XY trim(0, 0), strim(-90, 150), gain(1.0, 1.0);
 	float maxChange = 0; // unimplemented
 	pair<int, int> stickToServo(float x, float y) {
 		x = min(servoThrow, max(-servoThrow, x * gain.x + trim.x));
@@ -1212,7 +1212,7 @@ void parseG5Line(const char *line) {
 			ahrsInput.g5Tas = v;
 			logItem.flags |= LogFlags::g5Ps;
 		} else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) {
-			ahrsInput.g5Palt = v * 3.2808;
+			ahrsInput.g5Palt = v * FEET_PER_METER;
 			logItem.flags |= LogFlags::g5Ps;
 		} else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) {
 			ahrsInput.g5Hdg = v;
@@ -1246,7 +1246,7 @@ void parseG5Line(const char *line) {
 		ahrsInput.g5Roll = roll * 180 / M_PI;
 		ahrsInput.g5Hdg = magHdg * 180 / M_PI;
 		ahrsInput.g5Track = magTrack * 180 / M_PI;
-		ahrsInput.g5Palt = palt;
+		ahrsInput.g5Palt = palt * FEET_PER_METER;
 		ahrsInput.g5Ias = ias / 0.5144;
 		ahrsInput.g5Tas = tas / 0.5144;
 		// ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
