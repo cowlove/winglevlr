@@ -659,7 +659,7 @@ public:
 	vector<string> pidNames;
 	int selectedIndex = 0, previousIndex = -1;
 	PID errs, gains;
-	float finalGain, totalErr, inputTrim, outputTrim, iMaxChange;
+	float finalGain, totalErr, inputTrim, outputTrim, iMaxChange, maxChange, maxCorr;
 	void add(PidControl *p, const char *name) { 
 		pids.push_back(p);
 		pidNames.push_back(string(name));
@@ -679,10 +679,12 @@ public:
 		addFloat(&gains.p, "P Gain", 0.01, "%.2f");
 		addFloat(&gains.i, "I Gain", 0.001, "%.3f");
 		addFloat(&gains.d, "D Gain", 0.01, "%.2f");
+		addFloat(&iMaxChange, "I-Err Max Change", 0.01, "%.2f");
 		addFloat(&finalGain, "Final Gain", 0.01, "%.2f");
 		addFloat(&inputTrim, "Input Trim", 0.01, "%.2f");
 		addFloat(&outputTrim, "Output Trim", 0.01, "%.2f");
-		addFloat(&iMaxChange, "I-Err Max Change", 0.01, "%.2f");
+		addFloat(&maxChange, "Max Change", 0.01, "%.2f");
+		addFloat(&maxChange, "Max Correction", 0.01, "%.2f");
 	}
 	int index() { 
 		return min((int)pids.size() - 1, max(0, selectedIndex));
@@ -695,6 +697,8 @@ public:
 			inputTrim = pids[index()]->inputTrim;
 			outputTrim = pids[index()]->outputTrim;
 			iMaxChange = pids[index()]->iMaxChange;
+			maxChange = pids[index()]->maxChange;
+			maxCorr = pids[index()]->maxCorr;
 		}
 		errs = pids[index()]->err;
 		totalErr = pids[index()]->corr;
@@ -703,6 +707,8 @@ public:
 		pids[index()]->inputTrim = inputTrim;
 		pids[index()]->outputTrim = outputTrim;
 		pids[index()]->iMaxChange = iMaxChange;
+		pids[index()]->maxChange = maxChange;
+		pids[index()]->maxCorr = maxCorr;
 	}
 };	
 
@@ -2283,3 +2289,9 @@ CMD			SD3					SDD			CLK
  *    0    GND
  *    GND
  */
+
+// Pressure Altitude = Indicated Altitude + 145442.2∗(1 − (AltSetting / 29.92126) ^^ .190261)
+
+//float palt = 0;
+//float AltSetting = 0;
+//float ia = palt - 145442.2 * (1 - pow(AltSetting / 29.92126,  .190261));
