@@ -515,7 +515,7 @@ namespace ServoControlElbow {
 
 namespace ServoControlLinear {
 	const float servoThrow = +1;
-	XY trim(0, 0), strim(-90, 150), gain(1.0, 1.0);
+	XY trim(0, 0), strim(0, 0), gain(-1.0, -1.0);
 	float maxChange = 0; // unimplemented
 	pair<int, int> stickToServo(float x, float y) {
 		x = min(servoThrow, max(-servoThrow, x * gain.x + trim.x));
@@ -1579,7 +1579,7 @@ void loop() {
 			float xytrans = abs(stickX) * (stickX < 0 ? stickXYTransNeg : stickXYTransPos);
 			stickY = (pids.pitchPID.corr  
 				+ abs(sin(DEG2RAD(roll - pids.rollPID.inputTrim))) * rollToStick 
-				+ (cmdPitch * pitchToStick) 
+				+ ((cmdPitch - desPitch) * pitchToStick) 
 				+ xytrans
 			) * servoGain;
 			// stickY = pids.pitchPID.corr * servoGain;

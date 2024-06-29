@@ -1,4 +1,5 @@
 BOARD=ttgo-t1
+#BOARD=esp32s3
 #VERBOSE=1
 
 AHRS_RATE=50
