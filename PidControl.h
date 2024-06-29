@@ -42,6 +42,8 @@ public:
 	float outputTrim = 0.0; 			// post-finalGain output trim 
 	float inputTrim = 0.0; 
 	float iMaxChange = 0.0;  // change rate above which i-error will not be added
+	float maxChange = 0.0;
+	float maxCorr = 0.0;
 	float calcGain(float err, float loGain, float hiGain, float transition) {
 		float c =  err * loGain;
 		if (hiGain > 0 && (abs(err) > transition))
@@ -100,7 +102,15 @@ public:
  	    //drms = histMeasurement.rmsError();
  	           
 	    histCorrection.add(time, corr);
-	    corr = -(err.p + err.i + err.d + err.l) * finalGain * finalScale + outputTrim;
+	    double newcorr = -(err.p + err.i + err.d + err.l) * finalGain * finalScale + outputTrim;
+		if (maxChange > 0.0) { 
+			corr = min(corr + maxChange * dt, max(corr - maxChange * dt, newcorr));
+		} else {
+			corr = newcorr;
+		}
+		if (maxCorr > 0.0) { 
+			corr = min((double)maxCorr, max((double)-maxCorr, corr));
+		}
 	    return corr;
     }
     
