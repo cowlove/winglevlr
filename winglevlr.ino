@@ -73,10 +73,11 @@ struct PIDS {
 		rollPID.finalGain = 16.8;
 		rollPID.finalScale = 0.001;
 
-		hdgPID.setGains(0.5, 0.001, 0.50); // input in degrees hdg err, output in degrees desired bank
+		hdgPID.setGains(0.5, 0.02, 0.50); // input in degrees hdg err, output in degrees desired bank
 		hdgPID.hiGain.p = 10;
 		hdgPID.hiGainTrans.p = 8.0;
-		hdgPID.maxerr.i = 20; // degrees hdg err
+		hdgPID.maxerr.i = 20; // degrees roll err
+		hdgPID.iMaxChange = 0.1; /* dec/sec above which I-err wont be accumulated */
 		hdgPID.finalGain = 1.0;
 
 		xtePID.setGains(8.0, 0.001, 0.20); // input in NM xte error, output in degrees desired hdg change
@@ -96,6 +97,7 @@ struct PIDS {
 		altPID.outputTrim = 0.0;
 		altPID.finalScale = 0.01;
 		altPID.iMaxChange = 3.0; /* feet/sec above which I-err wont be accumulated */
+		altPID.maxChange = 1.0; /* deg/sec */
 	}
 } pids;
 
@@ -684,7 +686,7 @@ public:
 		addFloat(&inputTrim, "Input Trim", 0.01, "%.2f");
 		addFloat(&outputTrim, "Output Trim", 0.01, "%.2f");
 		addFloat(&maxChange, "Max Change", 0.01, "%.2f");
-		addFloat(&maxChange, "Max Correction", 0.01, "%.2f");
+		addFloat(&maxCorr, "Max Correction", 0.01, "%.2f");
 	}
 	int index() { 
 		return min((int)pids.size() - 1, max(0, selectedIndex));
@@ -747,8 +749,8 @@ void setup() {
 		debugFastBoot = true;
 	j.jw.enabled = !debugFastBoot;
 
-	if (!debugFastBoot) 
-		ublox.init();
+	//if (!debugFastBoot) 
+	//	ublox.init();
 
 	j.mqtt.active = false;
 	
@@ -917,11 +919,13 @@ static EggTimer serialReportTimer(200), loopTimer(AHRS_RATE_INV_SCALE(5)), butto
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 2;	   //  0 use fusion magHdg, 1 g5 can, 2 ublox, 3 VTG 
-static int altSelect = 0;	   //  0 0blox, 1 g5palt 
+static int hdgSelect = 4;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
+static int altSelect = 1;	   //  0 0blox, 1 g5palt 
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 static int ahrsSource = 1;
+static float altSetting = 101320;
+static float g5IndAlt = 0;
 
 #ifdef UBUNTU
 struct ErrorChannel {
@@ -1024,6 +1028,10 @@ void parseSerialCommandInput(const char *buf, int n) {
 void setObsKnob(float knobSel, float v) {
 	if (knobSel == 2) {
 		desAlt = v * FEET_PER_METER;
+	}
+	if (knobSel == 0 && v > 100000 && v < 110000) {
+		altSetting = v;
+		Serial.printf("Alt setting %f\n", v);
 	}
 	if (knobSel == 1 /*|| knobSel == 4*/) {
 		obs = v * 180.0 / M_PI;
@@ -1490,12 +1498,19 @@ void loop() {
 			} else {
 				xteCorrection = 0;
 			}
+			g5IndAlt = ahrsInput.g5Palt - 145442.2 * (1 - pow(altSetting / 101320,  .190261));
+			//g5IndAlt = ahrsInput.g5Palt + (altSetting - 101320.7) * 10 / 34;
+			float alt = g5IndAlt;
+			if (altSelect == 0) alt = ahrsInput.ubloxAlt;
+			if (altSelect == 1) alt = g5IndAlt;
+			if (altSelect == 2) alt = ahrsInput.g5Palt; 
+			float altErr = 0;
 			if (desAlt > 1000) {
-				float altErr = desAlt - ((altSelect == 0) ? ahrsInput.ubloxAlt : ahrsInput.g5Palt);
+				altErr = desAlt - alt;
 				if (abs(altErr) > 500) {
 					pids.altPID.resetI();
 				}
-				pids.altPID.add(altErr, ahrsInput.ubloxAlt, ahrsInput.sec);
+				pids.altPID.add(altErr, alt, ahrsInput.sec);
 			} else {
 				pids.altPID.reset();
 			}
@@ -1758,11 +1773,11 @@ void loop() {
 
 int foo = 1;
 void setupCp() { 
-	cpc2.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
-	cpc.addEnum(&ahrsSource, "AHRS Source", "INS/G5");
+	//cpc2.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
+	//cpc.addEnum(&ahrsSource, "AHRS Source", "INS/G5");
 	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f Mag");
 	cpc.addFloat(&ahrsInput.selTrack, "Heading", 1, "%.1f");
-	//cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
+	cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
 	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
 	cpc.addFloat(&roll, "Roll", 1, "%.2f");
 	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
@@ -1776,8 +1791,9 @@ void setupCp() {
 	cpc.addFloat(&stickXYTransPos, "Stick XY Transfer +", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransNeg, "Stick XY Transfer -", 0.01, "%.2f");
 	cpc.addEnum(&hdgSelect, "Heading Source", "AUTO/HY/UBLOX/G5HD/G5TR/GDL90");
-	cpc.addEnum(&altSelect, "Altitude Source", "UBLOX/G5");
-	cpc.addFloat(&ahrsInput.g5Palt, "G5 Altitude");
+	cpc.addEnum(&altSelect, "Altitude Source", "UBLOX/G5IA/G5PA");
+	cpc.addFloat(&g5IndAlt, "G5 Ind Altitude");
+	cpc.addFloat(&ahrsInput.g5Palt, "G5 Pres Altitude");
 	cpc.addFloat(&ahrsInput.ubloxAlt, "UBLOX Altitude");
 	cpc.addFloat(&ServoControl::trim.x, "Trim X", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
