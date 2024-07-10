@@ -64,10 +64,10 @@ struct PIDS {
 
 	PIDS() {
 		// Set up PID gains
-		rollPID.setGains(5.0, 0.01, 2.0); // input in degrees bank err, output in stickThrow units
+		rollPID.setGains(5.0, 0.05, 2.0); // input in degrees bank err, output in stickThrow units
 		rollPID.hiGain.p = 2;
 		rollPID.hiGainTrans.p = 5;
-		rollPID.maxerr.i = 4.0; // degrees bank err
+		rollPID.maxerr.i = 20.0; // degrees/pgain bank err
 		rollPID.outputTrim = 0.0;
 		rollPID.inputTrim = 0.0;
 		rollPID.finalGain = 10.0;
@@ -666,7 +666,7 @@ public:
 	vector<string> pidNames;
 	int selectedIndex = 0, previousIndex = -1;
 	PID errs, gains;
-	float finalGain, totalErr, inputTrim, outputTrim, iMaxChange, maxChange, maxCorr;
+	float finalGain, totalErr, inputTrim, outputTrim, iMax, iMaxChange, maxChange, maxCorr;
 	void add(PidControl *p, const char *name) { 
 		pids.push_back(p);
 		pidNames.push_back(string(name));
@@ -687,6 +687,7 @@ public:
 		addFloat(&gains.i, "I Gain", 0.001, "%.3f");
 		addFloat(&gains.d, "D Gain", 0.01, "%.2f");
 		addFloat(&iMaxChange, "I-Err Max Change", 0.0001, "%.4f");
+		addFloat(&iMax, "I-Err Max ", 0.01, "%.3f");
 		addFloat(&finalGain, "Final Gain", 0.01, "%.2f");
 		addFloat(&inputTrim, "Input Trim", 0.01, "%.2f");
 		addFloat(&outputTrim, "Output Trim", 0.01, "%.2f");
@@ -704,6 +705,7 @@ public:
 			inputTrim = pids[index()]->inputTrim;
 			outputTrim = pids[index()]->outputTrim;
 			iMaxChange = pids[index()]->iMaxChange;
+			iMax = pids[index()]->maxerr.i;
 			maxChange = pids[index()]->maxChange;
 			maxCorr = pids[index()]->maxCorr;
 		}
@@ -714,6 +716,7 @@ public:
 		pids[index()]->inputTrim = inputTrim;
 		pids[index()]->outputTrim = outputTrim;
 		pids[index()]->iMaxChange = iMaxChange;
+		pids[index()]->maxerr.i = iMax;
 		pids[index()]->maxChange = maxChange;
 		pids[index()]->maxCorr = maxCorr;
 	}
@@ -1801,7 +1804,7 @@ void loop() {
 
 int foo = 1;
 void setupCp() { 
-	cpc2.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
+	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
 	//cpc.addEnum(&ahrsSource, "AHRS Source", "INS/G5");
 	cpc.addInt(&g5HdgCount, "G5 HDG RX Count");
 	cpc.addInt(&g5LineErrCount, "G5 RX Error Count");
