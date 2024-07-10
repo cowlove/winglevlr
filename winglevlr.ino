@@ -64,13 +64,14 @@ struct PIDS {
 
 	PIDS() {
 		// Set up PID gains
-		rollPID.setGains(7.52, 0.01, 0.11); // input in degrees bank err, output in stickThrow units
+		rollPID.setGains(5.0, 0.01, 2.0); // input in degrees bank err, output in stickThrow units
 		rollPID.hiGain.p = 2;
 		rollPID.hiGainTrans.p = 5;
-		rollPID.maxerr.i = 2.0; // degrees bank err
+		rollPID.maxerr.i = 4.0; // degrees bank err
 		rollPID.outputTrim = 0.0;
-		rollPID.inputTrim = -0.54;
-		rollPID.finalGain = 16.8;
+		rollPID.inputTrim = 0.0;
+		rollPID.finalGain = 10.0;
+		rollPID.maxChange = 0.60;
 		rollPID.finalScale = 0.001;
 
 		hdgPID.setGains(0.5, 0.02, 0.50); // input in degrees hdg err, output in degrees desired bank
@@ -80,14 +81,16 @@ struct PIDS {
 		hdgPID.iMaxChange = 0.1; /* dec/sec above which I-err wont be accumulated */
 		hdgPID.finalGain = 1.0;
 
-		xtePID.setGains(8.0, 0.001, 0.20); // input in NM xte error, output in degrees desired hdg change
-		xtePID.maxerr.i = 1.0;
+		xtePID.setGains(8.0, 0.1, 3.0); // input in NM xte error, output in degrees desired hdg change
+		xtePID.maxerr.i = 2.0;
+		xtePID.iMaxChange = 0.002;
 		xtePID.finalGain = 20.0;
 
 		pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
 		pitchPID.finalGain = 5.0;
 		pitchPID.maxerr.i = 1; // degrees
 		pitchPID.outputTrim = -0.0;
+		pitchPID.maxChange = 0.60;
 		pitchPID.inputTrim = +0;
 		pitchPID.finalScale = 0.001;
 
@@ -98,6 +101,7 @@ struct PIDS {
 		altPID.finalScale = 0.01;
 		altPID.iMaxChange = 3.0; /* feet/sec above which I-err wont be accumulated */
 		altPID.maxChange = 1.0; /* deg/sec */
+		altPID.maxCorr = 3.5; 
 	}
 } pids;
 
@@ -118,13 +122,14 @@ static StaleData<int> canMsgCount(3000, -1);
 static float desiredTrk = -1;
 static float cmdRoll = 0, pitchToStick = +0.05 /*WHY negative?*/, desPitch = -4.0, cmdPitch = 0, desAlt = 0;
 static float stickXYTransNeg = 0, stickXYTransPos = 0;
+static float currentAlt = 0;
 static int serialLogFlags = 0;
 float tttt = 60; // seconds to make each test turn
 float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float rollToStick = 0.0, rollToPitch = 0.0;
 float maxRollRate = 5.0; // deg/sec 
 float servoGain = 1.70;
-int g5LineCount = 0;
+int g5LineCount = 0, g5LineErrCount = 0, g5HdgCount = 0;
 int serialLogMode = 0x0;
 
 #define LED_PIN 22
@@ -681,7 +686,7 @@ public:
 		addFloat(&gains.p, "P Gain", 0.01, "%.2f");
 		addFloat(&gains.i, "I Gain", 0.001, "%.3f");
 		addFloat(&gains.d, "D Gain", 0.01, "%.2f");
-		addFloat(&iMaxChange, "I-Err Max Change", 0.01, "%.2f");
+		addFloat(&iMaxChange, "I-Err Max Change", 0.0001, "%.4f");
 		addFloat(&finalGain, "Final Gain", 0.01, "%.2f");
 		addFloat(&inputTrim, "Input Trim", 0.01, "%.2f");
 		addFloat(&outputTrim, "Output Trim", 0.01, "%.2f");
@@ -808,7 +813,7 @@ void setup() {
 	}
 
 	lastAhrsGoodG5.g5Hdg = lastAhrsGoodG5.gpsTrackGDL90 = lastAhrsGoodG5.gpsTrackRMC = -1;
-	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = -1;
+	ahrsInput.g5Hdg = ahrsInput.gpsTrackGDL90 = ahrsInput.gpsTrackRMC = ahrsInput.g5Palt = -1;
 
 	// make PID select knob display text from array instead of 0-3
 	Display::pidsel.toString = [](float v) {
@@ -920,7 +925,7 @@ static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 static int hdgSelect = 4;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
-static int altSelect = 1;	   //  0 0blox, 1 g5palt 
+static int altSelect = 1;	   //  0 gdl/g5 auto, 1 g5ialt, 2 g5pa, 3 gdl90, 4 ublox  
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 static int ahrsSource = 1;
@@ -1031,7 +1036,7 @@ void setObsKnob(float knobSel, float v) {
 	}
 	if (knobSel == 0 && v > 100000 && v < 110000) {
 		altSetting = v;
-		Serial.printf("Alt setting %f\n", v);
+		//Serial.printf("Alt setting %f\n", v);
 	}
 	if (knobSel == 1 /*|| knobSel == 4*/) {
 		obs = v * 180.0 / M_PI;
@@ -1203,74 +1208,86 @@ void doButtons() {
 		}
 	}
 }
+
 void ParseNMEAChar(const char *, int);
 void parseG5Line(const char *line) { 
 	g5LineCount++;
-	vector<string> l = split(string(line), ' ');
-	float v, knobSel = 0;
-	for (vector<string>::iterator it = l.begin(); it != l.end(); it++) {
-		if (sscanf(it->c_str(), "P=%f", &v) == 1) {
-			ahrsInput.g5Pitch = v;
-			canMsgCount = canMsgCount + 1;
-			logItem.flags |= LogFlags::g5Ins;
-		} else if (sscanf(it->c_str(), "R=%f", &v) == 1) {
-			ahrsInput.g5Roll = v;
-			logItem.flags |= LogFlags::g5Ins;
-		} else if (sscanf(it->c_str(), "SL=%f", &v) == 1) {
-			ahrsInput.g5Slip = v;
-			logItem.flags |= LogFlags::g5Ins;
-		} else if (sscanf(it->c_str(), "IAS=%f", &v) == 1) {
-			ahrsInput.g5Ias = v;
-			logItem.flags |= LogFlags::g5Ps;
-		} else if (sscanf(it->c_str(), "TAS=%f", &v) == 1) {
-			ahrsInput.g5Tas = v;
-			logItem.flags |= LogFlags::g5Ps;
-		} else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) {
-			ahrsInput.g5Palt = v * FEET_PER_METER;
-			logItem.flags |= LogFlags::g5Ps;
-		} else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) {
-			ahrsInput.g5Hdg = v;
-			logItem.flags |= LogFlags::g5Nav;
+	vector<string> lines = split(string(line), '\n');
+	for (auto l = lines.begin(); l != lines.end(); l++) {
+		float pit, roll, magHdg, magTrack, knobVal, ias, tas, palt, age, knobSel = -1;
+		int mode = 0;
+		if (strstr(l->c_str(), " CAN") != NULL && sscanf(l->c_str(), "%f %f %f %f %f %f %f %f %f %f %d CAN", 
+			&pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt, &knobSel, &knobVal, &age, &mode) == 11 
+			&& (pit > -2 && pit < 2) && (roll > -2 && roll < 2) 
+			&& (magHdg > -7 && magHdg < 7) && (magTrack > -7 && magTrack < 7) 
+			&& (knobSel >= 0 && knobSel < 6)) {
+			// Serial.printf("CAN: %s\n", line);
+			ahrsInput.g5Pitch = pit * 180 / M_PI;
+			ahrsInput.g5Roll = roll * 180 / M_PI;
+			ahrsInput.g5Hdg = magHdg * 180 / M_PI;
+			ahrsInput.g5Track = magTrack * 180 / M_PI;
+			ahrsInput.g5Palt = palt * FEET_PER_METER;
+			ahrsInput.g5Ias = ias / 0.5144;
+			ahrsInput.g5Tas = tas / 0.5144;
+			// ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
+			apMode = mode;
 			ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
-		} else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) {
-			ahrsInput.g5Track = v;
-			logItem.flags |= LogFlags::g5Nav;
-		} else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) {
-			Serial.printf("G5 MODE %f\n", v);
-			apMode = v;
-			if (apMode == 5) {
-				startMakeoutSess();
+			logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
+			setObsKnob(knobSel, knobVal);
+			// Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
+			canMsgCount = canMsgCount + 1;
+		} else { 
+			// XXX=n tokens 
+			vector<string> words = split(*l, ' ');
+			float v;
+			for (auto it = words.begin(); it != words.end(); it++) {
+				//it->erase(std::remove(it->begin(), it->end(), '\n'));
+				if (sscanf(it->c_str(), "P=%f", &v) == 1) {
+					ahrsInput.g5Pitch = v;
+					canMsgCount = canMsgCount + 1;
+					logItem.flags |= LogFlags::g5Ins;
+				} else if (sscanf(it->c_str(), "R=%f", &v) == 1) {
+					ahrsInput.g5Roll = v;
+					logItem.flags |= LogFlags::g5Ins;
+				} else if (sscanf(it->c_str(), "SL=%f", &v) == 1) {
+					ahrsInput.g5Slip = v;
+					logItem.flags |= LogFlags::g5Ins;
+				} else if (sscanf(it->c_str(), "IAS=%f", &v) == 1) {
+					ahrsInput.g5Ias = v;
+					logItem.flags |= LogFlags::g5Ps;
+				} else if (sscanf(it->c_str(), "TAS=%f", &v) == 1) {
+					ahrsInput.g5Tas = v;
+					logItem.flags |= LogFlags::g5Ps;
+				} else if (sscanf(it->c_str(), "PALT=%f", &v) == 1) {
+					ahrsInput.g5Palt = v * FEET_PER_METER;
+					logItem.flags |= LogFlags::g5Ps;
+				} else if (sscanf(it->c_str(), "HDG=%f", &v) == 1) {
+					ahrsInput.g5Hdg = v;
+					logItem.flags |= LogFlags::g5Nav;
+					ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
+				} else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) {
+					ahrsInput.g5Track = v;
+					g5HdgCount++;
+					logItem.flags |= LogFlags::g5Nav;
+				} else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) {
+					Serial.printf("G5 MODE %f\n", v);
+					apMode = v;
+					if (apMode == 9) {
+						startMakeoutSess();
+					}
+				} else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) {
+					knobSel = v;
+				} else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) {
+					setObsKnob(knobSel, v);
+				} else if (strstr(it->c_str(), "NMEA=") == it->c_str()) { 
+					ParseNMEAChar(it->c_str() + 5, strlen(it->c_str()) - 5);
+				} else { 
+					//Serial.printf("Malformed G5 token: %s line: %s\n", it->c_str(), l->c_str());
+					g5LineErrCount++;
+				}
 			}
-		} else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) {
-			knobSel = v;
-		} else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) {
-			setObsKnob(knobSel, v);
-		} else if (strstr(it->c_str(), "NMEA=") == it->c_str()) { 
-			ParseNMEAChar(it->c_str() + 5, strlen(it->c_str()) - 5);
 		}
-	}
-
-
-	float pit, roll, magHdg, magTrack, knobVal, ias, tas, palt, age;
-	int mode = 0;
-	// printf("LINE %s\n", line);
-	if (strstr(line, " CAN") != NULL && sscanf(line, "%f %f %f %f %f %f %f %f %f %f %d CAN", &pit, &roll, &magHdg, &magTrack, &ias, &tas, &palt, &knobSel, &knobVal, &age, &mode) == 11 && (pit > -2 && pit < 2) && (roll > -2 && roll < 2) && (magHdg > -7 && magHdg < 7) && (magTrack > -7 && magTrack < 7) && (knobSel >= 0 && knobSel < 6)) {
-		// Serial.printf("CAN: %s\n", line);
-		ahrsInput.g5Pitch = pit * 180 / M_PI;
-		ahrsInput.g5Roll = roll * 180 / M_PI;
-		ahrsInput.g5Hdg = magHdg * 180 / M_PI;
-		ahrsInput.g5Track = magTrack * 180 / M_PI;
-		ahrsInput.g5Palt = palt * FEET_PER_METER;
-		ahrsInput.g5Ias = ias / 0.5144;
-		ahrsInput.g5Tas = tas / 0.5144;
-		// ahrsInput.g5TimeStamp = (millis() - (uint64_t)age) / 1000.0;
-		apMode = mode;
-		ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
-		logItem.flags |= (LogFlags::g5Nav | LogFlags::g5Ps | LogFlags::g5Ins);
-		setObsKnob(knobSel, knobVal);
-		// Serial.printf("knob sel %f, knob val %f\n", knobSel, knobVal);
-		canMsgCount = canMsgCount + 1;
-	}
+	}	
 }
 
 void ParseNMEAChar(const char *buf, int n) {
@@ -1500,17 +1517,25 @@ void loop() {
 			}
 			g5IndAlt = ahrsInput.g5Palt - 145442.2 * (1 - pow(altSetting / 101320,  .190261));
 			//g5IndAlt = ahrsInput.g5Palt + (altSetting - 101320.7) * 10 / 34;
-			float alt = g5IndAlt;
-			if (altSelect == 0) alt = ahrsInput.ubloxAlt;
-			if (altSelect == 1) alt = g5IndAlt;
-			if (altSelect == 2) alt = ahrsInput.g5Palt; 
+			currentAlt = g5IndAlt;
+			if (altSelect == 0) {
+				currentAlt = ahrsInput.palt;
+				if (ahrsInput.g5Palt > 0) {
+					altSelect = 1;
+					currentAlt = g5IndAlt;
+				}
+			}
+			if (altSelect == 1) currentAlt = g5IndAlt;
+			if (altSelect == 2) currentAlt = ahrsInput.g5Palt;
+			if (altSelect == 3) currentAlt = ahrsInput.palt; 
+			if (altSelect == 4) currentAlt = ahrsInput.ubloxAlt;
 			float altErr = 0;
 			if (desAlt > 1000) {
-				altErr = desAlt - alt;
+				altErr = desAlt - currentAlt;
 				if (abs(altErr) > 500) {
 					pids.altPID.resetI();
 				}
-				pids.altPID.add(altErr, alt, ahrsInput.sec);
+				pids.altPID.add(altErr, currentAlt, ahrsInput.sec);
 			} else {
 				pids.altPID.reset();
 			}
@@ -1773,11 +1798,14 @@ void loop() {
 
 int foo = 1;
 void setupCp() { 
-	//cpc2.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
+	cpc2.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
 	//cpc.addEnum(&ahrsSource, "AHRS Source", "INS/G5");
+	cpc.addInt(&g5HdgCount, "G5 HDG RX Count");
+	cpc.addInt(&g5LineErrCount, "G5 RX Error Count");
 	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f Mag");
 	cpc.addFloat(&ahrsInput.selTrack, "Heading", 1, "%.1f");
 	cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
+	cpc.addFloat(&currentAlt, "Altitude", 10, "%.0f'");
 	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
 	cpc.addFloat(&roll, "Roll", 1, "%.2f");
 	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
@@ -1791,16 +1819,16 @@ void setupCp() {
 	cpc.addFloat(&stickXYTransPos, "Stick XY Transfer +", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransNeg, "Stick XY Transfer -", 0.01, "%.2f");
 	cpc.addEnum(&hdgSelect, "Heading Source", "AUTO/HY/UBLOX/G5HD/G5TR/GDL90");
-	cpc.addEnum(&altSelect, "Altitude Source", "UBLOX/G5IA/G5PA");
-	cpc.addFloat(&g5IndAlt, "G5 Ind Altitude");
-	cpc.addFloat(&ahrsInput.g5Palt, "G5 Pres Altitude");
+	cpc.addEnum(&altSelect, "Altitude Source", "AUTO/G5IA/G5PA/GLD90/UBLOX");
+	//cpc.addFloat(&g5IndAlt, "G5 Ind Altitude");
+	//cpc.addFloat(&ahrsInput.g5Palt, "G5 Pres Altitude");
 	cpc.addFloat(&ahrsInput.ubloxAlt, "UBLOX Altitude");
 	cpc.addFloat(&ServoControl::trim.x, "Trim X", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::trim.y, "Trim Y", 0.01, "%.2f");
 	cpc.addFloat(&ServoControl::strim.x, "STrim X", 1, "%.0f");
 	cpc.addFloat(&ServoControl::strim.y, "STrim Y", 1, "%.0f");
-	cpc.addInt(&servoOutput[0], "Servo0");
-	cpc.addInt(&servoOutput[1], "Servo1");
+	//cpc.addInt(&servoOutput[0], "Servo0");
+	//cpc.addInt(&servoOutput[1], "Servo1");
 	//serialLogMode = 0;
 }
 #ifdef UBUNTU
