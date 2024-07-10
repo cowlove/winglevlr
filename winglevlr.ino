@@ -924,8 +924,8 @@ static EggTimer serialReportTimer(200), loopTimer(AHRS_RATE_INV_SCALE(5)), butto
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 4;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
-static int altSelect = 1;	   //  0 gdl/g5 auto, 1 g5ialt, 2 g5pa, 3 gdl90, 4 ublox  
+static int hdgSelect = 0;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
+static int altSelect = 0;	   //  0 gdl/g5 auto, 1 g5ialt, 2 g5pa, 3 gdl90, 4 ublox  
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
 static int ahrsSource = 1;
@@ -1426,8 +1426,8 @@ void loop() {
 				ahrs.mComp.addAux(gpsTrackGDL90, 4, 0.05);
 				logItem.flags |= LogFlags::HdgGDL;
 				gpsFixes++;
-				ahrsInput.alt = s.alt * 3.2808;
-				ahrsInput.palt = s.palt; // * 25 + 1000;
+				ahrsInput.alt = s.alt * FEET_PER_METER;
+				ahrsInput.palt = s.palt; // * 25 + 1000;// seems to be heading??
 				ahrsInput.gspeed = s.hvel;
 				gdl90State = s;
 			}
@@ -1519,7 +1519,7 @@ void loop() {
 			//g5IndAlt = ahrsInput.g5Palt + (altSetting - 101320.7) * 10 / 34;
 			currentAlt = g5IndAlt;
 			if (altSelect == 0) {
-				currentAlt = ahrsInput.palt;
+				currentAlt = ahrsInput.alt;
 				if (ahrsInput.g5Palt > 0) {
 					altSelect = 1;
 					currentAlt = g5IndAlt;
@@ -1527,7 +1527,7 @@ void loop() {
 			}
 			if (altSelect == 1) currentAlt = g5IndAlt;
 			if (altSelect == 2) currentAlt = ahrsInput.g5Palt;
-			if (altSelect == 3) currentAlt = ahrsInput.palt; 
+			if (altSelect == 3) currentAlt = ahrsInput.alt; 
 			if (altSelect == 4) currentAlt = ahrsInput.ubloxAlt;
 			float altErr = 0;
 			if (desAlt > 1000) {
@@ -1558,7 +1558,7 @@ void loop() {
 			// mode 0, use GDL90 until first can message, then switch to G5
 			ahrsInput.selTrack = ahrsInput.gpsTrackGDL90;
 			if (ahrsInput.g5Hdg != -1) // canMsgCount.isValid() == true) // switch to G5 on first CAN msg
-				hdgSelect = 1;
+				hdgSelect = 4;
 		}
 		if (hdgSelect == 1) { // hybrid G5/GDL90 data
 			if (ahrsInput.g5Hdg != -1 && g5HdgChangeTimer.unchanged(ahrsInput.g5Hdg) < 2.0) { 
@@ -1819,7 +1819,7 @@ void setupCp() {
 	cpc.addFloat(&stickXYTransPos, "Stick XY Transfer +", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransNeg, "Stick XY Transfer -", 0.01, "%.2f");
 	cpc.addEnum(&hdgSelect, "Heading Source", "AUTO/HY/UBLOX/G5HD/G5TR/GDL90");
-	cpc.addEnum(&altSelect, "Altitude Source", "AUTO/G5IA/G5PA/GLD90/UBLOX");
+	cpc.addEnum(&altSelect, "Altitude Source", "AUTO/G5IA/G5PA/GDL90/UBLOX");
 	//cpc.addFloat(&g5IndAlt, "G5 Ind Altitude");
 	//cpc.addFloat(&ahrsInput.g5Palt, "G5 Pres Altitude");
 	cpc.addFloat(&ahrsInput.ubloxAlt, "UBLOX Altitude");
@@ -2012,7 +2012,7 @@ public:
 				if (l.ai.gpsTrackGDL90 != -1) {
 					s.track = magToTrue(l.ai.gpsTrackGDL90);
 					s.hvel = l.ai.gspeed;
-					s.palt = l.ai.palt;
+					s.palt = l.ai.palt; // seems to be heading??
 					s.alt = l.ai.alt / FEET_PER_METER;
 					s.lat = curPos.loc.lat;
 					s.lon = curPos.loc.lon;

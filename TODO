@@ -1,3 +1,6 @@
+* hdgPID and rollPID errors seem to counter each other and 
+stabilize at -4 deg and +4 deg 
+
 * Change EditableItem so that it can refer to external reference
 
 
