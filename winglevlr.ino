@@ -1240,6 +1240,7 @@ void parseG5Line(const char *line) {
 			// XXX=n tokens 
 			vector<string> words = split(*l, ' ');
 			float v;
+			int knob = 0;
 			for (auto it = words.begin(); it != words.end(); it++) {
 				//it->erase(std::remove(it->begin(), it->end(), '\n'));
 				if (sscanf(it->c_str(), "P=%f", &v) == 1) {
@@ -1275,6 +1276,8 @@ void parseG5Line(const char *line) {
 					if (apMode == 9) {
 						startMakeoutSess();
 					}
+				} else if (sscanf(it->c_str(), "KNOB%d=%f", &knob, &v) == 2) {
+					setObsKnob(knob, v);
 				} else if (sscanf(it->c_str(), "KSEL=%f", &v) == 1) {
 					knobSel = v;
 				} else if (sscanf(it->c_str(), "KVAL=%f", &v) == 1) {
