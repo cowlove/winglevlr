@@ -71,7 +71,7 @@ struct PIDS {
 		rollPID.outputTrim = 0.0;
 		rollPID.inputTrim = 0.0;
 		rollPID.finalGain = 10.0;
-		rollPID.maxChange = 0.60;
+		rollPID.maxChange = 0.25;
 		rollPID.finalScale = 0.001;
 
 		hdgPID.setGains(0.5, 0.02, 0.50); // input in degrees hdg err, output in degrees desired bank
@@ -90,7 +90,7 @@ struct PIDS {
 		pitchPID.finalGain = 5.0;
 		pitchPID.maxerr.i = 1; // degrees
 		pitchPID.outputTrim = -0.0;
-		pitchPID.maxChange = 0.60;
+		pitchPID.maxChange = 0.25;
 		pitchPID.inputTrim = +0;
 		pitchPID.finalScale = 0.001;
 
@@ -1274,7 +1274,7 @@ void parseG5Line(const char *line) {
 					g5HdgCount++;
 					logItem.flags |= LogFlags::g5Nav;
 				} else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) {
-					Serial.printf("G5 MODE %f\n", v);
+					//Serial.printf("G5 MODE %f\n", v);
 					apMode = v;
 					if (apMode == 9) {
 						startMakeoutSess();
@@ -1814,7 +1814,7 @@ void setupCp() {
 	cpc.addFloat(&currentAlt, "Altitude", 10, "%.0f'");
 	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
 	cpc.addFloat(&roll, "Roll", 1, "%.2f");
-	cpc.addFloat(&desPitch, "Set Pitch", 1, "%.2f");
+	cpc.addFloat(&desPitch, "Set Pitch", .1, "%.2f");
 	cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
 	cpc.addFloat(&pitch, "Pitch", 1, "%.2f");
 	cpc.addFloat(&servoGain, "Servo Gain", 0.01, "%.2f");
