@@ -71,7 +71,7 @@ struct PIDS {
 		rollPID.outputTrim = 0.0;
 		rollPID.inputTrim = 0.0;
 		rollPID.finalGain = 10.0;
-		rollPID.maxChange = 0.25;
+		rollPID.maxChange = 0.40;
 		rollPID.finalScale = 0.001;
 
 		hdgPID.setGains(0.5, 0.02, 0.50); // input in degrees hdg err, output in degrees desired bank
@@ -130,7 +130,7 @@ float rollToStick = 0.0, rollToPitch = 0.0;
 float maxRollRate = 5.0; // deg/sec 
 float servoGain = 1.70;
 int g5LineCount = 0, g5LineErrCount = 0, g5HdgCount = 0;
-int serialLogMode = 0x0;
+int serialLogMode = 0x1;
 
 #define LED_PIN 22
 /* Old hardwarinput pins: I2C pins/variant seems to determine layout
@@ -1027,7 +1027,7 @@ void parseSerialCommandInput(const char *buf, int n) {
 			Display::jde.buttonPress((int)f); 
 			//serialOutput(Display::jd.dump());
 		} else if (sscanf(line, "smode %f", &f) == 1) { 
-			serialLogMode = f;
+			serialLogMode = 0x1;
 		} else {
 			OUT("UNKNOWN COMMAND: %s", line);
 		} });
@@ -1347,9 +1347,9 @@ void loop() {
 	uint64_t now = micros();
 	double nowSec = millis() / 1000.0;
 
-	if (debugFastBoot && nowSec > 3600) {
-		ESP.restart();
-	}
+	//if (debugFastBoot && nowSec > 3600) {
+	//	ESP.restart();
+	//}
 	loopTime.add(now - lastLoop);
 	lastLoop = now;
 	PidControl *pid = &pids.rollPID;
