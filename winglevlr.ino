@@ -923,7 +923,7 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int, 40, 40> loopTime;
-static EggTimer serialReportTimer(200), loopTimer(AHRS_RATE_INV_SCALE(5)), buttonCheckTimer(10);
+static EggTimer serialReportTimer(10000), loopTimer(AHRS_RATE_INV_SCALE(5)), buttonCheckTimer(10);
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
@@ -1362,7 +1362,9 @@ void loop() {
 			"A%04.0f DA%04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
 			"PIDC %+06.2f %+05.1f %+05.1f %+05.1f "
-			//"but %d%d%d%d loop %d/%d/%d heap %d re.count %d logdrop %d maxwait %d "
+			//"but %d%d%d%d 
+			"loop %d/%d/%d heap %d "
+			//re.count %d logdrop %d maxwait %d "
 			//"a%d "
 			//"s%04d %04d "
 			"%d\n",
@@ -1372,7 +1374,9 @@ void loop() {
 			ahrsInput.alt, desAlt,
 			// 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
 			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr,
-			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(), (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(), Display::jde.re.count,
+			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(),
+			 (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(),
+			 // Display::jde.re.count,
 			//logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			//ublox.count,
 			// servoOutput[0], servoOutput[1],
