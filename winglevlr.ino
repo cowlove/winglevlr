@@ -927,7 +927,7 @@ static EggTimer serialReportTimer(10000), loopTimer(AHRS_RATE_INV_SCALE(5)), but
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 0;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
+static int hdgSelect = 5;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
 static int altSelect = 0;	   //  0 gdl/g5 auto, 1 g5ialt, 2 g5pa, 3 gdl90, 4 ublox  
 static float obs = -1, lastObs = -1;
 static bool screenReset = false, screenEnabled = true;
