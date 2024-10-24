@@ -246,7 +246,7 @@ public:
 } ublox;
 
 void halInit() {
-	Serial.begin(921600, SERIAL_8N1);
+	Serial.begin(115200);
 	Serial.setTimeout(1);
 
 	Serial.printf("\nReset reason: %d %d\n", (int)rtc_get_reset_reason(0), (int)rtc_get_reset_reason(1));
@@ -330,6 +330,7 @@ LongShortFilter butFilt(1500, 600);
 LongShortFilter butFilt2(1500, 600);
 LongShortFilter butFilt3(1500, 600);
 LongShortFilter butFilt4(1500, 600);
+static bool screenReset = false, screenEnabled = true;
 
 void setKnobPid(int f);
 
@@ -581,6 +582,8 @@ void imuLog();
 static AhrsInput ahrsInput, lastAhrsInput, lastAhrsGoodG5;
 
 bool imuRead() {
+	if (imu == NULL) 
+		return false;
 	AhrsInput &x = ahrsInput;
 	x.sec = micros() / 1000000.0;
 	// TODO fix this in a less gross way.
@@ -735,11 +738,20 @@ PidControlUI cpc3(&cup);
 //ReliableTcpClient client("192.168.4.1", 4444);
 
 void setup() {
+	Serial.begin(115200);
+
+#ifndef CONFIG_IDF_TARGET_ESP32S3
 	Display::jd.begin();
 	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
 	Display::jd.clear();
-
 	halInit();
+#else  
+	// override knob values to dummy value for new board 
+	buttonKnob.pin = buttonTop.pin = buttonBot.pin = buttonMid.pin = 
+	pins.tft_backlight = 0;
+	screenEnabled = false;	
+#endif 
+
 
 	// ugh: redo pin assignments, hal may have changed them
 	buttonTop.pin = pins.topButton;
@@ -753,7 +765,7 @@ void setup() {
 
 	debugFastBoot = buttonTop.read();
 	Serial.printf(getMacAddress().c_str());
-	if (getMacAddress() == PROGMEM "C44F337F8AB9")
+	if (getMacAddress() == PROGMEM "24EC4A26574C")
 		debugFastBoot = true;
 	j.jw.enabled = !debugFastBoot;
 
@@ -822,7 +834,8 @@ void setup() {
 	Display::pidsel.toString = [](float v) {
 		return String((const char *[]){"PIT ", "ALT ", "ROLL", "XTE ", "HDG "}[(v >= 0 && v <= 4) ? (int)v : 0]);
 	};
-	Display::jde.begin();
+	if (screenEnabled)
+		Display::jde.begin();
 #ifndef UBUNTU
 	Display::jde.re.begin([]() -> void
 						  { Display::jde.re.ISR(); });
@@ -835,7 +848,8 @@ void setup() {
 	if (debugFastBoot) {
 		Display::ip.color.lb = Display::ip.color.vb = ST7735_RED;
 	}
-	Display::jde.update();
+	if (screenEnabled)
+		Display::jde.update();
 
 	// ed.rlhz.value = 3; // period for relay activation, in seconds
 	// ed.mnrl.value = 70;
@@ -868,7 +882,8 @@ void setup() {
 			parseG5Line(s.c_str()); 
     });
 #endif
- 
+	Serial.println("setup() done");
+	Serial.flush();
 }
 
 void udpSendString(const char *b) {
@@ -923,14 +938,13 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int, 40, 40> loopTime;
-static EggTimer serialReportTimer(10000), loopTimer(AHRS_RATE_INV_SCALE(5)), buttonCheckTimer(10);
+static EggTimer serialReportTimer(500), loopTimer(AHRS_RATE_INV_SCALE(5)), buttonCheckTimer(10);
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
 static int hdgSelect = 5;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
 static int altSelect = 0;	   //  0 gdl/g5 auto, 1 g5ialt, 2 g5pa, 3 gdl90, 4 ublox  
 static float obs = -1, lastObs = -1;
-static bool screenReset = false, screenEnabled = true;
 static int ahrsSource = 1;
 static float altSetting = 101320;
 static float g5IndAlt = 0;

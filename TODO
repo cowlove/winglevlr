@@ -1,3 +1,8 @@
+arduino-cli compile -b esp32:esp32:esp32s3:CDCOnBoot=cdc --port /dev/ttyACM0 -v
+arduino-cli upload -b esp32:esp32:esp32s3:CDCOnBoot=cdc --port /dev/ttyACM0 -v
+stty -F /dev/ttyACM0 -hupcl -crtscts -echo raw 115200
+
+
 * hdgPID and rollPID errors seem to counter each other and 
 stabilize at -4 deg and +4 deg 
 
