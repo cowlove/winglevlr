@@ -10,7 +10,7 @@ EXCLUDE_DIRS=/home/jim/Arduino/libraries/TFT_eSPI/|/home/jim/Arduino/libraries/L
 winglevlr.ino: 
 
 winglevlr_ubuntu:	WaypointNav.h RollAHRS.h PidControl.h GDL90Parser.h ServoVisualizer.h
-	g++ -x c++ -g winglevlr.ino -o $@ -DAHRS_RATE=${AHRS_RATE} -DESP32 -DCSIM -DUBUNTU -I./ -I${HOME}/Arduino/libraries/TinyGPSPlus-1.0.2/src/ -I ${HOME}/Arduino/libraries/*jimlib/src/ -I${HOME}/Arduino/libraries/TinyGPSPlus/src/  -lGL -lglut 
+	g++ -x c++ -g winglevlr.ino -o $@ -DAHRS_RATE=${AHRS_RATE} -DESP32 -DCSIM -DUBUNTU -DARDUINO -I./csim_includes/ -I./ -I${HOME}/Arduino/libraries/TinyGPSPlus-1.0.2/src/ -I ${HOME}/Arduino/libraries/*jimlib/src/ -I${HOME}/Arduino/libraries/TinyGPSPlus/src/  -lGL -lglut 
 # add -pg to profile 
 
 plot:	winglevlr_ubuntu
