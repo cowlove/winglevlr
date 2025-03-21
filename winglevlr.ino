@@ -9,9 +9,6 @@
 #else // #ifndef UBUNTU
 void noprintf(const char *, ...) {}
 #define CSIM_PRINTF printf
-#include <esp_task_wdt.h>
-#include <soc/soc.h>
-#include <soc/rtc_cntl_reg.h>
 #include <rom/rtc.h>
 #include <MPU9250_asukiaaa.h>
 // #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
@@ -31,6 +28,13 @@ void noprintf(const char *, ...) {}
 #include "espNowMux.h"
 #include "reliableStream.h"
 #include "confPanel.h"
+
+#if defined(ARDUINO_ESP32C3_DEV) || defined(ARDUINO_ESP32C6_DEV)
+#include <SoftwareSerial.h>
+#undef SERIAL_8N1
+#define SERIAL_8N1 SWSERIAL_8N1
+EspSoftwareSerial::UART Serial2;
+#endif
 
 bool debugFastBoot = false;
 
@@ -785,8 +789,7 @@ void setup() {
 	Serial.printf("Log file number %d\n", l);
 	logFileNumber = l + 1;
 
-	esp_task_wdt_init(22, true);
-	esp_err_t err = esp_task_wdt_add(NULL);
+	wdtInit(22);
 
 	// WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 
@@ -857,10 +860,12 @@ void setup() {
 	// ed.pmax.value = 2.5; // PID total error that triggers relay maximum actuation
 	pinMode(pins.pwm_pitch, OUTPUT);
 	pinMode(pins.pwm_roll, OUTPUT);
-	ledcSetup(1, 50, 16);			  // channel 1, 50 Hz, 16-bit width
-	ledcSetup(0, 50, 16);			  // channel 1, 50 Hz, 16-bit width
-	ledcAttachPin(pins.pwm_pitch, 0); // GPIO 33 assigned to channel 1
-	ledcAttachPin(pins.pwm_roll, 1);  // GPIO 33 assigned to channel 1
+	//ledcSetup(1, 50, 16);			  // channel 1, 50 Hz, 16-bit width
+	//ledcSetup(0, 50, 16);			  // channel 1, 50 Hz, 16-bit width
+	//ledcAttachPin(pins.pwm_pitch, 0); // GPIO 33 assigned to channel 1
+	//ledcAttachPin(pins.pwm_roll, 1);  // GPIO 33 assigned to channel 1
+	ledcInit(pins.pwm_pitch, 50, 16, 0);
+	ledcInit(pins.pwm_roll, 50, 16, 1);
 
 	// ArduinoOTA.begin();
 	setupCp();
@@ -1345,7 +1350,7 @@ void ParseNMEAChar(const char *buf, int n) {
 float loopCount10Hz = 0;
 
 void loop() {
-	esp_task_wdt_reset();
+	wdtReset();
 	// ArduinoOTA.handle();
 	j.run();
 	if(j.hz(10)) loopCount10Hz++;
