@@ -743,7 +743,7 @@ PidControlUI cpc3(&cup);
 
 void setup() {
 	Serial.begin(115200);
-
+        Serial.println("setup()");
 #ifndef CONFIG_IDF_TARGET_ESP32S3
 	Display::jd.begin();
 	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
