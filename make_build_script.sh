@@ -1,37 +1,58 @@
 #!/bin/bash
-BOARD=$1
+BOARD=esp32
 TMP=/tmp/arduino/$$.txt
 PORT=/dev/ttyUSB0
-BOARD_OPTS=PartitionScheme=min_spiffs
-
-if [ ! $BOARD == "esp32" ]; then
-    BOARD_OPTS="$BOARD_OPTS",CDCOnBoot=cdc
-    PORT=/dev/ttyACM0
-fi
+BOARD_OPTS=PartitionScheme=default
 
 cd `dirname $0`
 arduino-cli compile  -v \
-    -b esp32:esp32:${BOARD} --board-options ${BOARD_OPTS} -u --port ${PORT} --build-cache-path core.a \
-    | tee $TMP
+    -b esp32:esp32:${BOARD} --board-options ${BOARD_OPTS} -u --port ${PORT} \
+	 | tee $TMP
 
 SKETCH=`basename \`pwd\``
-SKETCHDIR=/tmp/arduino/sketches/`rematch '/tmp/arduino/sketches/([A-Z0-9]+)/' /tmp/arduino/1359891.txt | head -1`
+SKETCHDIR=/tmp/arduino/sketches/`rematch '/tmp/arduino/sketches/([A-Z0-9]+)/' $TMP | head -1`
+SKETCHCPP="${SKETCHDIR}/sketch/${SKETCH}.ino.cpp"
 OUT=./build-${BOARD}.sh
 
-echo "#!/bin/bash" > $OUT
-echo "echo '#include <Arduino.h>' > ${SKETCHDIR}/sketch/${SKETCH}.ino.cpp" >> $OUT
-echo "echo '#line 1 \"`pwd`/${SKETCH}.ino\"' > ${SKETCHDIR}/sketch/${SKETCH}.ino.cpp" >> $OUT
-echo "cat ${SKETCH}.ino >> ${SKETCHDIR}/sketch/${SKETCH}.ino.cpp" >> $OUT
+# TODO: this is missing a link command        
+COMPILE_CMD=`egrep "[-]o ${SKETCHCPP}.o" $TMP`
+LINK_CMD1=`egrep " cr ${SKETCHDIR}/sketch/objs.a" $TMP`
+LINK_CMD2=`egrep "[-]o ${SKETCHDIR}/${SKETCH}.ino.elf" $TMP`
+LINK_CMD3=`grep esptool_py $TMP | grep -v ${PORT} | head -1 | tr '\n' ' '`
+LINK_CMD4=`grep esptool_py $TMP | grep -v ${PORT} | tail -1 | tr '\n' ' '`
+UPLOAD_CMD=`grep esptool_py $TMP | grep ${PORT} | tr '\n' ' '`
 
-egrep "${SKETCH}.ino.cpp.o" $TMP >> $OUT
-egrep '^python3' $TMP >> $OUT
-grep esptool_py $TMP | grep -v ${PORT} >> $OUT
-echo "echo Waiting for ${PORT}...; while [ ! -e ${PORT} ]; do sleep 1; done" >> $OUT
-grep esptool_py $TMP | grep ${PORT} >> $OUT
-echo "echo Waiting for ${PORT}...; while [ ! -e ${PORT} ]; do sleep 1; done" >> $OUT
-echo "stty -F ${PORT} raw -echo && cat ${PORT}" >> $OUT
+cat <<END > $OUT
+#!/bin/bash 
+OPT=\$1; if [ "\$OPT" == "" ]; then OPT="-clwum"; fi
+set -e
+if [[ \$OPT == *c* ]]; then
+	echo -n Compiling...
+	echo '#include <Arduino.h>' > ${SKETCHCPP}
+	echo "#line 1 \"`pwd`/${SKETCH}.ino\"" >> ${SKETCHCPP}
+	cat "${SKETCH}.ino" >> ${SKETCHCPP}
+	time $COMPILE_CMD
+fi
 
-#if [ ! -d build ]; then mkdir build; fi
-#cp -a "${SKETCHDIR}/${SKETCH}"* build/
+if [[ \$OPT == *l* ]]; then
+	echo Linking...
+	time ( set -e; $LINK_CMD1; $LINK_CMD2; $LINK_CMD3; $LINK_CMD4 ) 
+fi
+
+if [[ \$OPT == *u* ]]; then
+	echo Uploading... 
+	if [[ \$OPT == *w* ]]; then echo -n Waiting for ${PORT}...; while [ ! -e ${PORT} ]; do sleep 1; done; echo OK; fi;
+	$UPLOAD_CMD 
+fi
+
+if [[ \$OPT == *m* ]]; then
+	echo Monitoring...
+	if [[ \$OPT == *w* ]]; then echo -n Waiting for ${PORT}...; while [ ! -e ${PORT} ]; do sleep 1; done; echo OK; fi;
+	stty -F ${PORT} 115200 raw -echo && cat ${PORT}
+fi;
+
+
+END
+
 chmod 755 $OUT
 #rm -f $TMP
