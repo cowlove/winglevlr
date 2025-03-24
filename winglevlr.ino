@@ -742,14 +742,21 @@ PidControlUI cpc3(&cup);
 //ReliableTcpClient client("192.168.4.1", 4444);
 
 void setup() {
+	wdtInit(22);
 	Serial.begin(115200);
-        Serial.println("setup()");
+    Serial.println("setup()");
+	//sleep(10000);
 #ifndef CONFIG_IDF_TARGET_ESP32S3
+	Serial.println("jd.begin()");
 	Display::jd.begin();
+	Serial.println("jd.setRotation()");
 	Display::jd.setRotation(ahrs.rotate180 ? 3 : 1);
+	Serial.println("jd.clear()");
 	Display::jd.clear();
+	Serial.println("jd.halInit()");
 	halInit();
 #else  
+	Serial.println("TODO esp32s3 code");
 	// override knob values to dummy value for new board 
 	buttonKnob.pin = buttonTop.pin = buttonBot.pin = buttonMid.pin = 
 	pins.tft_backlight = 0;
@@ -789,7 +796,6 @@ void setup() {
 	Serial.printf("Log file number %d\n", l);
 	logFileNumber = l + 1;
 
-	wdtInit(22);
 
 	// WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 

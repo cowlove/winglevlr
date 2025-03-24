@@ -18,3 +18,4 @@ logs*
 map.html
 *.gprof
 *.plog
+build*.sh

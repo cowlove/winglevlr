@@ -2,7 +2,7 @@
 BOARD=ttgo-t1
 TMP=/tmp/arduino/$$.txt
 PORT=/dev/ttyUSB0
-BOARD_OPTS=PartitionScheme=default
+BOARD_OPTS=PartitionScheme=min_spiffs
 
 cd `dirname $0`
 arduino-cli compile  -v \
