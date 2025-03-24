@@ -1,12 +1,12 @@
 #!/bin/bash
-BOARD=esp32
+BOARD=ttgo-t1
 TMP=/tmp/arduino/$$.txt
 PORT=/dev/ttyUSB0
 BOARD_OPTS=PartitionScheme=default
 
 cd `dirname $0`
 arduino-cli compile  -v \
-    -b esp32:esp32:${BOARD} --board-options ${BOARD_OPTS} -u --port ${PORT} \
+    -b esp32:esp32:${BOARD} -u --port ${PORT} \
 	 | tee $TMP
 
 SKETCH=`basename \`pwd\``
@@ -36,7 +36,10 @@ fi
 
 if [[ \$OPT == *l* ]]; then
 	echo Linking...
-	time ( set -e; $LINK_CMD1; $LINK_CMD2; $LINK_CMD3; $LINK_CMD4 ) 
+	$LINK_CMD1
+	$LINK_CMD2
+	$LINK_CMD3
+	$LINK_CMD4  
 fi
 
 if [[ \$OPT == *u* ]]; then

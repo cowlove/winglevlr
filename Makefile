@@ -6,7 +6,6 @@ AHRS_RATE=50
 GIT_VERSION := "$(shell git describe --abbrev=4 --dirty --always --tags)"
 BUILD_EXTRA_FLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 BUILD_EXTRA_FLAGS += -DAHRS_RATE=${AHRS_RATE} 
-BUILD_EXTRA_FLAGS += -DESP32CORE_V2
 EXCLUDE_DIRS=/home/jim/Arduino/libraries/TFT_eSPI/|/home/jim/Arduino/libraries/LovyanGFX
 winglevlr.ino: 
 
