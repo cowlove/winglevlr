@@ -2333,8 +2333,8 @@ public:
 	}
 } espsim;
 
-#include "TinyGPS++.h"
-#include "TinyGPS++.cpp"
+//#include "TinyGPS++.h"
+//#include "TinyGPS++.cpp"
 
 #endif
 
