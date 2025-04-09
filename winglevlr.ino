@@ -15,9 +15,10 @@ void noprintf(const char *, ...) {}
 #include <SparkFun_Ublox_Arduino_Library.h>
 #endif // #else // UBUNTU
 
-#include <TinyGPS++.h>
-
 #include "jimlib.h"
+#include "buttonTools.h"
+#include "dataTools.h"
+#include "synchTools.h"
 #include "TTGO_TS.h"
 #include "RollingLeastSquares.h"
 #include "PidControl.h"
@@ -28,6 +29,12 @@ void noprintf(const char *, ...) {}
 #include "espNowMux.h"
 #include "reliableStream.h"
 #include "confPanel.h"
+
+#include "serialLog.h"
+#include "sl30.h"
+
+#include <TinyGPS++.h>
+
 
 #if defined(ARDUINO_ESP32C3_DEV) || defined(ARDUINO_ESP32C6_DEV)
 #include <SoftwareSerial.h>
