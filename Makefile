@@ -1,78 +1,83 @@
-BOARD=ttgo-t1
-#BOARD=esp32s3
-#VERBOSE=1
+BOARD ?= ttgo-t1
+PORT ?= /dev/ttyUSB0
 
-AHRS_RATE=50
-GIT_VERSION := "$(shell git describe --abbrev=4 --dirty --always --tags)"
-#BUILD_EXTRA_FLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
-#BUILD_EXTRA_FLAGS += -DAHRS_RATE=${AHRS_RATE} 
-#EXCLUDE_DIRS=/home/jim/Arduino/libraries/TFT_eSPI/|/home/jim/Arduino/libraries/LovyanGFX
-winglevlr.ino: 
+GIT_VERSION := "$(shell git describe --abbrev=6 --dirty --always)"
+EXTRA_CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
+SKETCH_NAME=$(shell basename `pwd`)
+BOARD_OPTIONS = PartitionScheme=default,FlashFreq=80,FlashMode=dio
 
-winglevlr_ubuntu:	WaypointNav.h RollAHRS.h PidControl.h GDL90Parser.h ServoVisualizer.h
-	g++ -x c++ -g winglevlr.ino -o $@ -DAHRS_RATE=${AHRS_RATE} -DESP32 -DCSIM -DUBUNTU -DARDUINO -I./csim_includes/ -I./ -I${HOME}/Arduino/libraries/TinyGPSPlus-1.0.2/src/ -I ${HOME}/Arduino/libraries/*jimlib/src/ -I${HOME}/Arduino/libraries/TinyGPSPlus/src/ -I${HOME}/Arduino/libraries/Arduino_CRC32/src/ -lGL -lglut 
-# add -pg to profile 
+CCACHE=ccache
+MAKEFLAGS=-j4  
 
-plot:	winglevlr_ubuntu
-	./winglevlr_ubuntu --jdisplay --serial --seconds 700 | grep DTK | tr ':' ' ' > out.dat \
-		&& echo "f='./out.dat'; p f u 2 w l ti 'DTK', f u 4 w l ti 'TRK'; pause 100"| gnuplot
+usage:
+	@echo make \{elf,bin,upload,cat,uc\(upload then cat\),csim,clean,csim-clean\}
 
-test:
-	./winglevlr_ubuntu --jdisplay --serial --seconds 700  | uniq | tee test.out
-	(cd tests && ./regress.sh 052 -html && ./regress.sh 068 -html)
-	google-chrome logs/regression/*.html
+include ${BOARD}.mk
 
-test.out:	winglevlr_ubuntu
-	./winglevlr_ubuntu  --serial --seconds 1000  | uniq | tee $@
-
-backtrace:
-	tr ' ' '\n' | /home/jim/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/*/bin/xtensa-esp32-elf-addr2line -f -i -e /tmp/mkESP/winglevlr_ttgo-t1/*.elf
-	
-
-	
-simplot:	test.out
-	cat test.out | grep -a " R " > /tmp/simplot.txt && gnuplot -e 'f= "/tmp/simplot.txt"; set y2tic; set ytic nomirror; p [*:*][-15:15] f u 1:5 w l t "Pitch", f u 1:3 w l t "Roll", f u 1:9 w l t "Hdg" ax x1y2; pause 111'
-
-.PHONY:	winglevlr_ubuntu
-CHIP=esp32
-OTA_ADDR=192.168.68.111
-IGNORE_STATE=1
-
-include ${HOME}/Arduino/libraries/makeEspArduino/makeEspArduino.mk
-
-print-%  : ; @echo $* = $($*)
+${BOARD}.mk:
+	@echo Running arduino-cli compile --clean, this could take a while.  Upload failure is OK.
+	arduino-cli -v compile --clean --build-path ./build/${BOARD}/ \
+		-b esp32:esp32:${BOARD} --board-options ${BOARD_OPTIONS} \
+		-u -p ${PORT} | tee cli.out | bin/cli-parser.py > ${BOARD}.mk
 
 fixtty:
-	stty -F ${UPLOAD_PORT} -hupcl -crtscts -echo raw 115200 
-
-cat:	fixtty
-	cat ${UPLOAD_PORT}
-
-setap1:
-	wget 'http://192.168.4.1/wifisave?s=ChloeNet&p=niftyprairie7'
-
-%-A50.plog: %.DAT winglevlr_ubuntu
-	./winglevlr_ubuntu --replay $< | avg.pl 50 > $@
-
-
-%.plog:  %.DAT winglevlr_ubuntu
-	./winglevlr_ubuntu --replay $< --log - > $@
-        
-%R.plog:  %.DAT winglevlr_ubuntu
-	./winglevlr_ubuntu --replay $< --log + > $@
-
-
-clean_tmp:
-	rm -rf /tmp/loglook.sh/
-
-joystick:	joystick.c	
-	gcc $< -lm -o $@
-
-jsrun: 	joystick fixtty	
-	stdbuf -o0 ./joystick | tee ${UPLOAD_PORT}
-
+	stty -F ${PORT} -hupcl -crtscts -echo raw 115200
+cat:    fixtty
+	cat ${PORT} | tee ./cat.out
+socat:  
+	socat udp-recvfrom:9000,fork - 
 mocat:
-	mosquitto_sub -h 192.168.5.1 -t "${MAIN_NAME}/#" -F "%I %t %p"   
+	mosquitto_sub -h rp1.local -t "${MAIN_NAME}/#" -F "%I %t %p"   
+uc:
+	${MAKE} upload && ${MAKE} cat
 
-csim: 	winglevlr_ubuntu
+backtrace:
+	tr ' ' '\n' | addr2line -f -i -e ./build/${BOARD}/*.elf
+
+clean-all:
+	${MAKE} csim-clean
+	rm -rf ./build
+	rm -f ./${BOARD}.mk
+	
+
+##############################################
+# CSIM rules 
+
+CSIM_BUILD_DIR=./build/csim
+CSIM_LIBS=esp32jimlib Arduino_CRC32 ArduinoJson TinyGPSPlus
+CSIM_SRC_DIRS=$(foreach L,$(CSIM_LIBS),${HOME}/Arduino/libraries/${L}/src)
+CSIM_SRCS=$(foreach DIR,$(CSIM_SRC_DIRS),$(wildcard $(DIR)/*.cpp)) 
+CSIM_SRC_WITHOUT_PATH = $(notdir $(CSIM_SRCS))
+CSIM_OBJS=$(CSIM_SRC_WITHOUT_PATH:%.cpp=${CSIM_BUILD_DIR}/%.o)
+CSIM_INC=$(foreach DIR,$(CSIM_SRC_DIRS),-I${DIR})
+CSIM_INC+=-I./csim_includes/
+CSIM_CFLAGS+=-g -MMD -fpermissive -DGIT_VERSION=\"${GIT_VERSION}\" -DESP32 -DCSIM -DUBUNTU 
+#CSIM_CFLAGS+=-DGPROF=1 -pg
+#CSIM_CFLAGS+=-O2
+
+${CSIM_BUILD_DIR}/%.o: %.cpp 
+	echo $@
+	${CCACHE} g++ ${CSIM_CFLAGS} -x c++ -c ${CSIM_INC} $< -o $@
+
+${CSIM_BUILD_DIR}/%.o: %.ino
+	echo $@
+	${CCACHE} g++ ${CSIM_CFLAGS} -x c++ -c ${CSIM_INC} $< -o $@
+
+${SKETCH_NAME}_csim: ${CSIM_BUILD_DIR} ${CSIM_OBJS} ${CSIM_BUILD_DIR}/${SKETCH_NAME}.o
+	echo $@
+	g++ -g ${CSIM_CFLAGS} ${CSIM_OBJS} ${CSIM_BUILD_DIR}/${SKETCH_NAME}.o -lGL -lglut -o $@         
+
+csim: ${SKETCH_NAME}_csim 
+	cp $< $@
+
+${CSIM_BUILD_DIR}:
+	mkdir -p ${CSIM_BUILD_DIR}
+
+VPATH = $(sort $(dir $(CSIM_SRCS)))
+
+.PHONY: csim-clean
+csim-clean:
+	rm -f ${CSIM_BUILD_DIR}/*.[od] ${SKETCH_NAME}_csim csim
+
+-include ${CSIM_BUILD_DIR}/*.d
 

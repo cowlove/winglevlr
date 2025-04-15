@@ -33,7 +33,7 @@ void noprintf(const char *, ...) {}
 #include "serialLog.h"
 #include "sl30.h"
 
-#include <TinyGPS++.h>
+#include "TinyGPS++.h"
 
 
 #if defined(ARDUINO_ESP32C3_DEV) || defined(ARDUINO_ESP32C6_DEV)
@@ -750,6 +750,7 @@ PidControlUI cpc3(&cup);
 
 void setup() {
 	wdtInit(22);
+	wdtReset();
 	Serial.begin(115200);
     Serial.println("setup()");
 	//sleep(10000);

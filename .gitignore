@@ -19,3 +19,4 @@ map.html
 *.gprof
 *.plog
 build*.sh
+*.mk
