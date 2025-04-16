@@ -4,7 +4,7 @@ PORT ?= /dev/ttyUSB0
 GIT_VERSION := "$(shell git describe --abbrev=6 --dirty --always)"
 EXTRA_CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 SKETCH_NAME=$(shell basename `pwd`)
-BOARD_OPTIONS = PartitionScheme=default,FlashFreq=80,FlashMode=dio
+BOARD_OPTIONS = PartitionScheme=min_spiffs,FlashFreq=40,FlashMode=dio
 
 CCACHE=ccache
 MAKEFLAGS=-j4  

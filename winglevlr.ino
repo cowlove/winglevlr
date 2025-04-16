@@ -788,8 +788,9 @@ void setup() {
 		debugFastBoot = true;
 	j.jw.enabled = !debugFastBoot;
 
-	//if (!debugFastBoot) 
-	//	ublox.init();
+	wdtReset();
+	if (!debugFastBoot) 
+		ublox.init();
 
 	j.mqtt.active = false;
 	
