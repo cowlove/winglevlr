@@ -20,3 +20,5 @@ map.html
 *.plog
 build*.sh
 *.mk
+jimlib
+spiff

@@ -1,10 +1,10 @@
-BOARD ?= ttgo-t1
+BOARD ?= esp32
 PORT ?= /dev/ttyUSB0
 
 GIT_VERSION := "$(shell git describe --abbrev=6 --dirty --always)"
 EXTRA_CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 SKETCH_NAME=$(shell basename `pwd`)
-BOARD_OPTIONS = PartitionScheme=min_spiffs,FlashFreq=40,FlashMode=dio
+BOARD_OPTIONS = PartitionScheme=min_spiffs,FlashFreq=80,FlashMode=dio
 
 CCACHE=ccache
 MAKEFLAGS=-j4  
