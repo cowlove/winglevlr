@@ -42,15 +42,18 @@ clean-all:
 
 ##############################################
 # CSIM rules 
+ARDUINO_LIBS_DIR=${HOME}/Arduino/libraries
 
 CSIM_BUILD_DIR=./build/csim
-CSIM_LIBS=esp32jimlib Arduino_CRC32 ArduinoJson TinyGPSPlus
-CSIM_SRC_DIRS=$(foreach L,$(CSIM_LIBS),${HOME}/Arduino/libraries/${L}/src)
+CSIM_LIBS=Arduino_CRC32 ArduinoJson TinyGPSPlus esp32jimlib
+CSIM_LIBS+=esp32csim
+CSIM_SRC_DIRS=$(foreach L,$(CSIM_LIBS),${ARDUINO_LIBS_DIR}/${L}/src)
 CSIM_SRCS=$(foreach DIR,$(CSIM_SRC_DIRS),$(wildcard $(DIR)/*.cpp)) 
 CSIM_SRC_WITHOUT_PATH = $(notdir $(CSIM_SRCS))
 CSIM_OBJS=$(CSIM_SRC_WITHOUT_PATH:%.cpp=${CSIM_BUILD_DIR}/%.o)
-CSIM_INC=$(foreach DIR,$(CSIM_SRC_DIRS),-I${DIR})
-CSIM_INC+=-I./csim_includes/
+CSIM_INC=$(foreach DIR,$(CSIM_SRC_DIRS),-I${DIR}) \
+         -I${ARDUINO_LIBS_DIR}/esp32csim/src/csim_include/
+
 CSIM_CFLAGS+=-g -MMD -fpermissive -DGIT_VERSION=\"${GIT_VERSION}\" -DESP32 -DCSIM -DUBUNTU 
 #CSIM_CFLAGS+=-DGPROF=1 -pg
 #CSIM_CFLAGS+=-O2

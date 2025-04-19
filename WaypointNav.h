@@ -312,7 +312,7 @@ namespace WaypointNav {
             wptTracker.run(timestep);
     #ifdef UBUNTU
             if (wptTracker.curPos.valid && wptTracker.curPos.alt < endAlt) 
-                ESP32sim_exit();
+                Csim_exit();
     #endif
         }
         float waitTime = 0;

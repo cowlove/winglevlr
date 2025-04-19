@@ -750,7 +750,7 @@ inline void testPack() {
 }
 
 #ifdef UBUNTU
-void ESP32sim_convertLogOldToNew(ifstream &i, ofstream &o) {
+void Csim_convertLogOldToNew(ifstream &i, ofstream &o) {
 	LogItemC l; 
 	while (i.read((char *)&l, sizeof(l))) {
 		LogItemPacked l2;

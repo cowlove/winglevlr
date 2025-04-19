@@ -3,17 +3,17 @@
 #include <vector>
 #include <iterator>
 
-#ifdef UBUNTU
+#ifdef CSIM
 #define CSIM_PRINTF printf
-#include "ESP32sim_ubuntu.h"
-#else // #ifndef UBUNTU
+#include "esp32csim.h"
+#else // #ifndef CSIM
 void noprintf(const char *, ...) {}
 #define CSIM_PRINTF printf
 #include <rom/rtc.h>
 #include <MPU9250_asukiaaa.h>
 // #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 #include <SparkFun_Ublox_Arduino_Library.h>
-#endif // #else // UBUNTU
+#endif // #else // CSIM
 
 #include "jimlib.h"
 #include "buttonTools.h"
@@ -1879,9 +1879,9 @@ void setupCp() {
 ///////////////////////////////////////////////////////////////////////////////
 // Code below this point is used in compiling/running ESP32sim simulation
 
-void ESP32sim_done();
+void Csim_done();
 
-class ESP32sim_winglevlr : public ESP32sim_Module {
+class Csim_winglevlr : public Csim_Module {
 public:
 	IntervalTimer hz100 = IntervalTimer(100 /*msec*/);
 	string wpFile;
@@ -1916,10 +1916,10 @@ public:
 		// const float servoTrim = 4915.0;
 
 		// Simulate simple airplane roll/bank/track turn response to
-		// servooutput read from ESP32sim_currentPwm;
+		// servooutput read from Csim_currentPwm;
 		pair<float, float> stick = ServoControl::servoToStick(
-			ESP32sim_currentPwm[0] * 1500.0 / 4915,
-			ESP32sim_currentPwm[1] * 1500.0 / 4915);
+			Csim_currentPwm[0] * 1500.0 / 4915,
+			Csim_currentPwm[1] * 1500.0 / 4915);
 		float stickX = stick.first;
 		float stickY = stick.second;
 
@@ -1937,7 +1937,7 @@ public:
 		if (1 && floor(lastMillis / 100) != floor(millis() / 100)) { 
 			// 10hz
 			printf("%08.3f servo %05d/%05d track %05.2f desRoll: %+06.2f bank: %+06.2f gy: %+06.2f SIM\n", (float)millis() / 1000.0,
-				   ESP32sim_currentPwm[0], ESP32sim_currentPwm[1], track, cmdRoll, bank, imu->gy);
+				   Csim_currentPwm[0], Csim_currentPwm[1], track, cmdRoll, bank, imu->gy);
 		}
 		imu->gz = ahrs.gyrOffZ + tan(bank * M_PI / 180) / speed * 1091;
 		imu->gz *= -1;
@@ -1997,7 +1997,7 @@ public:
 	}
 
 	bool ESP32csim_useAuxMpu = false;
-	bool ESP32sim_replayLogItem(ifstream &i) {
+	bool Csim_replayLogItem(ifstream &i) {
 		LogItem l;
 		static uint64_t logfileMicrosOffset = 0;
 		int logFlags = 0;
@@ -2026,13 +2026,13 @@ public:
 			l.ai.g5Roll = min(max(-45.0, (double)l.ai.g5Roll), 45.0);
 			// Feed logged G5,GPS,NAV data back into the simulation via spoofed UDP network inputs
 			if ((l.flags & LogFlags::g5Ps) /*|| l.ai.g5Ias != ahrsInput.g5Ias || l.ai.g5Tas != ahrsInput.g5Tas || l.ai.g5Palt != ahrsInput.g5Palt*/) {
-				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", (double)l.ai.g5Ias, (double)l.ai.g5Tas, (double)l.ai.g5Palt));
+				Csim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", (double)l.ai.g5Ias, (double)l.ai.g5Tas, (double)l.ai.g5Palt));
 			}
 			if ((l.flags & LogFlags::g5Nav) /* || l.ai.g5Hdg != ahrsInput.g5Hdg || l.ai.g5Track != ahrsInput.g5Track*/) {
-				ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", (double)l.ai.g5Hdg, (double)l.ai.g5Track));
+				Csim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", (double)l.ai.g5Hdg, (double)l.ai.g5Track));
 			}
 			if ((l.flags & LogFlags::g5Ins) /* || l.ai.g5Roll != ahrsInput.g5Roll || l.ai.g5Pitch != ahrsInput.g5Pitch*/) {
-				ESP32sim_udpInput(7891, strfmt("R=%f P=%f SL=%f\n", (double)l.ai.g5Roll, (double)l.ai.g5Pitch, (double)l.ai.g5Slip));
+				Csim_udpInput(7891, strfmt("R=%f P=%f SL=%f\n", (double)l.ai.g5Roll, (double)l.ai.g5Pitch, (double)l.ai.g5Slip));
 			}
 			if ((l.flags & LogFlags::ublox) || abs(l.ai.ubloxHdg != ahrsInput.ubloxHdg) < .01) {
 				ublox.myGNSS.hdg = magToTrue(l.ai.ubloxHdg) * 100000.0;
@@ -2047,7 +2047,7 @@ public:
 				char buf[128];
 				snprintf(buf, sizeof(buf), "GPRMC,210230,A,3855.4487,N,09446.0071,W,0.0,%.2f,130495,003.8,E",
 						 magToTrue(l.ai.gpsTrackRMC));
-				ESP32sim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
+				Csim_udpInput(7891, string(nmeaChecksum(std::string(buf))));
 			}
 			if ( // abs(angularDiff(ahrsInput.gpsTrackGDL90 - l.ai.gpsTrackGDL90)) > .1 || ahrsInput.gspeed != l.ai.gspeed ||
 				(l.flags & LogFlags::HdgGDL) != 0) {
@@ -2061,7 +2061,7 @@ public:
 					s.lat = curPos.loc.lat;
 					s.lon = curPos.loc.lon;
 					int len = gdl90.packMsg10(buf, sizeof(buf), s);
-					ESP32sim_udpInput(4000, string((char *)buf, len));
+					Csim_udpInput(4000, string((char *)buf, len));
 				}
 			}
 
@@ -2109,13 +2109,13 @@ public:
 			buf.resize(128);
 			int n = gdl90.packMsg11(buf.data(), buf.size(), s);
 			buf.resize(n);
-			ESP32sim_udpInput(4000, buf);
+			Csim_udpInput(4000, buf);
 			buf.resize(128);
 			n = gdl90.packMsg10(buf.data(), buf.size(), s);
 			buf.resize(n);
-			ESP32sim_udpInput(4000, buf);
+			Csim_udpInput(4000, buf);
 			;
-			ESP32sim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", trueToMag(t2), trueToMag(t2)));
+			Csim_udpInput(7891, strfmt("HDG=%f TRK=%f\n", trueToMag(t2), trueToMag(t2)));
 		} else {
 			// TODO needs both set?  Breaks with only GDL90
 			gpsTrackGDL90 = t1;
@@ -2176,11 +2176,11 @@ public:
 			int pin, clicks, longclick;
 			float tim;
 			sscanf(*(++a), "%f,%d,%d,%d", &tim, &pin, &clicks, &longclick);
-			ESP32sim_pinManager::manager->addPress(pin, tim, clicks, longclick);
+			Csim_pinManager::manager->addPress(pin, tim, clicks, longclick);
 		} else if (strcmp(*a, "--logConvert") == 0) {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);
-			ESP32sim_convertLogOldToNew(i, o);
+			Csim_convertLogOldToNew(i, o);
 			o.flush();
 			o.close();
 			exit(0);
@@ -2266,13 +2266,13 @@ public:
 		setServos(1, 1);
 		ServoControl::servoToStick(servoOutput[0], servoOutput[1]);
 		if (replayFile == NULL) {
-			ESP32sim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
+			Csim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 																				 // bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate
 																				 // bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode
 																				 // bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
 																				 // setDesiredTrk(ahrsInput.dtk = 135);
 		}
-		ESP32sim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
+		Csim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 	}
 
 	bool firstLoop = true;
@@ -2287,7 +2287,7 @@ public:
 			gdl90file.read((char *)data.data(), data.size());
 			int n = gdl90file.gcount();
 			if (gdl90file && n > 0) {
-				ESP32sim_udpInput(4000, data);
+				Csim_udpInput(4000, data);
 			}
 		}
 
@@ -2296,10 +2296,10 @@ public:
 				float g5hdg = DEG2RAD(track); // TODO mag/true
 				float g5roll = DEG2RAD(-bank);
 				float g5pitch = DEG2RAD(pitch);
-				ESP32sim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", 90, 100, 1000));
-				ESP32sim_udpInput(7891, strfmt("P=%f R=%f\n", g5pitch, g5roll));
+				Csim_udpInput(7891, strfmt("IAS=%f TAS=%f PALT=%f\n", 90, 100, 1000));
+				Csim_udpInput(7891, strfmt("P=%f R=%f\n", g5pitch, g5roll));
 				// now handled by onNavigate();
-				// ESP32sim_udpInput(7891, strfmt("HDG=%f\n", g5hdg));
+				// Csim_udpInput(7891, strfmt("HDG=%f\n", g5hdg));
 			}
 			flightSim(imu);
 
@@ -2308,17 +2308,17 @@ public:
 				hdgSelect = 3;
 			}
 			if (at(1.0)) { // alt bug to ~1200 ft
-				ESP32sim_udpInput(7891, "KSEL=2 KVAL=350.0\n");
+				Csim_udpInput(7891, "KSEL=2 KVAL=350.0\n");
 			}
 		} else {
 			if (firstLoop == true) {
 				ifile = ifstream(replayFile, ios_base::in | ios::binary);
 			}
 			while (logSkip > 0 && logSkip-- > 0) {
-				ESP32sim_replayLogItem(ifile);
+				Csim_replayLogItem(ifile);
 			}
-			if (ESP32sim_replayLogItem(ifile) == false) {
-				ESP32sim_exit();
+			if (Csim_replayLogItem(ifile) == false) {
+				Csim_exit();
 			}
 			logEntries++;
 		}
