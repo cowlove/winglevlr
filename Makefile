@@ -45,9 +45,9 @@ clean-all:
 ARDUINO_LIBS_DIR=${HOME}/Arduino/libraries
 
 CSIM_BUILD_DIR=./build/csim
-CSIM_LIBS=Arduino_CRC32 ArduinoJson TinyGPSPlus esp32jimlib
+CSIM_LIBS=Arduino_CRC32 ArduinoJson TinyGPSPlus esp32jimlib Adafruit_HX711
 CSIM_LIBS+=esp32csim
-CSIM_SRC_DIRS=$(foreach L,$(CSIM_LIBS),${ARDUINO_LIBS_DIR}/${L}/src)
+CSIM_SRC_DIRS+=$(foreach L,$(CSIM_LIBS),${ARDUINO_LIBS_DIR}/${L}/src ${ARDUINO_LIBS_DIR}/${L})
 CSIM_SRCS=$(foreach DIR,$(CSIM_SRC_DIRS),$(wildcard $(DIR)/*.cpp)) 
 CSIM_SRC_WITHOUT_PATH = $(notdir $(CSIM_SRCS))
 CSIM_OBJS=$(CSIM_SRC_WITHOUT_PATH:%.cpp=${CSIM_BUILD_DIR}/%.o)

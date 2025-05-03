@@ -2176,7 +2176,7 @@ public:
 			int pin, clicks, longclick;
 			float tim;
 			sscanf(*(++a), "%f,%d,%d,%d", &tim, &pin, &clicks, &longclick);
-			Csim_pinManager::manager->addPress(pin, tim, clicks, longclick);
+			Csim_pins().addPress(pin, tim, clicks, longclick);
 		} else if (strcmp(*a, "--logConvert") == 0) {
 			ifstream i = ifstream(*(++a), ios_base::in | ios::binary);
 			ofstream o = ofstream(*(++a), ios_base::out | ios::binary);
@@ -2266,13 +2266,13 @@ public:
 		setServos(1, 1);
 		ServoControl::servoToStick(servoOutput[0], servoOutput[1]);
 		if (replayFile == NULL) {
-			Csim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
+			Csim_pins().addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 																				 // bm.addPress(pins.botButton, 250, 1, true); // bottom long press - test turn activate
 																				 // bm.addPress(pins.topButton, 200, 1, false); // top short press - wings level mode
 																				 // bm.addPress(pins.topButton, 300, 1, false); // top short press - hdg hold
 																				 // setDesiredTrk(ahrsInput.dtk = 135);
 		}
-		Csim_pinManager::manager->addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
+		Csim_pins().addPress(pins.knobButton, 1, 1, true); // knob long press - arm servo
 	}
 
 	bool firstLoop = true;
