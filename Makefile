@@ -1,24 +1,22 @@
-BOARD ?= esp32
-PORT ?= /dev/ttyUSB0
-
+BOARD ?= esp32s3
+PORT ?= /dev/ttyACM0
+CHIP ?= esp32
+VERBOSE=1
+EXCLUDE_DIRS=/home/jim/Arduino/libraries/LovyanGFX
+PART_FILE=${ESP_ROOT}/tools/partitions/min_spiffs.csv
 GIT_VERSION := "$(shell git describe --abbrev=6 --dirty --always)"
-EXTRA_CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
-SKETCH_NAME=$(shell basename `pwd`)
-BOARD_OPTIONS = PartitionScheme=min_spiffs,FlashFreq=80,FlashMode=dio
 
-CCACHE=ccache
+#CDC_ON_BOOT=1
+EXCLUDE_DIRS=/home/jim/Arduino/libraries/lvgl|/home/jim/Arduino/libraries/LovyanGFX
+
+BUILD_MEMORY_TYPE = qio_qspi
+
+#BUILD_EXTRA_FLAGS += -DARDUINO_PARTITION_huge_app 
+BUILD_EXTRA_FLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\" 
+        
+#sed  's|^\(.*/srmodels.bin\)|#\1|g' -i ~/.arduino15/packages/esp32/hardware/esp32/3.2.0/boards.txt  
+
 MAKEFLAGS=-j4  
-
-usage:
-	@echo make \{elf,bin,upload,cat,uc\(upload then cat\),csim,clean,csim-clean\}
-
-include ${BOARD}.mk
-
-${BOARD}.mk:
-	@echo Running arduino-cli compile --clean, this could take a while.  Upload failure is OK.
-	arduino-cli -v compile --clean --build-path ./build/${BOARD}/ \
-		-b esp32:esp32:${BOARD} --board-options ${BOARD_OPTIONS} \
-		-u -p ${PORT} | tee cli.out | bin/cli-parser.py > ${BOARD}.mk
 
 fixtty:
 	stty -F ${PORT} -hupcl -crtscts -echo raw 115200
@@ -39,6 +37,8 @@ clean-all:
 	rm -rf ./build
 	rm -f ./${BOARD}.mk
 	
+ifeq ($(BOARD),csim)
+SKETCH_NAME=$(shell basename `pwd`)
 
 ##############################################
 # CSIM rules 
@@ -53,6 +53,21 @@ CSIM_SRC_WITHOUT_PATH = $(notdir $(CSIM_SRCS))
 CSIM_OBJS=$(CSIM_SRC_WITHOUT_PATH:%.cpp=${CSIM_BUILD_DIR}/%.o)
 CSIM_INC=$(foreach DIR,$(CSIM_SRC_DIRS),-I${DIR}) \
          -I${ARDUINO_LIBS_DIR}/esp32csim/src/csim_include/
+CSIM_INC+=-I../lvglConfigPanel/
+
+CSIM_CFLAGS+=-g -MMD -fpermissive -DGIT_VERSION=\"${GIT_VERSION}\" -DESP32 -DCSIM -DUBUNTU 
+#CSIM_CFLAGS+=-DGPROF=1 -pg
+#CSIM_CFLAGS+=-O2
+
+LVLINUX=${HOME}/src/lv_port_linux
+CSIM_INC+=-I${LVLINUX}/lvgl
+CSIM_INC+=-I${LVLINUX}/src/lib/
+CSIM_LDLIBS += ${LVLINUX}/build/lvgl/lib/liblvgl_demos.a
+CSIM_LDLIBS += ${LVLINUX}/build/liblvgl_linux.a
+CSIM_LDLIBS += ${LVLINUX}/build/lvgl/lib/liblvgl.a
+CSIM_LDLIBS += ${LVLINUX}/build/lvgl/lib/liblvgl_examples.a
+CSIM_LDLIBS += ${LVLINUX}/build/lvgl/lib/liblvgl_thorvg.a
+CSIM_LDLIBS += -lX11 -lGL -lglut 
 
 CSIM_CFLAGS+=-g -MMD -fpermissive -DGIT_VERSION=\"${GIT_VERSION}\" -DESP32 -DCSIM -DUBUNTU 
 #CSIM_CFLAGS+=-DGPROF=1 -pg
@@ -66,9 +81,9 @@ ${CSIM_BUILD_DIR}/%.o: %.ino
 	echo $@
 	${CCACHE} g++ ${CSIM_CFLAGS} -x c++ -c ${CSIM_INC} $< -o $@
 
-${SKETCH_NAME}_csim: ${CSIM_BUILD_DIR} ${CSIM_OBJS} ${CSIM_BUILD_DIR}/${SKETCH_NAME}.o
+${SKETCH_NAME}_csim: ${CSIM_BUILD_DIR} ${CSIM_OBJS} ${CSIM_BUILD_DIR}/${SKETCH_NAME}.o 
 	echo $@
-	g++ -g ${CSIM_CFLAGS} ${CSIM_OBJS} ${CSIM_BUILD_DIR}/${SKETCH_NAME}.o -lGL -lglut -o $@         
+	g++ -g ${CSIM_CFLAGS} ${CSIM_OBJS} ${CSIM_BUILD_DIR}/${SKETCH_NAME}.o ${CSIM_LDLIBS} -o $@         
 
 csim: ${SKETCH_NAME}_csim 
 	cp $< $@
@@ -83,4 +98,7 @@ csim-clean:
 	rm -f ${CSIM_BUILD_DIR}/*.[od] ${SKETCH_NAME}_csim csim
 
 -include ${CSIM_BUILD_DIR}/*.d
+else
+        include ~/Arduino/libraries/makeEspArduino/makeEspArduino.mk
+endif
 

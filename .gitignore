@@ -22,3 +22,6 @@ build*.sh
 *.mk
 jimlib
 spiff
+esp32csim
+csim
+*_csim

@@ -29,7 +29,6 @@ void noprintf(const char *, ...) {}
 #include "espNowMux.h"
 #include "reliableStream.h"
 #include "confPanel.h"
-
 #include "serialLog.h"
 #include "sl30.h"
 
@@ -893,7 +892,6 @@ void setup() {
 	cpc3.begin();
 	cpc2.schemaFlags = 0x1;
 
-#if 0 
 	espNowMux.registerReadCallback("g5", 
         [](const uint8_t *mac, const uint8_t *data, int len){
 			string s;
@@ -901,7 +899,7 @@ void setup() {
 			//Serial.printf("G5 data: %s\n", s.c_str());
 			parseG5Line(s.c_str()); 
     });
-#endif
+
 	Serial.println("setup() done");
 	Serial.flush();
 }
@@ -1875,9 +1873,31 @@ void setupCp() {
 	//cpc.addInt(&servoOutput[1], "Servo1");
 	//serialLogMode = 0;
 }
-#ifdef UBUNTU
+#ifdef CSIM
 ///////////////////////////////////////////////////////////////////////////////
 // Code below this point is used in compiling/running ESP32sim simulation
+#include "lvglConfPanel.h"
+
+class Csim_lvgl : public Csim_Module {
+	ReliableStreamESPNow client = ReliableStreamESPNow("CP");
+	ConfPanelTransportScreen cpt = ConfPanelTransportScreen(&client);
+public:
+	Csim_lvgl() { 
+        ESPNOW_sendHandler = new ESPNOW_csimOneProg();
+        csim_flags.OneProg = true;		
+	}
+	void setup() override { 
+		panel_setup();
+		cpt.createWelcomeTile();
+	}
+	void loop() override { 
+		cpt.run();
+		lv_timer_handler();
+		lv_tick_inc(10);
+		delay(10);	   
+	}
+} csim_lvgl;
+
 
 void Csim_done();
 
