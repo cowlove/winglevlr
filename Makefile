@@ -7,8 +7,8 @@ PART_FILE=${ESP_ROOT}/tools/partitions/min_spiffs.csv
 GIT_VERSION := "$(shell git describe --abbrev=6 --dirty --always)"
 
 #CDC_ON_BOOT=1
-EXCLUDE_DIRS=/home/jim/Arduino/libraries/lvgl|/home/jim/Arduino/libraries/LovyanGFX
-
+EXCLUDE_DIRS=${HOME}/Arduino/libraries/lvgl|${HOME}/Arduino/libraries/LovyanGFX
+IGNORE_STATE=1
 BUILD_MEMORY_TYPE = qio_qspi
 
 #BUILD_EXTRA_FLAGS += -DARDUINO_PARTITION_huge_app 
@@ -42,8 +42,8 @@ SKETCH_NAME=$(shell basename `pwd`)
 
 ##############################################
 # CSIM rules 
+.DEFAULT_GOAL=csim
 ARDUINO_LIBS_DIR=${HOME}/Arduino/libraries
-
 CSIM_BUILD_DIR=./build/csim
 CSIM_LIBS=Arduino_CRC32 ArduinoJson TinyGPSPlus esp32jimlib Adafruit_HX711
 CSIM_LIBS+=esp32csim
@@ -73,6 +73,9 @@ CSIM_CFLAGS+=-g -MMD -fpermissive -DGIT_VERSION=\"${GIT_VERSION}\" -DESP32 -DCSI
 #CSIM_CFLAGS+=-DGPROF=1 -pg
 #CSIM_CFLAGS+=-O2
 
+csim: ${SKETCH_NAME}_csim
+	cp $< $@
+
 ${CSIM_BUILD_DIR}/%.o: %.cpp 
 	echo $@
 	${CCACHE} g++ ${CSIM_CFLAGS} -x c++ -c ${CSIM_INC} $< -o $@
@@ -84,9 +87,6 @@ ${CSIM_BUILD_DIR}/%.o: %.ino
 ${SKETCH_NAME}_csim: ${CSIM_BUILD_DIR} ${CSIM_OBJS} ${CSIM_BUILD_DIR}/${SKETCH_NAME}.o 
 	echo $@
 	g++ -g ${CSIM_CFLAGS} ${CSIM_OBJS} ${CSIM_BUILD_DIR}/${SKETCH_NAME}.o ${CSIM_LDLIBS} -o $@         
-
-csim: ${SKETCH_NAME}_csim 
-	cp $< $@
 
 ${CSIM_BUILD_DIR}:
 	mkdir -p ${CSIM_BUILD_DIR}
