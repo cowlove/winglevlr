@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/csim",
-            "args": ["--espnowPipe", "/tmp/fifo1", "/tmp/fifo2", "--mac", "ffffe"],
+            "args": ["--lvgl"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

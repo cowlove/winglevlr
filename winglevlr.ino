@@ -1896,7 +1896,7 @@ public:
 		lv_tick_inc(10);
 		delay(10);	   
 	}
-} csim_lvgl;
+};
 
 
 void Csim_done();
@@ -2153,6 +2153,7 @@ public:
 	// wrap_vector_as_istream tsf;
 	ifstream gdl90file;
 	void parseArg(char **&a, char **la) override {
+		if (strcmp(*a, "--lvgl") == 0) new Csim_lvgl();
 		if (strcmp(*a, "--replay") == 0)
 			replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0)
