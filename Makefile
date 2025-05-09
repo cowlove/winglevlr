@@ -17,7 +17,9 @@ BUILD_EXTRA_FLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 #sed  's|^\(.*/srmodels.bin\)|#\1|g' -i ~/.arduino15/packages/esp32/hardware/esp32/3.2.0/boards.txt  
 
 MAKEFLAGS=-j4  
-
+build-csim:
+	${MAKE} BOARD=csim 
+	
 fixtty:
 	stty -F ${PORT} -hupcl -crtscts -echo raw 115200
 cat:    fixtty

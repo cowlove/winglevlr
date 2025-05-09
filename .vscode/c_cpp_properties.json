@@ -16,7 +16,7 @@
             "cppStandard": "gnu++14",
             "defines": [
                 "UBUNTU",
-                "ESP32"
+                "ESP32", "CSIM"
             ]
         },
         {

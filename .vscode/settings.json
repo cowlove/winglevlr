@@ -63,5 +63,6 @@
         "variant": "cpp",
         "bit": "cpp",
         "regex": "cpp"
-    }
+    },
+    "makefile.makePath": "make"
 }

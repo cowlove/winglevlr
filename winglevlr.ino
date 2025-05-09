@@ -892,7 +892,7 @@ void setup() {
 	cpc3.begin();
 	cpc2.schemaFlags = 0x1;
 
-	espNowMux.registerReadCallback("g5", 
+	defaultEspNowMux.registerReadCallback("g5", 
         [](const uint8_t *mac, const uint8_t *data, int len){
 			string s;
 			s.assign((const char *)data, len);
@@ -1878,13 +1878,27 @@ void setupCp() {
 // Code below this point is used in compiling/running ESP32sim simulation
 #include "lvglConfPanel.h"
 
-class Csim_lvgl : public Csim_Module {
-	ReliableStreamESPNow client = ReliableStreamESPNow("CP");
-	ConfPanelTransportScreen cpt = ConfPanelTransportScreen(&client);
+
+class Csim_privateContext : public ESPNOW_csimOneProg { 
+	ESPNOW_csimOneProg privEspNow;
+	CsimContext privContext;
 public:
-	Csim_lvgl() { 
-        ESPNOW_sendHandler = new ESPNOW_csimOneProg();
-        csim_flags.OneProg = true;		
+	Csim_privateContext(uint64_t mac = 0xddeeffddeef0) { 
+		privContext.mac = mac;
+		privContext.espnow = &privEspNow;
+		this->context = &privContext;
+	}
+};
+
+class Csim_lvgl : public Csim_privateContext {
+	ESPNOW_csimOneProg mainEspNow;
+	ESPNowMux privMux;
+	ReliableStreamESPNow client = ReliableStreamESPNow("CP");
+	ConfPanelTransportScreen cpt = ConfPanelTransportScreen(&client);	
+public:
+	Csim_lvgl() {
+        currentContext->espnow = &mainEspNow;
+		client.client.enMux = &privMux;		
 	}
 	void setup() override { 
 		panel_setup();
