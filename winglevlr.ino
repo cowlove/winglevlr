@@ -1879,26 +1879,16 @@ void setupCp() {
 #include "lvglConfPanel.h"
 
 
-class Csim_privateContext : public ESPNOW_csimOneProg { 
-	ESPNOW_csimOneProg privEspNow;
-	CsimContext privContext;
-public:
-	Csim_privateContext(uint64_t mac = 0xddeeffddeef0) { 
-		privContext.mac = mac;
-		privContext.espnow = &privEspNow;
-		this->context = &privContext;
-	}
-};
-
+ESPNOW_csimOneProg mainEspNow;
 class Csim_lvgl : public Csim_privateContext {
-	ESPNOW_csimOneProg mainEspNow;
-	ESPNowMux privMux;
 	ReliableStreamESPNow client = ReliableStreamESPNow("CP");
 	ConfPanelTransportScreen cpt = ConfPanelTransportScreen(&client);	
 public:
 	Csim_lvgl() {
-        currentContext->espnow = &mainEspNow;
-		client.client.enMux = &privMux;		
+        defaultContext.espnow = &mainEspNow;
+		// TODO figure a better way to pass the privMux to the constructor of ReliableStreamESPNow
+		client.client.enMux = &privMux;	
+		currentContext = &defaultContext;	
 	}
 	void setup() override { 
 		panel_setup();
