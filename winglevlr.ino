@@ -141,6 +141,7 @@ float maxRollRate = 5.0; // deg/sec
 float servoGain = 1.70;
 int g5LineCount = 0, g5LineErrCount = 0, g5HdgCount = 0;
 int serialLogMode = 0x1;
+int displayHeartbeat = 0;
 
 #define LED_PIN 22
 /* Old hardwarinput pins: I2C pins/variant seems to determine layout
@@ -788,11 +789,11 @@ void setup() {
 	j.jw.enabled = !debugFastBoot;
 
 	wdtReset();
-	if (!debugFastBoot) 
-		ublox.init();
+//	if (!debugFastBoot) 
+//		ublox.init();
 
 	j.mqtt.active = false;
-	
+	j.jw.enabled = false;	
 	j.begin();
 	j.mqtt.active = false;
 	j.run();
@@ -1370,6 +1371,14 @@ void loop() {
 	cup.run();
 	//cpc3.run();
 	delayMicroseconds(100);
+	{
+		static uint32_t lastMillis = 0;
+		uint32_t ms = millis();
+		if (ms / 1000 != lastMillis / 1000) { 
+			displayHeartbeat++;
+		}
+		lastMillis = ms;
+	}
 
 #ifndef UBUNTU
 	if (!loopTimer.tick())
@@ -1843,6 +1852,7 @@ void setupCp() {
 	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
 	//cpc.addEnum(&ahrsSource, "AHRS Source", "INS/G5");
 	cpc.addInt(&g5HdgCount, "G5 HDG RX Count");
+	cpc.addInt(&displayHeartbeat, "Display Heartbeat");
 	cpc.addInt(&g5LineErrCount, "G5 RX Error Count");
 	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f Mag");
 	cpc.addFloat(&ahrsInput.selTrack, "Heading", 1, "%.1f");
@@ -1880,6 +1890,7 @@ void setupCp() {
 
 
 ESPNOW_csimOneProg mainEspNow;
+
 class Csim_lvgl : public Csim_privateContext {
 	ReliableStreamESPNow client = ReliableStreamESPNow("CP");
 	ConfPanelTransportScreen cpt = ConfPanelTransportScreen(&client);	
