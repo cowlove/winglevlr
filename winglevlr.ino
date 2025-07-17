@@ -146,31 +146,31 @@ int displayHeartbeat = 0;
 #define LED_PIN 22
 /* Old hardwarinput pins: I2C pins/variant seems to determine layout
 struct {
-	int topButton = 35;
-	int midButton = 34;
-	int botButton = 39;
-	int knobButton = 32;
-	int pwm_roll = 33;
-	int pwm_pitch = 18;
+	int topButton = 3;
+	int midButton = 4;
+	int botButton = 5;
+	int knobButton = 6;
+	int pwm_roll = 1;
+	int pwm_pitch = 2;
 } pins;
 */
 
 struct {
-	int topButton = 36;
-	int midButton = 37;
-	int botButton = 39;
-	int knobButton = 32;
-	int pwm_pitch = 33;
-	int pwm_roll = 18;
+	int topButton = 4;
+	int midButton = 4;
+	int botButton = 4;
+	int knobButton = 6;
+	int pwm_roll = 43;
+	int pwm_pitch = 44;
 	// int servo_enable = 18;
-	int sda = 21;
-	int scl = 22;
+	int sda = 7;
+	int scl = 8;
 	//	int led = 19;
-	int tft_backlight = 27;
-	int serial2_rx = 19;
-	int serial2_tx = 27;
-	int gps_rx = 19;
-	int gps_tx = 27;
+	int tft_backlight = 9;
+	int serial2_rx = 10;
+	int serial2_tx = 11;
+	int gps_rx = 10;
+	int gps_tx = 11;
 } pins;
 
 MPU9250_asukiaaa *imu = NULL;
@@ -262,6 +262,7 @@ void halInit() {
 
 	Serial.printf("\nReset reason: %d %d\n", (int)rtc_get_reset_reason(0), (int)rtc_get_reset_reason(1));
 	Serial.printf(__BASE_FILE__ " ver %s\n", GIT_VERSION);
+#if 0
 	Wire.begin(21, 22);
 	// Wire.setClock(400000);
 	Serial.println("Scanning I2C bus on pins 21,22");
@@ -323,6 +324,7 @@ void halInit() {
 	imu->beginAccel(ACC_FULL_SCALE_4_G);
 	imu->beginGyro(GYRO_FULL_SCALE_250_DPS);
 	imu->beginMag(MAG_MODE_CONTINUOUS_100HZ);
+#endif
 }
 
 float ubloxHdgCr = 0.0023;
@@ -593,14 +595,13 @@ void imuLog();
 static AhrsInput ahrsInput, lastAhrsInput, lastAhrsGoodG5;
 
 bool imuRead() {
-	if (imu == NULL) 
-		return false;
 	AhrsInput &x = ahrsInput;
 	x.sec = micros() / 1000000.0;
 	// TODO fix this in a less gross way.
 	while (x.sec < lastAhrsInput.sec) {
 		x.sec += 65536.0 * 65536.0 / 1000000.0;
 	}
+#if 0 
 #ifdef USE_ACCEL
 	imu->accelUpdate();
 	x.ax = imu->accelX();
@@ -611,10 +612,11 @@ bool imuRead() {
 	x.gx = imu->gyroX();
 	x.gy = imu->gyroY();
 	x.gz = imu->gyroZ();
+#endif
 
 	// limit magnometer update to 100Hz
 	static uint64_t lastUsec = 0;
-	if (lastUsec / 10000 != micros() / 10000) {
+	if (0 && lastUsec / 10000 != micros() / 10000) {
 		imu->magUpdate();
 		x.mx = imu->magX();
 		x.my = imu->magY();
@@ -753,6 +755,18 @@ void setup() {
 	wdtReset();
 	Serial.begin(115200);
     Serial.println("setup()");
+	pinMode(pins.pwm_pitch, OUTPUT);
+	pinMode(pins.pwm_roll, OUTPUT);
+	while(0) { 
+		digitalWrite(pins.pwm_pitch, 0);
+		digitalWrite(pins.pwm_roll, 0);
+		delay(100);
+		digitalWrite(pins.pwm_pitch, 1);
+		digitalWrite(pins.pwm_roll, 1);
+		delay(100);
+		wdtReset();
+		printf("OK\n");
+	}
 	//sleep(10000);
 #ifndef CONFIG_IDF_TARGET_ESP32S3
 	Serial.println("jd.begin()");
@@ -879,8 +893,10 @@ void setup() {
 	//ledcSetup(0, 50, 16);			  // channel 1, 50 Hz, 16-bit width
 	//ledcAttachPin(pins.pwm_pitch, 0); // GPIO 33 assigned to channel 1
 	//ledcAttachPin(pins.pwm_roll, 1);  // GPIO 33 assigned to channel 1
-	ledcInit(pins.pwm_pitch, 50, 16, 0);
-	ledcInit(pins.pwm_roll, 50, 16, 1);
+	bool r = false;
+	r = ledcAttachChannel(pins.pwm_pitch, 50, 12, 0);
+	printf("ledcAttachChannel %d\n", r);
+	ledcAttachChannel(pins.pwm_roll, 50, 12, 2);
 
 	// ArduinoOTA.begin();
 	setupCp();
@@ -1395,6 +1411,7 @@ void loop() {
 	lastLoop = now;
 	PidControl *pid = &pids.rollPID;
 	if (serialReportTimer.tick() && (serialLogMode & 0x1)) {
+		Serial.printf("arm %d ssm %d %d %d\n", armServo,servoSetupMode, servoOutput[0], servoOutput[1]);
 		// SERIAL STATUS line output
 		Serial.printf(
 			"%06.2f "
@@ -1509,7 +1526,7 @@ void loop() {
 
 	}
 
-	if (ublox.check()) {
+	if (0 && ublox.check()) {
 		logItem.flags |= LogFlags::ublox;
 		ahrsInput.ubloxHdg = trueToMag(ublox.hdg);
 		ahrsInput.ubloxHdgAcc = ublox.hac;
@@ -1660,7 +1677,7 @@ void loop() {
 				newRoll = max(-Display::maxb.value, min(+Display::maxb.value, newRoll));
 				cmdRoll = max(cmdRoll - maxRollRate / 20, min(cmdRoll + maxRollRate / 20, newRoll));
 			} else if (!testTurnActive) {
-				//desRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something
+				cmdRoll = 0.0; // TODO: this breaks roll commands received over the serial bus, add rollOverride variable or something
 			}
 		}
 
@@ -1739,8 +1756,8 @@ void loop() {
 				break;
 			}
 
-		ledcWrite(0, servoOutput[0] * 4915 / 1500); // scale PWM output to 1500-7300
-		ledcWrite(1, servoOutput[1] * 4915 / 1500); // rscale PWM output to 1500-7300
+		ledcWrite(pins.pwm_pitch, servoOutput[0] * 307 / 1500); // scale PWM output to 1500-7300
+		ledcWrite(pins.pwm_roll, servoOutput[1] * 307 / 1500); // rscale PWM output to 1500-7300
 
 		logItem.pwmOutput0 = servoOutput[0];
 		logItem.pwmOutput1 = servoOutput[1];

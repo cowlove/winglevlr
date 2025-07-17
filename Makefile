@@ -1,12 +1,12 @@
-BOARD ?= esp32
-PORT ?= /dev/ttyUSB0
+BOARD ?= esp32s3
+UPLOAD_PORT ?= /dev/ttyACM0
 CHIP ?= esp32
 VERBOSE=1
 EXCLUDE_DIRS=/home/jim/Arduino/libraries/LovyanGFX
 PART_FILE=${ESP_ROOT}/tools/partitions/min_spiffs.csv
 GIT_VERSION := "$(shell git describe --abbrev=6 --dirty --always)"
 
-#CDC_ON_BOOT=1
+CDC_ON_BOOT=1
 ALIBS=${HOME}/Arduino/libraries
 EXCLUDE_DIRS=${ALIBS}/lvgl|${ALIBS}/LovyanGFX|${ALIBS}/esp32csim
 IGNORE_STATE=1
@@ -30,7 +30,7 @@ socat:
 mocat:
 	mosquitto_sub -h rp1.local -t "${MAIN_NAME}/#" -F "%I %t %p"   
 uc:
-	${MAKE} upload && ${MAKE} cat
+	${MAKE} upload && sleep .5 && ${MAKE} cat
 
 backtrace:
 	tr ' ' '\n' | addr2line -f -i -e ./build/${BOARD}/*.elf
