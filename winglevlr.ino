@@ -66,7 +66,7 @@ GDL90Parser::State state;
 RollAHRS ahrs;
 
 struct PIDS {
-	PidControl rollPID = PidControl(AHRS_RATE_SCALE(30)) /*200Hz*/,
+	PidControl rollPID = PidControl(AHRS_RATE_SCALE(10)) /*20Hz*/,
 			   pitchPID = PidControl(AHRS_RATE_SCALE(10), 6),
 			   hdgPID = PidControl(50) /*20Hz*/,
 			   xtePID = PidControl(100) /*5hz*/,
@@ -74,10 +74,10 @@ struct PIDS {
 
 	PIDS() {
 		// Set up PID gains
-		rollPID.setGains(5.0, 0.05, 2.0); // input in degrees bank err, output in stickThrow units
+		rollPID.setGains(5.0, 0.001, 2.0); // input in degrees bank err, output in stickThrow units
 		rollPID.hiGain.p = 2;
 		rollPID.hiGainTrans.p = 5;
-		rollPID.maxerr.i = 20.0; // degrees/pgain bank err
+		rollPID.maxerr.i = 50.0; // degrees/pgain bank err
 		rollPID.outputTrim = 0.0;
 		rollPID.inputTrim = 0.0;
 		rollPID.finalGain = 10.0;
@@ -87,7 +87,7 @@ struct PIDS {
 		hdgPID.setGains(0.5, 0.02, 0.50); // input in degrees hdg err, output in degrees desired bank
 		hdgPID.hiGain.p = 10;
 		hdgPID.hiGainTrans.p = 8.0;
-		hdgPID.maxerr.i = 20; // degrees roll err
+		hdgPID.maxerr.i = 2; // degrees roll err
 		hdgPID.iMaxChange = 0.1; /* dec/sec above which I-err wont be accumulated */
 		hdgPID.finalGain = 1.0;
 
@@ -810,9 +810,9 @@ void setup() {
 	j.jw.enabled = false;	
 	j.begin();
 	j.mqtt.active = false;
-	j.run();
+	//j.run();
 	j.mqtt.active = false;
-	j.cli.on(".*", parseSerialLine);
+	//j.cli.on(".*", parseSerialLine);
 
 	Serial.printf("Reading log file number\n");
 	int l = logFileNumber;
@@ -977,7 +977,7 @@ static EggTimer serialReportTimer(500), loopTimer(AHRS_RATE_INV_SCALE(5)), butto
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
-static int hdgSelect = 5;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
+static int hdgSelect = 4;	   //  0 gdl/g5 auto, 1 fusion, 2 ublox, 3 G5hdg, 4 g5trk, 5 gdl 
 static int altSelect = 0;	   //  0 gdl/g5 auto, 1 g5ialt, 2 g5pa, 3 gdl90, 4 ublox  
 static float obs = -1, lastObs = -1;
 static int ahrsSource = 1;
@@ -1382,7 +1382,7 @@ float loopCount10Hz = 0;
 void loop() {
 	wdtReset();
 	// ArduinoOTA.handle();
-	j.run();
+	//j.run();
 	if(j.hz(10)) loopCount10Hz++;
 	cup.run();
 	//cpc3.run();
@@ -1650,7 +1650,7 @@ void loop() {
 			}
 		}
 		else if (hdgSelect == 2)
-			ahrsInput.selTrack = ahrsInput.ubloxHdg;
+			ahrsInput.selTrack = ahrsInput.gpsTrackRMC;
 		else if (hdgSelect == 3)
 			ahrsInput.selTrack = ahrsInput.g5Hdg;
 		else if (hdgSelect == 4)
@@ -1887,7 +1887,7 @@ void setupCp() {
 	cpc.addFloat(&rollToStick, "Roll->StickY", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransPos, "Stick XY Transfer +", 0.01, "%.2f");
 	cpc.addFloat(&stickXYTransNeg, "Stick XY Transfer -", 0.01, "%.2f");
-	cpc.addEnum(&hdgSelect, "Heading Source", "AUTO/HY/UBLOX/G5HD/G5TR/GDL90");
+	cpc.addEnum(&hdgSelect, "Heading Source", "AUTO/HY/NMEA/G5HD/G5TR/GDL90");
 	cpc.addEnum(&altSelect, "Altitude Source", "AUTO/G5IA/G5PA/GDL90/UBLOX");
 	//cpc.addFloat(&g5IndAlt, "G5 Ind Altitude");
 	//cpc.addFloat(&ahrsInput.g5Palt, "G5 Pres Altitude");

@@ -22,15 +22,15 @@ build-csim:
 	${MAKE} BOARD=csim 
 	
 fixtty:
-	stty -F ${PORT} -hupcl -crtscts -echo raw 115200
+	stty -F ${UPLOAD_PORT} -echo raw 115200
 cat:    fixtty
-	cat ${PORT} | tee ./cat.out
+	cat ${UPLOAD_PORT} | tee ./cat.out
 socat:  
 	socat udp-recvfrom:9000,fork - 
 mocat:
 	mosquitto_sub -h rp1.local -t "${MAIN_NAME}/#" -F "%I %t %p"   
 uc:
-	${MAKE} upload && sleep .5 && ${MAKE} cat
+	${MAKE} upload && sleep 1 && ${MAKE} cat
 
 backtrace:
 	tr ' ' '\n' | addr2line -f -i -e ./build/${BOARD}/*.elf

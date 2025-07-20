@@ -90,7 +90,11 @@ public:
         lastTime = time;
 		histError.add(time, error);
 		histMeasurement.add(time, measurement);
-        err.p = calcGain(histError.predict(time), gain.p, hiGain.p, hiGainTrans.p);
+#if 0 
+		err.p = calcGain(histError.predict(time), gain.p, hiGain.p, hiGainTrans.p);
+#else
+		err.p = calcGain(error, gain.p, hiGain.p, hiGainTrans.p);
+#endif
 		if (iMaxChange <= 0.0 || abs(histMeasurement.slope()) < iMaxChange) { 
 	        i += calcGain(histError.predict(time), gain.i, hiGain.i, hiGainTrans.i) * dt;
 		}
