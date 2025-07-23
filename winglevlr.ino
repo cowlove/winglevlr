@@ -74,7 +74,7 @@ struct PIDS {
 
 	PIDS() {
 		// Set up PID gains
-		rollPID.setGains(2.5, 0.001, 2.0); // input in degrees bank err, output in stickThrow units
+		rollPID.setGains(5.0, 0.001, 2.0); // input in degrees bank err, output in stickThrow units
 		rollPID.hiGain.p = 2;
 		rollPID.hiGainTrans.p = 5;
 		rollPID.maxerr.i = 50.0; // degrees/pgain bank err
@@ -84,19 +84,19 @@ struct PIDS {
 		rollPID.maxChange = 0.40;
 		rollPID.finalScale = 0.001;
 
-		hdgPID.setGains(0.25, 0.02, 0.50); // input in degrees hdg err, output in degrees desired bank
+		hdgPID.setGains(0.5, 0.02, 0.50); // input in degrees hdg err, output in degrees desired bank
 		hdgPID.hiGain.p = 10;
 		hdgPID.hiGainTrans.p = 8.0;
 		hdgPID.maxerr.i = 2; // degrees roll err
 		hdgPID.iMaxChange = 0.1; /* dec/sec above which I-err wont be accumulated */
 		hdgPID.finalGain = 1.0;
 
-		xtePID.setGains(3.0, 0.1, 3.0); // input in NM xte error, output in degrees desired hdg change
+		xtePID.setGains(8.0, 0.1, 3.0); // input in NM xte error, output in degrees desired hdg change
 		xtePID.maxerr.i = 2.0;
 		xtePID.iMaxChange = 0.002;
-		xtePID.finalGain = 10.0;
+		xtePID.finalGain = 20.0;
 
-		pitchPID.setGains(5.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
+		pitchPID.setGains(20.0, 0.0, 2.0, 0, .8); // input in degrees of pitch err, output in stickthrow units
 		pitchPID.finalGain = 5.0;
 		pitchPID.maxerr.i = 1; // degrees
 		pitchPID.outputTrim = -0.0;
@@ -104,7 +104,7 @@ struct PIDS {
 		pitchPID.inputTrim = +0;
 		pitchPID.finalScale = 0.001;
 
-		altPID.setGains(0.5, 0.050, 2.0); // input in feet of alt err, output in degrees of pitch change
+		altPID.setGains(1.0, 0.050, 2.0); // input in feet of alt err, output in degrees of pitch change
 		altPID.finalGain = -5.00;
 		altPID.maxerr.i = 200; // feet
 		altPID.outputTrim = 0.0;
@@ -139,7 +139,7 @@ float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float rollToStick = 0.0, rollToPitch = 0.0;
 float maxRollRate = 5.0; // deg/sec 
 float servoGain = 1.70;
-int g5LineCount = 0, g5LineErrCount = 0, rxG5Count = 0, rxNavCount = 0;
+int g5LineCount = 0, g5LineErrCount = 0, rxG5HdgCount = 0, rxNavCount = 0;
 int serialLogMode = 0x1;
 int displayHeartbeat = 0;
 
@@ -187,7 +187,7 @@ public:
 		for(int i = 0; i < 100; i++) {  
 			while(Serial2.available()) { 
 				int c = Serial2.read();
-				Serial.printf("%c", c);
+				//Serial.printf("%c", c);
 			}
 			delay(5);
 		}
@@ -809,6 +809,7 @@ void setup() {
 
 	j.mqtt.active = false;
 	j.jw.enabled = false;	
+	j.parseSerial = false;
 	j.begin();
 	j.mqtt.active = false;
 	//j.run();
@@ -974,7 +975,7 @@ static float roll = 0, pitch = 0;
 static String logFilename("none");
 static int servoOutput[2], servoTrim[2] = {1500, 1500};
 static TwoStageRollingAverage<int, 40, 40> loopTime;
-static EggTimer serialReportTimer(500), loopTimer(AHRS_RATE_INV_SCALE(5)), buttonCheckTimer(10);
+static EggTimer serialReportTimer(200), loopTimer(AHRS_RATE_INV_SCALE(5)), buttonCheckTimer(10);
 static int armServo = 1;
 static int servoSetupMode = 0; // Referenced when servos not armed.  0: servos left alone, 1: both servos neutral + trim, 2: both servos full in, 3: both servos full out
 static int apMode = 1;		   // apMode == 4 means follow NMEA HDG and XTE sentences, anything else tracks OBS
@@ -1304,6 +1305,7 @@ void parseG5Line(const char *line) {
 			// XXX=n tokens 
 			vector<string> words = split(*l, ' ');
 			float v;
+			float k[6]; // knob values
 			int knob = 0;
 			for (auto it = words.begin(); it != words.end(); it++) {
 				//it->erase(std::remove(it->begin(), it->end(), '\n'));
@@ -1332,7 +1334,7 @@ void parseG5Line(const char *line) {
 					ahrs.mComp.addAux(ahrsInput.g5Hdg, 2, 0.03);
 				} else if (sscanf(it->c_str(), "TRK=%f", &v) == 1) {
 					ahrsInput.g5Track = v;
-					rxG5Count++;
+					rxG5HdgCount++;
 					logItem.flags |= LogFlags::g5Nav;
 				} else if (sscanf(it->c_str(), "MODE=%f", &v) == 1) {
 					//Serial.printf("G5 MODE %f\n", v);
@@ -1349,9 +1351,13 @@ void parseG5Line(const char *line) {
 				} else if (strstr(it->c_str(), "NMEA=") == it->c_str()) { 
 					ParseNMEAChar(it->c_str() + 5, strlen(it->c_str()) - 5);
 					ParseNMEAChar("\n", 1);
+				} else if (sscanf(it->c_str(), "K=%f,%f,%f,%f,%f,%f", &k[0], &k[1], &k[2], &k[3], &k[4], &k[5] ) == 6) { 
+					for(int i = 0; i < sizeof(k)/sizeof(k[0]); i++) { 
+						setObsKnob(i, k[i]);
+					}
 				} else { 
 					//Serial.printf("Malformed G5 token: %s line: %s\n", it->c_str(), l->c_str());
-					g5LineErrCount++;
+					//g5LineErrCount++;
 				}
 			}
 		}
@@ -1361,7 +1367,7 @@ void parseG5Line(const char *line) {
 void ParseNMEAChar(const char *buf, int n) {
 	for (int i = 0; i < n; i++) {  
 		gps.encode(buf[i]);
-		printf("%c", buf[i]);
+		//printf("%c", buf[i]);
 		if (buf[i] == '\r' || buf[i] == '\n') {
 			if (vtgCourse.isUpdated()) { 
 				// VTG typically from G5 NMEA serial output
@@ -1399,11 +1405,10 @@ float loopCount10Hz = 0;
 void loop() {
 	wdtReset();
 	// ArduinoOTA.handle();
-	//j.run();
+	j.run();
 	if(j.hz(10)) loopCount10Hz++;
 	cup.run();
 	//cpc3.run();
-	delayMicroseconds(100);
 	{
 		static uint32_t lastMillis = 0;
 		uint32_t ms = millis();
@@ -1429,33 +1434,37 @@ void loop() {
 	PidControl *pid = &pids.rollPID;
 	if (serialReportTimer.tick() && (serialLogMode & 0x1)) {
 		//Serial.printf("arm %d ssm %d %d %d\n", armServo,servoSetupMode, servoOutput[0], servoOutput[1]);
-		// SERIAL STATUS line output
+		// XXSERIAL STATUS line output
 		Serial.printf(
 			"%06.2f "
-			//"R %+05.2f BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
-			"%+05.2f,%+05.2f R%+05.1f P%+05.1f DR%+05.1f DP%+05.1f "
-			"A%04.0f DA%04.0f "
+			"R %+05.2f " 
+			//"BA %+05.2f GZA %+05.2f ZC %03d MFA %+05.2f"
+			//"%+05.2f,%+05.2f R%+05.1f P%+05.1f DR%+05.1f DP%+05.1f "
+			//"A%04.0f DA%04.0f "
 			//"%+05.2f %+05.2f %+05.2f %+05.1f srv %04d xte %3.2f "
-			"PIDC %+06.2f %+05.1f %+05.1f %+05.1f "
+			//"PIDC %+06.2f %+05.1f %+05.1f %+05.1f "
 			//"but %d%d%d%d 
 			"loop %d/%d/%d heap %d "
 			//re.count %d logdrop %d maxwait %d "
 			//"a%d "
 			//"s%04d %04d "
+			//"g5rx %d "
 			"%d\n",
 			millis() / 1000.0,
-			// roll, ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),
-			stickX, stickY, roll, pitch, cmdRoll, desPitch,
-			ahrsInput.alt, desAlt,
+			roll, 
+			//ahrs.bankAngle, ahrs.gyrZOffsetFit.average(), ahrs.zeroSampleCount, ahrs.magStabFit.average(),
+			//stickX, stickY, roll, pitch, cmdRoll, desPitch,
+			//ahrsInput.alt, desAlt,
 			// 0.0, 0.0, 0.0, 0.0, servoOutput, crossTrackError.average(),
-			knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr,
+			//knobPID->err.p, knobPID->err.i, knobPID->err.d, knobPID->corr,
 			//buttonTop.read(), buttonMid.read(), buttonBot.read(), buttonKnob.read(),
 			 (int)loopTime.min(), (int)loopTime.average(), (int)loopTime.max(), ESP.getFreeHeap(),
 			 // Display::jde.re.count,
 			//logFile != NULL ? logFile->dropped : 0, logFile != NULL ? logFile->maxWaiting : 0,
 			//ublox.count,
 			// servoOutput[0], servoOutput[1],
-			g5LineCount);
+			g5LineCount,
+			0);
 		if (logFile != NULL) {
 			logFile->maxWaiting = 0;
 		}
@@ -1496,15 +1505,16 @@ void loop() {
 		}
 	}
 
-	string g5input = g5.read();
-	if (g5input.length() > 0) { 
-		//Serial.printf("G5 line: %s<<<\n", g5input.c_str());
-		parseG5Line(g5input.c_str()); 
+	string s;
+	while((s = g5.read()).length() > 0) { 
+		//Serial.printf("G5 line: %s\n", g5input.c_str());
+		parseG5Line(s.c_str()); 
 	}
-	string iflyInput = ifly.read();
-	if (iflyInput.length() > 0) { 
-		parseIflyLine(iflyInput.c_str()); 
+
+	while((s = ifly.read()).length() > 0) { 
+		parseIflyLine(s.c_str()); 
 	}
+
 	if (udpG90.parsePacket() > 0) {
 		unsigned char buf[1024];
 		int n = udpG90.read(buf, sizeof(buf));
@@ -1872,6 +1882,8 @@ void loop() {
 		sdLog();
 	}
 	logItem.flags = 0;
+	delay(1);
+	yield();
 }
 
 
@@ -1890,19 +1902,20 @@ int foo = 1;
 void setupCp() { 
 	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
 	//cpc.addEnum(&ahrsSource, "AHRS Source", "INS/G5");
-	cpc.addInt(&rxG5Count, "RX G5 Count");
+	cpc.addInt(&g5LineCount, "RX G5 Line Count");
+	cpc.addInt(&rxG5HdgCount, "RX G5 Hdg Count");
 	cpc.addInt(&rxNavCount, "RX Nav Count");
 	cpc.addInt(&displayHeartbeat, "Display Heartbeat");
-	cpc.addInt(&g5LineErrCount, "G5 RX Error Count");
+	//cpc.addInt(&g5LineErrCount, "G5 RX Error Count");
 	cpc.addFloat(&desiredTrk, "Set Heading", 1, "%03.0f Mag");
 	cpc.addFloat(&ahrsInput.selTrack, "Heading", 1, "%.1f");
-	cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
-	cpc.addFloat(&currentAlt, "Altitude", 10, "%.0f'");
 	cpc.addFloat(&cmdRoll, "Command Roll", 0.1, "%.2f");
 	cpc.addFloat(&roll, "Roll", 1, "%.2f");
-	cpc.addFloat(&desPitch, "Set Pitch", .1, "%.2f");
+//	cpc.addFloat(&desPitch, "Set Pitch", .1, "%.2f");
 	cpc.addFloat(&cmdPitch, "Command Pitch", 1, "%.2f");
 	cpc.addFloat(&pitch, "Pitch", 1, "%.2f");
+	cpc.addFloat(&desAlt, "Set Altitude", 10, "%.0f'");
+	cpc.addFloat(&currentAlt, "Altitude", 10, "%.0f'");
 	cpc.addFloat(&servoGain, "Servo Gain", 0.01, "%.2f");
 	cpc.addFloat(&maxRollRate, "Max Roll Rate", 0.1, "%.1f");
 	cpc.addFloat(&Display::maxb.value, "Max Bank", 0.1, "%.1f");
