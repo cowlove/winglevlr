@@ -33,7 +33,8 @@ uc:
 	${MAKE} upload && sleep 1 && ${MAKE} cat
 
 backtrace:
-	tr ' ' '\n' | addr2line -f -i -e ./build/${BOARD}/*.elf
+	tr ' ' '\n' | addr2line -f -i -e /tmp/mkESP/winglevlr_esp32s3/winglevlr.elf
+	#./build/${BOARD}/*.elf
 
 clean-all:
 	${MAKE} csim-clean
