@@ -895,9 +895,7 @@ void setup() {
 	//ledcSetup(0, 50, 16);			  // channel 1, 50 Hz, 16-bit width
 	//ledcAttachPin(pins.pwm_pitch, 0); // GPIO 33 assigned to channel 1
 	//ledcAttachPin(pins.pwm_roll, 1);  // GPIO 33 assigned to channel 1
-	bool r = false;
-	r = ledcAttachChannel(pins.pwm_pitch, 50, 12, 0);
-	printf("ledcAttachChannel %d\n", r);
+	ledcAttachChannel(pins.pwm_pitch, 50, 12, 0);
 	ledcAttachChannel(pins.pwm_roll, 50, 12, 2);
 
 	// ArduinoOTA.begin();
@@ -1991,6 +1989,9 @@ public:
 	RollingAverage<float, (int)AHRS_RATE_SCALE(40)> delayBank;
 
 	void flightSim(MPU9250_DMP *imu) {
+	        static MPU9250_asukiaaa csimImu(0x69)	
+		if (imu == NULL)
+			imu = &csimImu;
 		// TODO: flightSim is very fragile/unstable.  Poke values into the
 		//  main loop code to make sure things work.
 		// hdgPID.finalGain = 0.5;
