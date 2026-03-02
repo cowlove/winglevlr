@@ -64,6 +64,8 @@ public:
         starttime = 0;
         corr = 0;
         i = 0;
+        count = 0;
+        lastTime = 0;
     }
     
     PidControl(int histSize, int cSize = 1, String name = "") : histError(histSize), histMeasurement(histSize), histCorrection(cSize) { 
@@ -79,14 +81,21 @@ public:
     double lastVal, lastTime = 0;
     int count = 0;
     double add(double error, double measurement, double time) {
-		if (count++ % 2000 == 0) 
+		bool firstSample = (count == 0);
+		count++;
+		if (count % 2000 == 1)
 			rebase();
         
 		error -= inputTrim;
 		measurement -= inputTrim;
 		lastVal = error;
         
-        float dt = (count > 0) ? time - lastTime : 0.0;
+        float dt = 0.0;
+        if (!firstSample) {
+            dt = time - lastTime;
+            // Guard against negative/jittery first delta and huge pauses.
+            dt = max(0.0f, min(0.2f, dt));
+        }
         lastTime = time;
 		histError.add(time, error);
 		histMeasurement.add(time, measurement);
