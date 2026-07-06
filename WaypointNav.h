@@ -18,7 +18,9 @@
 
 namespace WaypointNav {
     static const int ALT_INVALID = -1000;
-    static const float DEFAULT_RUNWAY_LENGTH_FT = 5000;
+    // Until the approach table carries runway-specific lengths, use a simple
+    // hard-coded ILS runway assumption for localizer antenna projection.
+    static const float DEFAULT_RUNWAY_LENGTH_FT = 6000;
     static const float LOCALIZER_ANTENNA_OFFSET_FT = 1000;
 
     struct LatLon {
@@ -125,18 +127,17 @@ namespace WaypointNav {
 
     struct  Approach{
         const char *name;
-        // runwayLengthFt feeds the localizer antenna projection; 0 uses DEFAULT_RUNWAY_LENGTH_FT.
-        double lat, lon, fac, tdze, gs, runwayLengthFt;
+        double lat, lon, fac, tdze, gs;
     };
 
     Approach approaches[] = {
-        {"KBFI 14R", 47.53789999126084, -122.30912681366567, 135.0, 18, 3.00, 10007},
-        {"KBFI 32L", 47.52145193515430, -122.29521847198963, 315.0, 18, 3.00, 10007},
-        {"S43 15",   47.90660383843286, -122.10299154204903, 150.0, 22, 4.00, 2671},
-        {"S43 33",   47.90250761678649, -122.10136258707182, 328.0, 22, 4.00, 2671},
-        {"2S1 17",   47.46106431485166, -122.47652028295599, 170.0, 300, 4.00, 2001},
-        {"2S1 35",   47.45619317486062, -122.47745151953475, 350.0, 300, 4.00, 2001},
-        {"WN14 02",  47.46276277164776, -122.56987914788057, 040.0, 300, 4.50, 0},
+        {"KBFI 14R", 47.53789999126084, -122.30912681366567, 135.0, 18, 3.00},
+        {"KBFI 32L", 47.52145193515430, -122.29521847198963, 315.0, 18, 3.00},
+        {"S43 15",   47.90660383843286, -122.10299154204903, 150.0, 22, 4.00},
+        {"S43 33",   47.90250761678649, -122.10136258707182, 328.0, 22, 4.00},
+        {"2S1 17",   47.46106431485166, -122.47652028295599, 170.0, 300, 4.00},
+        {"2S1 35",   47.45619317486062, -122.47745151953475, 350.0, 300, 4.00},
+        {"WN14 02",  47.46276277164776, -122.56987914788057, 040.0, 300, 4.50},
     };
         
         
