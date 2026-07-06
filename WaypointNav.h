@@ -232,9 +232,10 @@ namespace WaypointNav {
             }
             float distTravelled = speed * .51444 * sec;
             
-            //commandAlt += corrV;//distToWaypoint / 1000;
-            //steerHdg += corrH;//distToWaypoint / 1000;
-            vvel = (commandAlt - curPos.alt) / sec * 196.85; // m/s to fpm 
+            if (commandAlt != ALT_INVALID)
+                commandAlt += corrV;
+            steerHdg += corrH;
+            vvel = commandAlt != ALT_INVALID ? (commandAlt - curPos.alt) / sec * 196.85 : 0; // m/s to fpm
             float brg = onSteer(steerHdg);
             const float proximity = 500;
             if (distToWaypoint > proximity) { 
@@ -374,5 +375,3 @@ class WaypointsSequencerString : public WaypointNav::WaypointSequencer {
 	std::istringstream is;
 	WaypointsSequencerString(std::string &i) : s(i), is(s), WaypointSequencer(is) {};
 };
-
-
