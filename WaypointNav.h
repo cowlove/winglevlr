@@ -18,6 +18,8 @@
 
 namespace WaypointNav {
     static const int ALT_INVALID = -1000;
+    static const float DEFAULT_RUNWAY_LENGTH_FT = 5000;
+    static const float LOCALIZER_ANTENNA_OFFSET_FT = 1000;
 
     struct LatLon {
         LatLon(double la, double lo) : lat(la), lon(lo) {}
@@ -84,13 +86,20 @@ namespace WaypointNav {
 
     class IlsSimulator {
     public:
-        const LatLon tdzLocation; // lat/long of touchdown point 
+        const LatLon tdzLocation; // lat/long of touchdown point; used for glide slope
+        const LatLon locAntennaLocation; // projected localizer antenna beyond the departure end
         const float tdze;  // TDZE elevation of runway 
         const float faCrs; // final approach course
         const float gs; // glideslope in degrees
         float currentAlt;
         LatLon currentLoc;
-        IlsSimulator(LatLon l, float elev, float crs, float g) : tdzLocation(l), tdze(elev), faCrs(crs), gs(g) {}
+        IlsSimulator(LatLon l, float elev, float crs, float g, float runwayLengthFt = 0) :
+            tdzLocation(l),
+            locAntennaLocation(locationBearingDistance(
+                l,
+                crs,
+                ((runwayLengthFt > 0 ? runwayLengthFt : DEFAULT_RUNWAY_LENGTH_FT) + LOCALIZER_ANTENNA_OFFSET_FT) / FEET_PER_METER)),
+            tdze(elev), faCrs(crs), gs(g) {}
         void setCurrentLocation(LatLon now, double alt) { 
             currentLoc = now;
             currentAlt = alt;
@@ -99,7 +108,8 @@ namespace WaypointNav {
             return glideslope(distance(currentLoc, tdzLocation), currentAlt, tdze) - gs;
         }
         double courseErr() { 
-            return bearing(currentLoc, tdzLocation) - faCrs;
+            // Localizer sensitivity is angular from the localizer antenna, not the touchdown point.
+            return bearing(currentLoc, locAntennaLocation) - faCrs;
         }
         double cdiPercent() { 
             return max(-1.0, min(1.0, courseErr() / 2.5));
@@ -108,24 +118,25 @@ namespace WaypointNav {
             return max(-1.0, min(1.0, glideSlopeError() / 0.7));
         }
         std::string toString() { 
-            return strfmt("ILS at %.6lf,%.6lf tdze %.0f, fac %.1f magnetic", 
-            tdzLocation.lat, tdzLocation.lon, tdze, faCrs);
+            return strfmt("ILS at %.6lf,%.6lf tdze %.0f, fac %.1f true loc %.6lf,%.6lf",
+            tdzLocation.lat, tdzLocation.lon, tdze, faCrs, locAntennaLocation.lat, locAntennaLocation.lon);
         }
     } *ils = NULL;
 
     struct  Approach{
         const char *name;
-        double lat, lon, fac, tdze, gs;
+        // runwayLengthFt feeds the localizer antenna projection; 0 uses DEFAULT_RUNWAY_LENGTH_FT.
+        double lat, lon, fac, tdze, gs, runwayLengthFt;
     };
 
     Approach approaches[] = {
-        {"KBFI 14R", 47.53789999126084, -122.30912681366567, 135.0, 18, 3.00}, 
-        {"KBFI 32L", 47.52145193515430, -122.29521847198963, 315.0, 18, 3.00}, 
-        {"S43 15",   47.90660383843286, -122.10299154204903, 150.0, 22, 4.00},
-        {"S43 33",   47.90250761678649, -122.10136258707182, 328.0, 22, 4.00},
-        {"2S1 17",   47.46106431485166, -122.47652028295599, 170.0, 300, 4.00}, 
-        {"2S1 35",   47.45619317486062, -122.47745151953475, 350.0, 300, 4.00}, 
-        {"WN14 02",  47.46276277164776, -122.56987914788057, 040.0, 300, 4.50},	
+        {"KBFI 14R", 47.53789999126084, -122.30912681366567, 135.0, 18, 3.00, 10007},
+        {"KBFI 32L", 47.52145193515430, -122.29521847198963, 315.0, 18, 3.00, 10007},
+        {"S43 15",   47.90660383843286, -122.10299154204903, 150.0, 22, 4.00, 2671},
+        {"S43 33",   47.90250761678649, -122.10136258707182, 328.0, 22, 4.00, 2671},
+        {"2S1 17",   47.46106431485166, -122.47652028295599, 170.0, 300, 4.00, 2001},
+        {"2S1 35",   47.45619317486062, -122.47745151953475, 350.0, 300, 4.00, 2001},
+        {"WN14 02",  47.46276277164776, -122.56987914788057, 040.0, 300, 4.50, 0},
     };
         
         
