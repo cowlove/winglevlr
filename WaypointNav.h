@@ -86,6 +86,17 @@ namespace WaypointNav {
             return atan2(alt1 - alt2, distance) * 180/M_PI; 
     }
 
+    float angularDiff(float a, float b) {
+        float d = a - b;
+        if (d > +180) d -= 360;
+        if (d < -180) d += 360;
+        return d;
+    }
+
+    inline double clampUnit(double v) {
+        return max(-1.0, min(1.0, v));
+    }
+
     class IlsSimulator {
     public:
         const LatLon tdzLocation; // lat/long of touchdown point; used for glide slope
@@ -123,7 +134,54 @@ namespace WaypointNav {
             return strfmt("ILS at %.6lf,%.6lf tdze %.0f, fac %.1f true loc %.6lf,%.6lf",
             tdzLocation.lat, tdzLocation.lon, tdze, faCrs, locAntennaLocation.lat, locAntennaLocation.lon);
         }
-    } *ils = NULL;
+    };
+
+    class VorSimulator {
+    public:
+        static constexpr float CDI_FULL_SCALE_DEG = 10.0;
+        static constexpr float CONE_OF_CONFUSION_RADIUS_METERS = 0.2 * 1852.0;
+
+        const LatLon stationLocation;
+        LatLon currentLoc;
+
+        VorSimulator(LatLon station) : stationLocation(station) {}
+
+        void setCurrentLocation(LatLon now) {
+            currentLoc = now;
+        }
+
+        double radialTrue() {
+            return bearing(stationLocation, currentLoc);
+        }
+
+        double bearingToStationTrue() {
+            return bearing(currentLoc, stationLocation);
+        }
+
+        double distanceToStationMeters() {
+            return distance(currentLoc, stationLocation);
+        }
+
+        bool inConeOfConfusion() {
+            return distanceToStationMeters() <= CONE_OF_CONFUSION_RADIUS_METERS;
+        }
+
+        double courseErr(double obsCourseTrue) {
+            double inboundErr = angularDiff(bearingToStationTrue(), obsCourseTrue);
+            double outboundErr = angularDiff(radialTrue(), obsCourseTrue);
+            return abs(inboundErr) <= abs(outboundErr) ? inboundErr : outboundErr;
+        }
+
+        double cdiPercent(double obsCourseTrue) {
+            return clampUnit(courseErr(obsCourseTrue) / CDI_FULL_SCALE_DEG);
+        }
+
+        std::string toString() {
+            return strfmt("VOR at %.6lf,%.6lf", stationLocation.lat, stationLocation.lon);
+        }
+    };
+
+    IlsSimulator *ils = NULL;
 
     struct  Approach{
         const char *name;
@@ -141,13 +199,6 @@ namespace WaypointNav {
     };
         
         
-    float angularDiff(float a, float b) { 
-        float d = a - b;
-        if (d > +180) d -= 360;
-        if (d < -180) d += 360;
-        return d;
-    }
-
     inline float constrain360(float a) { 
         if (abs(a) < 10000) { 
             while(a <= 0) a += 360;
