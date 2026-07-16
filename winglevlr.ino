@@ -1099,7 +1099,7 @@ void setObsKnob(float knobSel, float v) {
 			crossTrackError.reset();
 			testTurnActive = false;
 			pids.xtePID.reset();
-			if (abs(obs - lastObs) > 5 && wpNav != NULL) {
+			if (lastObs != -1 && abs(angularDiff(obs - lastObs)) > 5 && wpNav != NULL) {
 				delete wpNav;
 				wpNav = NULL;
 			}
@@ -1126,8 +1126,9 @@ void startMakeoutSess() {
 	} else {
 		Display::maxb.setValue(15);
 		WaypointNav::LatLon curPos(ublox.lat, ublox.lon);
+		float selTrackTrue = magToTrue(ahrsInput.selTrack);
 		WaypointNav::LatLon nextPos =
-			WaypointNav::locationBearingDistance(curPos, magToTrue(ahrsInput.selTrack), 6300);
+			WaypointNav::locationBearingDistance(curPos, selTrackTrue, 6300);
 
 		waypointList = sfmt(
 			"REPEAT 1\n"
@@ -1137,11 +1138,11 @@ void startMakeoutSess() {
 			"HDG %f\nWAIT 10\nHDG %f\nWAIT 110\n"
 			"HDG %f\nWAIT 10\nHDG %f\nWAIT 60\n"
 			"%f, %f\n",
-			constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 180),
-			constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 0),
+			constrain360(selTrackTrue + 90), constrain360(selTrackTrue + 180),
+			constrain360(selTrackTrue + 270), constrain360(selTrackTrue + 0),
 			curPos.lat, curPos.lon,
-			constrain360(ahrsInput.selTrack + 270), constrain360(ahrsInput.selTrack + 180),
-			constrain360(ahrsInput.selTrack + 90), constrain360(ahrsInput.selTrack + 0),
+			constrain360(selTrackTrue + 270), constrain360(selTrackTrue + 180),
+			constrain360(selTrackTrue + 90), constrain360(selTrackTrue + 0),
 			curPos.lat, curPos.lon);
 		wpNav = new WaypointsSequencerString(waypointList);
 		logItem.flags |= LogFlags::wptNav;

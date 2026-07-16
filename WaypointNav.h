@@ -256,18 +256,22 @@ namespace WaypointNav {
         float speed; // knots 
         float vvel;  // fpm
         float steerHdg, commandTrack, commandAlt = ALT_INVALID;
-        float lastHd, lastVd;
+        float lastHd = 0, lastVd = 0;
+        bool haveLastCdi = false;
         float corrH = 0, corrV = 0;
         float hWiggle = 0, vWiggle = 0; // add simulated hdg/alt variability
         float xte = 0;
 
         void setCDI(float hd, float vd, float decisionHeight) {
             float gain = min(1.0, curPos.alt / 200.0);
-            corrH = +0.2 * gain * ((abs(hd) < 2.0) ? hd + (hd - lastHd) * 400 : 0);
+            float hdRate = haveLastCdi ? hd - lastHd : 0;
+            float vdRate = haveLastCdi ? vd - lastVd : 0;
+            corrH = +0.2 * gain * ((abs(hd) < 2.0) ? hd + hdRate * 400 : 0);
             if (abs(vd) < 2.0) 
-                corrV += (gain * -0.01 * (vd + (vd - lastVd) * 30));
+                corrV += (gain * -0.01 * (vd + vdRate * 30));
             lastHd = hd;
             lastVd = vd;
+            haveLastCdi = true;
         }
 
         bool didWaypointChange = false;
@@ -351,6 +355,7 @@ namespace WaypointNav {
             
 
             corrV = corrH = 0;
+            haveLastCdi = false;
         }
     };
 

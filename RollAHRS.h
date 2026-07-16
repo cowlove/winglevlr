@@ -185,8 +185,9 @@ inline static float windup360(float now, float prev) {
 	float hd = now - prev;
 	if (hd > 1000000 || hd < -1000000) 
 		return now;
-	while (hd < -180) hd += 360;
-	while (hd >= +180) hd -= 360;
+	hd = fmodf(hd, 360.0f);
+	if (hd < -180.0f) hd += 360.0f;
+	if (hd >= +180.0f) hd -= 360.0f;
 	return prev + hd;
 }
 	
@@ -235,9 +236,7 @@ class RollAHRS {
 public:
 	bool rotate180 = false;
 	float fit360(float h) { 
-		while(h <= 0) h += 360;
-		while(h > 360) h -= 360;
-		return h;
+		return constrain360(h);
 	}
 	MultiCompFilter mComp;
 	

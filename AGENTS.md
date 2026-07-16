@@ -11,6 +11,25 @@ This file is a local handoff for future assistant work in this repository.
   - `WaypointNav.h::angularDiff(a, b)` handles wrap with modulo math.
   - `IlsSimulator::courseErr()` uses `angularDiff(...)` instead of raw subtraction, fixing the north-crossing localizer bug.
   - `RollAHRS.h` received matching loop-free wrap cleanup.
+- The `TinyGPSPlus` dependency is intentionally a git checkout at
+  `~/Arduino/libraries/TinyGPSPlus`, cloned from
+  `https://github.com/mikalhart/TinyGPSPlus.git`.
+  - Do not rely on `arduino-cli lib install TinyGPSPlus@1.1.0`; the Arduino
+    index only exposes `1.0.3`.
+  - The practical standardization path is to keep the git clone in sync across
+    machines (`git fetch`, `git checkout master`, `git pull --ff-only`) or pin
+    both machines to the same commit.
+- `make BOARD=csim` in `winglevlr` depends on the host-side `lv_port_linux`
+  checkout and its built artifacts.
+  - The repo-root `make -j2` path is not the right way to build the LVGL host
+    pieces.
+  - Build the sibling host project with:
+    - `cd ~/src/lv_port_linux`
+    - `cmake -B build`
+    - `make -C build -j2`
+  - If csim link errors mention unresolved X11 symbols, that usually means the
+    build system is using the wrong entry point or missing the CMake-built host
+    artifacts, not that the X11 dev packages are absent.
 
 ## Synthetic VOR Context
 
@@ -44,6 +63,9 @@ This file is a local handoff for future assistant work in this repository.
   - `winglevlr`: `stash@{0}` / `WIP csim LVGL build repair`
   - `lvglConfigPanel`: `stash@{0}` / `WIP csim LVGL build repair`
 - The normal `make -j2` build passed after stashing the CSIM/LVGL work. Do not claim `make BOARD=csim` is fixed unless that stash is intentionally revisited and revalidated.
+- The newer csim recovery path that actually worked was to keep the TinyGPSPlus
+  git checkout in place and use `lv_port_linux`'s CMake build (`cmake -B build`
+  then `make -C build -j2`).
 
 ## Local Artifacts
 
