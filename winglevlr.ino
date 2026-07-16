@@ -1989,7 +1989,7 @@ public:
 	RollingAverage<float, (int)AHRS_RATE_SCALE(40)> delayBank;
 
 	void flightSim(MPU9250_DMP *imu) {
-	        static MPU9250_asukiaaa csimImu(0x69)	
+	    static MPU9250_asukiaaa csimImu(0x69);
 		if (imu == NULL)
 			imu = &csimImu;
 		// TODO: flightSim is very fragile/unstable.  Poke values into the
