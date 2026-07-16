@@ -25,3 +25,4 @@ spiff
 esp32csim
 csim
 *_csim
+.vscode/*.log
