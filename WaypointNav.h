@@ -87,9 +87,9 @@ namespace WaypointNav {
     }
 
     float angularDiff(float a, float b) {
-        float d = a - b;
-        if (d > +180) d -= 360;
-        if (d < -180) d += 360;
+        float d = fmodf(a - b, 360.0f);
+        if (d > +180.0f) d -= 360.0f;
+        if (d < -180.0f) d += 360.0f;
         return d;
     }
 
@@ -122,7 +122,7 @@ namespace WaypointNav {
         }
         double courseErr() { 
             // Localizer sensitivity is angular from the localizer antenna, not the touchdown point.
-            return bearing(currentLoc, locAntennaLocation) - faCrs;
+            return angularDiff(bearing(currentLoc, locAntennaLocation), faCrs);
         }
         double cdiPercent() { 
             return max(-1.0, min(1.0, courseErr() / 2.5));
@@ -201,8 +201,8 @@ namespace WaypointNav {
         
     inline float constrain360(float a) { 
         if (abs(a) < 10000) { 
-            while(a <= 0) a += 360;
-            while(a > 360) a -= 360;
+            a = fmodf(a, 360.0f);
+            if (a <= 0.0f) a += 360.0f;
         }
         return a;
     }

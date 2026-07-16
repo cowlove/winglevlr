@@ -134,8 +134,8 @@ struct AuxMpuData {
 
 inline float constrain360(float a) { 
 	if (abs(a) < 10000) { 
-		while(a <= 0) a += 360;
-		while(a > 360) a -= 360;
+		a = fmodf(a, 360.0f);
+		if (a <= 0.0f) a += 360.0f;
 	}
 	return a;
 }
@@ -156,27 +156,24 @@ public:
 		if (abs(hd) > 100000) {
 			value = f;
 		} else {
-			while (hd < -180) hd += 360;
-			while (hd > +180) hd -= 360;
+			hd = fmodf(hd, 360.0f);
+			if (hd < -180.0f) hd += 360.0f;
+			if (hd > +180.0f) hd -= 360.0f;
 			value += hd;
 		}
 		return *this;
 	}
 	float angle() { 
-		float a = value;
-		if (abs(a) < 10000) { 
-			while(a <= 0) a += 360;
-			while(a > 360) a -= 360;
-		}
-		return a;
+		return constrain360(value);
 	}
 };
 
 float angularDiff(float d) { 
 	if (abs(d) > 100000) 
 		return d;
-	while(d < -180) d += 360;
-	while(d > 180) d -= 360;
+	d = fmodf(d, 360.0f);
+	if (d < -180.0f) d += 360.0f;
+	if (d > 180.0f) d -= 360.0f;
 	return d;
 }
 
