@@ -1,0 +1,9 @@
+LVGL:
+make BOARD=csim now requires lv_port_linux support.  See notes in 
+lvglConfigPanel project for setting up and configuring lv_port_linux
+
+arduino versions:
+makeEspArduino requires arduino-cli core install esp32:esp32@3.2.0
+
+libraries:
+csim needs TinyGPSPlus version 1.1.0, not available in arduino-cli lib upgrade
