@@ -172,6 +172,15 @@ namespace WaypointNav {
             return abs(inboundErr) <= abs(outboundErr) ? inboundErr : outboundErr;
         }
 
+        bool isTo(double obsCourseTrue) {
+            return abs(angularDiff(bearingToStationTrue(), obsCourseTrue)) <=
+                abs(angularDiff(radialTrue(), obsCourseTrue));
+        }
+
+        bool isFrom(double obsCourseTrue) {
+            return !isTo(obsCourseTrue);
+        }
+
         double cdiPercent(double obsCourseTrue) {
             return clampUnit(courseErr(obsCourseTrue) / CDI_FULL_SCALE_DEG);
         }
