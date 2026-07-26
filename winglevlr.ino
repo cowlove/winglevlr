@@ -1956,6 +1956,7 @@ public:
 	void setup() override { 
 		panel_setup();
 		cpt.createWelcomeTile();
+		cpt.createDataCollectionTile();
 	}
 	void loop() override { 
 		cpt.run();
