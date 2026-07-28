@@ -41,6 +41,16 @@ This file is a local handoff for future assistant work in this repository.
 
 ## SL30 Protocol Context
 
+## Synthetic G5 Safety Flag
+
+- Standalone ESP-NOW test sources must include the whitespace-delimited token
+  `TEST=1` in every synthetic logical G5 payload.
+- `parseG5Line()` rejects the complete payload before updating any attitude,
+  air-data, navigation, mode, or knob state when this token is present.
+- Keep rejection at the central parser boundary so it protects every caller.
+- The bridge and phone app should forward/consume test packets; flight-control
+  consumers must reject them.
+
 - The reference PDF is committed in `autotrim`:
   - `docs/reference/SL30_Installation_Manual_560-0404-03_Rev_A.pdf`
 - Appendix E documents `$PMRRV21`.

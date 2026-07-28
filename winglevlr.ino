@@ -139,7 +139,7 @@ float ttlt = 75; // seconds betweeen test turn, ordegrees per turn
 float rollToStick = 0.0, rollToPitch = 0.0;
 float maxRollRate = 5.0; // deg/sec 
 float servoGain = 1.70;
-int g5LineCount = 0, g5LineErrCount = 0, rxG5HdgCount = 0, rxNavCount = 0;
+int g5LineCount = 0, g5LineErrCount = 0, g5TestRejectCount = 0, rxG5HdgCount = 0, rxNavCount = 0;
 int serialLogMode = 0x1;
 int displayHeartbeat = 0;
 
@@ -674,6 +674,7 @@ void parseSerialLine(const char *buf) {
 }
 void setupCp();
 void parseG5Line(const char *);
+bool isTestG5Payload(const char *);
 
 class PidControlUI : public ConfPanelClient {
 public:
@@ -756,6 +757,11 @@ void setup() {
 	wdtReset();
 	Serial.begin(115200);
     Serial.println("setup()");
+#ifdef CSIM
+	assert(isTestG5Payload("P=5.0 TEST=1 R=0.0\n"));
+	assert(!isTestG5Payload("P=5.0 TEST=0 R=0.0\n"));
+	assert(!isTestG5Payload("P=5.0 NOTTEST=1 R=0.0\n"));
+#endif
 	pinMode(pins.pwm_pitch, OUTPUT);
 	pinMode(pins.pwm_roll, OUTPUT);
 	while(0) { 
@@ -1274,7 +1280,24 @@ void parseIflyLine(const char *line) {
 	}
 }
 
+// Standalone bench generators mark synthetic G5 payloads with the exact
+// whitespace-delimited token TEST=1. Reject the complete logical payload
+// before parsing any field so synthetic data cannot update flight-control state.
+bool isTestG5Payload(const char *payload) {
+	vector<string> words = split(string(payload), ' ');
+	for (auto &word : words) {
+		while (!word.empty() && (word.back() == '\r' || word.back() == '\n'))
+			word.pop_back();
+		if (word == "TEST=1") return true;
+	}
+	return false;
+}
+
 void parseG5Line(const char *line) { 
+	if (isTestG5Payload(line)) {
+		g5TestRejectCount++;
+		return;
+	}
 	g5LineCount++;
 	vector<string> lines = split(string(line), '\n');
 	for (auto l = lines.begin(); l != lines.end(); l++) {
@@ -1902,6 +1925,7 @@ void setupCp() {
 	//cpc.addFloat(&loopCount10Hz, "10hz Timer Count Client 2", 1, "%.0f");
 	//cpc.addEnum(&ahrsSource, "AHRS Source", "INS/G5");
 	cpc.addInt(&g5LineCount, "RX G5 Line Count");
+	cpc.addInt(&g5TestRejectCount, "Rejected Test G5 Count");
 	cpc.addInt(&rxG5HdgCount, "RX G5 Hdg Count");
 	cpc.addInt(&rxNavCount, "RX Nav Count");
 	cpc.addInt(&displayHeartbeat, "Display Heartbeat");
