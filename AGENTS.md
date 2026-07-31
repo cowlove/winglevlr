@@ -50,6 +50,10 @@ This file is a local handoff for future assistant work in this repository.
 - Keep rejection at the central parser boundary so it protects every caller.
 - The bridge and phone app should forward/consume test packets; flight-control
   consumers must reject them.
+- G5 `PALT` is meters on the wire. Both parsing paths intentionally multiply it
+  by `FEET_PER_METER`; internal `ahrsInput.g5Palt` is feet. Preserve this
+  boundary. An upstream conversion of the existing field would double-convert
+  altitude and is not compatible with deployed winglevlr firmware.
 
 - The reference PDF is committed in `autotrim`:
   - `docs/reference/SL30_Installation_Manual_560-0404-03_Rev_A.pdf`

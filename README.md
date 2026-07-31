@@ -2,6 +2,14 @@
 
 Simple single-axis autopilot based on an ESP32, MPU-9250 and an RC servo 
 
+## G5 pressure-altitude units
+
+The G5 `PALT` telemetry field is meters on the wire. `parseG5Line()` converts
+it to feet with `FEET_PER_METER` before storing `ahrsInput.g5Palt`. This applies
+to both the legacy positional CAN report and the current `KEY=VALUE` report.
+Do not remove that conversion or change the producer's existing `PALT` field to
+feet without a versioned protocol migration.
+
 ## Building 
 
 If you don't have an Arduino ESP32 environment set up
