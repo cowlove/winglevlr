@@ -80,6 +80,13 @@ This file is a local handoff for future assistant work in this repository.
 - The newer csim recovery path that actually worked was to keep the TinyGPSPlus
   git checkout in place and use `lv_port_linux`'s CMake build (`cmake -B build`
   then `make -C build -j2`).
+- `./csim --lvgl --seconds 3` exercises the config-panel schema and live VALUE
+  path end to end through ReliableStream and the simulated ESP-NOW mux.
+- `./csim --reliable-stream-test` is a deterministic transport regression. It
+  sends a 500-byte logical packet containing `~`, `|`, `%`, newline, and NUL
+  through multiple physical ESP-NOW packets, verifies exact reassembly, then
+  verifies that the onePacket miss counter increments for that write but not
+  for a following small write.
 
 ## Local Artifacts
 

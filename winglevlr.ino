@@ -1990,6 +1990,64 @@ public:
 	}
 };
 
+class Csim_reliableStreamPeer : public Csim_privateContext {
+public:
+	ReliableStreamESPNow stream = ReliableStreamESPNow("RSTEST", true);
+	vector<string> packets;
+
+	Csim_reliableStreamPeer() {
+		stream.client.enMux = &privMux;
+		currentContext = &defaultContext;
+	}
+
+	void loop() override {
+		string packet;
+		while (stream.read(packet))
+			packets.push_back(packet);
+	}
+};
+
+// Deterministic end-to-end exercise of ReliableStream framing through the
+// simulated ESP-NOW mux. It verifies multi-physical-packet reassembly,
+// reserved/control/binary payload bytes, and the onePacket miss capability.
+class Csim_reliableStreamTest : public Csim_Module {
+	ReliableStreamESPNow sender = ReliableStreamESPNow("RSTEST", true);
+	Csim_reliableStreamPeer *peer;
+	string largePacket;
+	int state = 0;
+public:
+	Csim_reliableStreamTest() {
+		defaultContext.espnow = &mainEspNow;
+		peer = new Csim_reliableStreamPeer();
+		largePacket.assign(500, 'A');
+		largePacket[20] = '~';
+		largePacket[21] = '|';
+		largePacket[22] = '%';
+		largePacket[23] = '\n';
+		largePacket[100] = '\0';
+	}
+
+	void loop() override {
+		if (state == 0 && millis() > 1200) {
+			assert(sender.getOnePacketMissCount() == 0);
+			sender.write(largePacket, true);
+			assert(sender.getOnePacketMissCount() == 1);
+			state = 1;
+		}
+		if (state == 1 && peer->packets.size() == 1) {
+			assert(peer->packets[0] == largePacket);
+			sender.write("small packet", true);
+			assert(sender.getOnePacketMissCount() == 1);
+			state = 2;
+		}
+		if (state == 2 && peer->packets.size() == 2) {
+			assert(peer->packets[1] == "small packet");
+			printf("ReliableStream CSIM PASS: fragmented round trip and onePacket misses\n");
+			Csim_exit();
+		}
+	}
+};
+
 
 void Csim_done();
 
@@ -2249,6 +2307,7 @@ public:
 	ifstream gdl90file;
 	void parseArg(char **&a, char **la) override {
 		if (strcmp(*a, "--lvgl") == 0) new Csim_lvgl();
+		if (strcmp(*a, "--reliable-stream-test") == 0) new Csim_reliableStreamTest();
 		if (strcmp(*a, "--replay") == 0)
 			replayFile = *(++a);
 		else if (strcmp(*a, "--replaySkip") == 0)
